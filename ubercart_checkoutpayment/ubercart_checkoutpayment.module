@@ -1,0 +1,667 @@
+<?php
+
+/**
+ * @file
+ * This module provides Checkout.com payment gateway integration to Ubercart,
+ * Ubercart Checkoutpayment offers a PCI-compliant way to process payments.
+ */
+
+const CHECKOUT_API_RESPONSE_CODE_APPROVED       = 10000;
+const CHECKOUT_API_RESPONSE_CODE_APPROVED_RISK  = 10100;
+const CHECKOUT_API_PLUGIN_VERSION               = '7.x-2.9';
+const HOSTED_URL_SANDOX             = 'https://secure.checkout.com/sandbox/payment/';
+const HOSTED_URL_LIVE               = 'https://secure.checkout.com/payment/';
+const EVENT_TYPE_CHARGE_SUCCEEDED   = 'charge.succeeded';
+const EVENT_TYPE_CHARGE_CAPTURED    = 'charge.captured';
+const EVENT_TYPE_CHARGE_REFUNDED    = 'charge.refunded';
+const EVENT_TYPE_CHARGE_VOIDED      = 'charge.voided';
+const EVENT_TYPE_INVOICE_CANCELLED  = 'invoice.cancelled';
+
+// Implements hook_init().
+function ubercart_checkoutpayment_init() {
+  global $conf;
+  $conf['i18n_variables'][] = 'ubercart_checkoutpayment_method_title';
+  $conf['i18n_variables'][] = 'ubercart_checkoutpayment_checkout_button';
+}
+
+// Implements hook_variable_info().
+function ubercart_checkoutpayment_variable_info($options) {
+  $variable['ubercart_checkoutpayment_method_title'] = array(
+    'title' => t('Checkout.com - method title'),
+    'description' => t('Name for Checkout.com payment method presented to the customer.'),
+  );
+  $variable['ubercart_checkoutpayment_checkout_button'] = array(
+    'title' => t('Checkout.com - checkout button'),
+    'description' => t('Text on checkout button when paying via Checkout.com.'),
+  );
+
+  return $variable;  
+}
+
+// Implements hook_menu().
+function ubercart_checkoutpayment_menu() {
+  $items['checkoutapi/process'] = array(
+    'title' => 'Ipn checkout',
+    'page callback' => 'ubercart_checkoutpayment_process_order',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['ubercart_checkoutpayment/success'] = array(
+    'title' => 'Success page',
+    'page callback' => 'ubercart_checkoutpayment_success_order',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['ubercart_checkoutpayment/process_charge'] = array(
+    'title' => 'Create Order page',
+    'page callback' => 'ubercart_checkoutpayment_process_charge',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['ubercart_checkoutpayment/fail'] = array(
+    'title' => 'Fail Order page',
+    'page callback' => 'ubercart_checkoutpayment_fail_order',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+
+  return $items;
+}
+
+// Implements hook_uc_payment_method().
+function ubercart_checkoutpayment_uc_payment_method() {
+  $methods[] = array(
+    'id' => 'checkoutpayment',
+    'name' => t('Credit / Debit cards (Checkout.com)'),
+    'title' => variable_get('ubercart_checkoutpayment_method_title',
+      t('Credit / Debit cards (Checkout.com)')),
+    'desc' => t('Redirect to Checkout.com to pay.'),
+    'callback' => 'uc_payment_method_checkoutpayment',
+    'weight' => 1,
+    'checkout' => TRUE,
+    'no_gateway' => TRUE,
+  );
+
+  return $methods;
+}
+
+// Default settings
+function ubercart_checkoutpayment_settings_default() {
+  return array(
+    'mode' => 'live',
+    'type' => 'pci',
+    'localpayment' => 'false',
+    'logourl' => '',
+    'formButtonColor' => '',
+    'themecolor' => '',
+    'currencycode' => 'true',
+    'title' => '',
+    'timeout' => 60,
+    'card_types' => array(),
+    'payment_action' => UC_CREDIT_AUTH_ONLY,
+    'autocaptime' => 0
+  );
+}
+
+// Implements hook_payment_method_callback($op, &$arg1, $silent = FALSE)
+function uc_payment_method_checkoutpayment($op, &$arg1) {
+  module_load_include('module', 'uc_credit', 'uc_credit');
+  
+  switch ($op) {
+    case 'settings':
+      $settings = array();
+      global $base_url;
+      $form['checkoutpayment_help_text'] = array(
+        '#markup' => '<div class="help">' . t('<h4><strong>Checkout.com Payment Settings</strong></h4><p>Go to https://sandbox.checkout.com to properly install this module.</p>', array('%base_url' => $base_url)) . '</div>',
+      );
+
+      $settings = (array) $settings + ubercart_checkoutpayment_settings_default();
+
+      $form['checkoutpayment_account'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Account settings'),
+        '#collapsible' => TRUE,
+        '#collapsed' => FALSE,
+      );
+      $form['checkoutpayment_account']['private_key'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Secret Key'),
+        '#required' => TRUE,
+        '#description' => t('The Checkout.com account secret API key to use .'),
+        '#default_value' => variable_get('private_key', ''),
+        //'#default_value' => isset($settings['private_key']) ? $settings['private_key'] : '',
+      );
+    
+      $form['checkoutpayment_account']['public_key'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Public Key'),
+        '#required' => TRUE,
+        '#description' => t('The Checkout.com account publishable API key to use.'),
+        '#default_value' => variable_get('public_key', ''),
+        //'#default_value' => isset($settings['public_key']) ? $settings['public_key'] : '',
+      );
+    
+      $form['checkoutpayment_account']['mode'] = array(
+        '#type' => 'select',
+        '#title' => t('Endpoint Url Mode'),
+        '#description' => t('Perform transactions on the production server or on the testing server.'),
+        '#default_value' => variable_get('mode', ''),
+        //'#default_value' => $settings['mode'],
+        '#options' => array(
+          'live' => t('Live'),
+          'sandbox' => t('Sandbox'),
+        ),
+      );
+    
+      $form['checkoutpayment_transaction'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Payment settings'),
+        '#collapsible' => TRUE,
+        '#collapsed' => FALSE,
+      );
+
+      $form['checkoutpayment_transaction']['payment_action'] = array(
+        '#type' => 'select',
+        '#title' => t('Transaction Method'),
+        '#description' => t('The processing method to use for each transaction.'),
+        '#default_value' => variable_get('payment_action', ''),
+        //'#default_value' => $settings['payment_action'],
+        '#options' => array(
+          UC_CREDIT_AUTH_CAPTURE => t('Authorization and capture'),
+          UC_CREDIT_AUTH_ONLY => t('Authorization only (requires manual capture after checkout)'),
+        ),
+      );
+    
+      $form['checkoutpayment_transaction']['autocaptime'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Set Gateway auto capture time.'),
+        '#description' => t('Set how long will the payment be capture.'),
+        '#default_value' => variable_get('autocaptime', ''),
+        //'#default_value' => $settings['autocaptime'],
+      );
+
+      $form['checkoutpayment_transaction']['paymentMode'] = array(
+        '#type' => 'select',
+        '#title' => t('Payment Mode'),
+        '#options' => array(
+          'cards' => t('Card'),
+          'localPayment' => t('Local Payment'),
+          'mixed' => t('Mixed')
+        ),
+      );
+    
+      $form['checkoutpayment_transaction']['type'] = array(
+        '#type' => 'select',
+        '#title' => t('Method Type (Pci enabled)'),
+        '#description' => t('Verify gateway server SSL certificate on connection?'),
+        '#options' => array(
+          'pci' => t('Yes'),
+          'nonpci' => t('No'),
+        ),
+        '#default_value' => variable_get('type', ''),
+        //'#default_value' => $settings['type'],
+      );
+    
+      $form['checkoutpayment_transaction']['is3D'] = array(
+        '#type' => 'select',
+        '#title' => t('Enable 3D'),
+        '#description' => t('If you want to process all transactions as 3D secure, select Yes'),
+        '#options' => array(
+          '1' => t('No'),
+          '2' => t('Yes'),
+        ),
+      );
+    
+      $form['checkoutpayment_transaction']['timeout'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Set Gateway timeout.'),
+        '#description' => t('Set how long request timeout on server.'),
+        '#default_value' => variable_get('timeout', ''),
+        //'#default_value' => $settings['timeout'],
+      );
+    
+      $form['checkoutpayment_ui'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Personalisation'),
+        '#collapsible' => TRUE,
+        '#collapsed' => FALSE,
+      );
+
+      $form['checkoutpayment_ui']['logourl'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Logo URL'),
+        '#description' => t('This is the setting to display the logo on checkout.js (Max size: 180 x 36)'),
+        '#default_value' => variable_get('logourl', ''),
+        //'#default_value' => $settings['logourl'],
+      );
+    
+      $form['checkoutpayment_ui']['themecolor'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Theme color'),
+        '#description' => t('Set theme color for checkout hosted'),
+        '#default_value' => variable_get('themecolor', ''),
+        //'#default_value' => $settings['themecolor'],
+      );
+    
+      $form['checkoutpayment_ui']['title'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Title'),
+        '#description' => t('Add a title on the hosted payment page'),
+        '#default_value' => variable_get('title', ''),
+        //'#default_value' => $settings['title'],
+      );
+    
+      $form['checkoutpayment_ui']['currencycode'] = array(
+        '#type' => 'select',
+        '#title' => t('Widget currency format'),
+        '#description' => t('Display currency code or currency symbol on the checkout hosted'),
+        '#options' => array(
+          'true' => t('Code'),
+          'false' => t('Symbol'),
+        ),
+        '#default_value' => variable_get('currencycode', ''),
+        //'#default_value' => $settings['currencycode'],
+      );
+
+      return $form;
+      break;
+
+    case 'cart-details':
+      return array('#markup' => t('placeholder text TODO')); // Under the payment method selection pane, when checkout.com is selected
+      break;
+    
+    case 'cart-process':
+      return array('#markup' => t('placeholder text TODO 2')); // Don't know where this happens
+      break;
+
+    case 'cart-review':
+      return array('#markup' => t('Click "Proceed" to proceed to the payment server.')); // Add text under the review pane when using Checkout.com
+      break;
+
+    case 'customer-view':
+      return array('#markup' => t('placeholder text TODO 4')); // Don't know where this happens
+      break;
+    
+    case 'order-delete':
+      // When order is deleted or cancelled
+      break;
+
+    case 'order-details':
+      return array('#markup' => t('placeholder text TODO 6')); // Shown to admin when edditing orders
+      break;
+      
+    case 'order-load':
+      // Called from hook_uc_order('load') when this payment method is selected for the order.
+      break;
+
+    case 'order-process':
+      // Called when an order has been edited by an administrator.
+      break;
+
+    case 'order-save':
+      // Called from hook_uc_order('save') when this payment method is selected for the order.
+      break;
+
+    case 'order-submit':
+      // Called from hook_uc_order('submit') when this payment method is selected for the order.
+      break;
+      
+    case 'order-save':
+      // Called when the order is being displayed on the order admin pages.
+      break;
+    }
+}
+
+// Implements hook_form_alter() for uc_cart_checkout_review_form().
+function ubercart_checkoutpayment_form_uc_cart_checkout_review_form_alter(&$form, &$form_state) {
+  if (($order_id = intval($_SESSION['cart_order'])) > 0) {
+    $order = uc_order_load($order_id);
+    $preparedForm = drupal_get_form('ubercart_checkoutpayment_form', $order);
+
+    if ($order->payment_method == 'checkoutpayment') {
+      unset($form['actions']['submit']);
+      $form['#prefix'] = '<table style="display: inline;"><tr class="review-button-row-inner"><td>';
+      $form['#suffix'] = '</td><td>' . drupal_render($preparedForm) . '</td></tr></table>';
+    }
+  }
+}
+
+// Handels the submition of the form
+function ubercart_checkoutpayment_form($form, &$form_state, $order) {
+
+  global $base_url;
+
+  $hppUrl = HOSTED_URL_SANDOX; //TODO
+
+  $publicKey      = variable_get('public_key', 'EUR');
+  $paymentToken   = "pay_tok_D31E4FC3-BCF3-4E0E-87FD-9EFF3C00A9E3";  //TODO
+  $customerEmail  = $order->primary_email;
+  $value          = number_format(round($order->order_total, variable_get('uc_currency_prec', 2)) * 100, 0, '', '');
+  $currency       = variable_get('uc_currency_code', 'EUR');
+  $cardFormMode   = "cardTokenisation";
+  $paymentMode    = variable_get('paymentMode', '');
+  $redirectUrl    = $base_url . "/ubercart_checkoutpayment/process_charge";
+  $cancelUrl      = $base_url . "/ubercart_checkoutpayment/fail";
+  $contextId      = $order->order_id;
+  $themeColor     = variable_get('themecolor', '');
+  $title          = variable_get('title', '');
+  $logoUrl        = variable_get('logourl', '');
+  $billingDetails = null; //TODO
+
+  // Format data for form
+  $data = array(
+    'publicKey'      => $publicKey,
+    'paymentToken'   => $paymentToken,
+    'customerEmail'  => $customerEmail,
+    'value'          => $value,
+    'currency'       => $currency,
+    'cardFormMode'   => $cardFormMode,
+    'paymentMode'    => $paymentMode,
+    'redirectUrl'    => $redirectUrl,
+    'cancelUrl'      => $cancelUrl,
+    'contextId'      => $contextId,
+    'themeColor'     => $themeColor,
+    'title'          => $title,
+    'logoUrl'        => $logoUrl,
+    'billingDetails' => $billingDetails
+  );
+
+  // Set form objects
+  foreach ($data as $name => $value) {
+    if (!empty($value)) {
+      $form[$name] = array(
+        '#type' => 'hidden', 
+        '#value' => $value,
+        '#attributes' => array(
+          'name' => array($name),
+        )
+      );
+    }
+  }
+
+  // Set submit button
+  $form['#action'] = url($hppUrl);
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => variable_get('ubercart_checkoutpayment_checkout_button', 'Proceed to the payment server.'),
+  );
+
+  return $form;
+}
+
+// Check if method is PCI or NON-PCI
+function ubercart_checkoutpayment_check_method_type(){
+  $payment_method = commerce_payment_method_instance_load('commerce_checkoutpayment|commerce_payment_commerce_checkoutpayment');
+  if (isset($payment_method['settings']['type']) && $payment_method['settings']['type'] == 'pci') {
+    return FALSE;
+  }
+  else {
+    return TRUE;
+  }
+}
+
+// Retrieves all active instances definitions. TODO
+function ubercart_checkoutpayment_get_instance($settings) {
+  
+  module_load_include('php', 'ubercart_checkoutpayment', 'includes/autoload');
+
+  switch ($settings['settings']['type']) {
+    case 'pci':
+      $_instance = CheckoutApi_Lib_Factory::getInstance('methods_creditcardpci');
+      break;
+
+    default:
+      $_instance = CheckoutApi_Lib_Factory::getInstance('methods_creditcard');
+      break;
+  }
+
+  return $_instance;
+}
+
+/** ****************************************************************
+********************************************************************
+*************************** PAGES **********************************
+********************************************************************
+**************************************************************** **/
+
+// Mobile Redirect to success url: example.com/ubercart_checkoutpayment/success.
+function ubercart_checkoutpayment_success_order() {
+  if (!isset($_REQUEST['cko-payment-token'])) {
+    drupal_goto();
+  }
+
+  module_load_include('php', 'commerce_checkoutpayment', 'includes/autoload');
+
+  // To do get instance id from session
+  $instance_id = $_SESSION['cko_instance_id'];
+  $payment_method = commerce_payment_method_instance_load($instance_id);
+
+  $config['authorization'] = $payment_method['settings']['private_key'];
+  $config['paymentToken'] = $_REQUEST['cko-payment-token'];
+
+  $api = CheckoutApi_Api::getApi(array('mode' => $payment_method['settings']['mode']));
+  $object_charge = $api->verifyChargePaymentToken($config);
+
+  $order_id = $object_charge->getTrackId();
+  $order = commerce_order_load($order_id);
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $order_total = $order_wrapper->commerce_order_total->value();
+
+  $transaction = commerce_payment_transaction_new($payment_method['method_id'], $order->order_id);
+  $transaction->instance_id = $payment_method['instance_id'];
+  $transaction->amount = $order_total['amount'];
+  $transaction->currency_code = $order_total['currency_code'];
+  $transaction->payload[REQUEST_TIME] = $object_charge->getCreated();
+
+  $default_currency = commerce_default_currency();
+  $amount = number_format(commerce_currency_convert($order_total['amount'], $order_total['currency_code'], $default_currency), 0, '', '');
+  $to_validate = array(
+    'currency' => $default_currency,
+    'value' => $amount,
+    'trackId' => $order_id,
+  );
+  $validate_request = $api::validateRequest($to_validate, $object_charge);
+
+  if (preg_match('/^1[0-9]+$/', $object_charge->getResponseCode())) {
+    $transaction->message = 'Your transaction has been successfully authorized with transaction id : ' . $object_charge->getId();
+    $transaction->status = COMMERCE_PAYMENT_STATUS_PENDING;
+    commerce_payment_transaction_save($transaction);
+    $order = commerce_order_status_update($order, 'checkout_complete', FALSE, TRUE, 'Your payment has been successfully completed');
+    commerce_checkout_complete($order);
+    drupal_goto(commerce_checkout_order_uri($order));
+  }
+  else { 
+    $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
+    $transaction->message = $object_charge->getRawRespond();
+    commerce_payment_transaction_save($transaction);
+    drupal_set_message(t('An error has occured while processing your transaction. Please verify your information again or try a different card.'), 'error');
+    $order = commerce_order_status_update($order, 'checkout_review', FALSE, TRUE, t('Proceed to review page'));
+    drupal_goto('checkout/' . $order->order_id . '/review');
+    watchdog('checkoutpayment_return_url', '!charge', array('!charge' => $object_charge->getRawRespond()), WATCHDOG_WARNING);
+  }
+
+}
+
+function ubercart_checkoutpayment_process_charge(){
+
+  if($_REQUEST['cko-card-token']){
+
+    $cardToken = $_REQUEST['cko-card-token'];
+
+    if(!$_SESSION['orderId']){
+      drupal_goto();
+    }
+    else {
+      //$order = commerce_order_load($_SESSION['orderId']);
+    }
+  }
+
+  module_load_include('php', 'ubercart_checkoutpayment', 'includes/autoload');
+  $instance_id = $_SESSION['cko_instance_id'];
+  $payment_method = commerce_payment_method_instance_load($instance_id);
+
+  $Api = CheckoutApi_Api::getApi(array('mode'=>$payment_method['settings']['mode']));
+
+  $secretKey      = $payment_method['settings']['private_key'];
+  $config         = array();
+  $config['mode'] = $payment_method['settings']['mode'];
+
+  $transactionMethod  = $payment_method['settings']['payment_action'];
+  $autoCapTime        = $payment_method['settings']['autocaptime'];
+  $autoCapture        = $transactionMethod == 'authorize' ? CheckoutApi_Client_Constant::AUTOCAPUTURE_AUTH : CheckoutApi_Client_Constant::AUTOCAPUTURE_CAPTURE;
+  $chargeMode = $payment_method['settings']['is3D'];
+
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $order_total = $order_wrapper->commerce_order_total->value()['amount'];
+  $currencyCode = $order_wrapper->commerce_order_total->value()['currency_code'];
+  $billing_address = $order_wrapper->commerce_customer_billing->commerce_customer_address->value();
+  $customerName       = $billing_address['first_name']. " " . $billing_address['last_name'];
+  $email              = $order->mail;
+    
+  if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+      $ip = $_SERVER['HTTP_CLIENT_IP'];
+  } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+      $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
+  } else {
+      $ip = $_SERVER['REMOTE_ADDR'];
+  }
+
+  $products = NULL;
+  foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
+      if(isset($line_item_wrapper->commerce_product)){
+        $product_id = $line_item_wrapper->commerce_product->raw();
+        $product = commerce_product_load($product_id);
+        $price = commerce_product_calculate_sell_price($product);
+        $sell_price = number_format(commerce_currency_amount_to_decimal($price['amount'], $price['currency_code']), 2, '.', '');
+
+        // Add the line item to the return array.
+        $products[$delta] = array(
+          'productName' => commerce_line_item_title($line_item_wrapper->value()),
+          'price' => $sell_price,
+          'quantity' => round($line_item_wrapper->quantity->value()),
+          'sku' => '',
+        );
+
+        // If it was a product line item, add the SKU.
+        if (in_array($line_item_wrapper->type->value(), commerce_product_line_item_types())) {
+          $products[$delta]['sku'] = $line_item_wrapper->line_item_label->value();
+        }
+      }
+  }
+  
+  $config['postedParam'] = array (
+      'trackId'           => $order->order_number,
+      'value'             => $order_total,
+      'currency'          => $currencyCode,
+      'autoCapture'       => $autoCapture,
+      'chargeMode'        => $chargeMode,
+      'customerIp'        => $ip,
+      'autoCapTime'       => $autoCapTime,
+      'email'             => $email,
+      'customerName'          => $customerName,
+      'email'             => $email,
+      'metadata'          => array(
+          'server'            => $_SERVER['HTTP_USER_AGENT'],
+          'plugin_version'    => CHECKOUT_API_PLUGIN_VERSION,
+          'lib_version'       => CheckoutApi_Client_Constant::LIB_VERSION,
+          'integration_type'  => 'Hosted',
+          'time'              => date('Y-m-d H:i:s'),
+          'instanceId'        => $instance_id
+      ),
+      'cardToken'         => $cardToken
+  );
+
+  $config['authorization']    = $secretKey;
+
+  if (!empty($products)) {
+    $config['postedParam']['products'] = $products;
+  }
+
+  if (module_exists('commerce_shipping') && !empty($order_wrapper->commerce_customer_shipping->commerce_customer_address)) {
+      $shipping_address = $order_wrapper->commerce_customer_shipping->commerce_customer_address->value();
+
+      // Add the shipping address parameters to the request.
+      $shipping_array = array(
+        'addressLine1' => $shipping_address['thoroughfare'],
+        'addressLine2' => $shipping_address['premise'],
+        'postcode' => $shipping_address['postal_code'],
+        'country' => $shipping_address['country'],
+        'city' => $shipping_address['locality'],
+      );
+
+      $config['postedParam']['shippingDetails'] = $shipping_array;
+  }
+
+  $result = $Api->createCharge($config);
+
+  $transaction = commerce_payment_transaction_new($payment_method['method_id'], $order->order_id);
+  $transaction->instance_id = $payment_method['instance_id'];
+  $transaction->amount = $order_total;
+  $transaction->currency_code = $currencyCode;
+
+  if ($Api->getExceptionState()->hasError()) {
+    $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
+    commerce_payment_transaction_save($transaction);
+    drupal_set_message(t('An error has occured while processing your transaction. Please verify your information again or try a different card.'), 'error');
+    $order = commerce_order_status_update($order, 'checkout_review', FALSE, TRUE, t('Proceed to review page'));
+    drupal_goto('checkout/' . $order->order_id . '/review');
+    watchdog('checkoutpayment_return_url', '!charge', array('!charge' => $result), WATCHDOG_WARNING);
+  }
+
+  if (!$result->isValid() || !responseValidation($result)) {
+    $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
+    commerce_payment_transaction_save($transaction);
+    drupal_set_message(t('An error has occured while processing your transaction. Please verify your card information or try a different card.'), 'error');
+    $order = commerce_order_status_update($order, 'checkout_review', FALSE, TRUE, t('Proceed to review page'));
+    drupal_goto('checkout/' . $order->order_id . '/review');
+    watchdog('checkoutpayment_return_url', '!charge', array('!charge' => $result->getRawOutput()), WATCHDOG_WARNING);
+  } 
+  else {
+
+    if($result->getRedirectUrl()){
+        drupal_goto($result->getRedirectUrl());
+        exit();
+    }
+
+    $message = 'Your transaction has been successfully authorized with chargeId : ' . $result->getId();
+
+    if($result->getResponseCode()==10100){
+      $message = 'Your transaction has been flagged - chargeId : ' . $result->getId();
+    }
+
+    $transaction->status = COMMERCE_PAYMENT_STATUS_PENDING;
+    $transaction->message = $message;
+    commerce_payment_transaction_save($transaction);
+    $order = commerce_order_status_update($order, 'checkout_complete', FALSE, TRUE, 'Your payment has been successfully completed');
+    commerce_checkout_complete($order);
+    drupal_goto(commerce_checkout_order_uri($order));
+  }
+
+}
+  
+function ubercart_checkoutpayment_fail_order(){ 
+  if(!$_SESSION['orderId']){
+      drupal_goto();
+  }
+  else {
+    $order = commerce_order_load($_SESSION['orderId']);
+  }
+
+  module_load_include('php', 'commerce_checkoutpayment', 'includes/autoload');
+
+  $instance_id = $_SESSION['cko_instance_id'];
+  $payment_method = commerce_payment_method_instance_load($instance_id);
+
+  $transaction = commerce_payment_transaction_new($payment_method['method_id'], $order->order_id);
+  $transaction->instance_id = $payment_method['instance_id'];
+
+  $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
+  commerce_payment_transaction_save($transaction);
+  drupal_set_message(t('An error has occured. Your order has been canceled.'), 'error');
+  $order = commerce_order_status_update($order, 'checkout_review', FALSE, TRUE, t('Proceed to review page'));
+  drupal_goto('checkout/' . $order->order_id . '/review');
+}

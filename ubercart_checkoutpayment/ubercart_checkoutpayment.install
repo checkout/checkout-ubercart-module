@@ -1,0 +1,130 @@
+<?php
+
+/**
+ * @file
+ * Installing ubercart_checkoutpayment schema
+ */
+
+/**
+ * Implements hook_schema().
+ */
+
+function ubercart_checkoutpayment_schema() {
+  $schema = array();
+
+  $schema['ubercart_checkoutpayment_notifications'] = array(
+    'description' => 'Logs Checkout.com payment notifications.',
+    'fields' => array(
+      'notification_id' => array(
+        'description' => 'The notification ID.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'live' => array(
+        'description' => 'True when notification originated from the live payment systems.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'event_code' => array(
+        'description' => 'The event type of the notification.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'psp_reference' => array(
+        'description' => 'The reference assigned to the payment or modification.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'original_reference' => array(
+        'description' => 'The reference originally assigned to the authorisation. For a payment it will be blank.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'merchant_reference' => array(
+        'description' => 'Our reference: the order ID',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'merchant_account_code' => array(
+        'description' => 'The merchant account the payment or modification was processed with.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'event_date' => array(
+        'description' => 'The time the event was generated.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'success' => array(
+        'description' => 'Whether or not the event succeeded.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'payment_method' => array(
+        'description' => 'The payment method used (only for AUTHORISATION).',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'operations' => array(
+        'description' => 'The modification operations supported by this payment (only for AUTHORISATION).',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'reasons' => array(
+        'description' => 'Can contain an informational message.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'currency' => array(
+        'description' => 'Currency (if relevant) associated with the payment or modification.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'value' => array(
+        'description' => 'Amount (if relevant) associated with the payment or modification.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('notification_id'),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function ubercart_checkoutpayment_uninstall() {
+  db_delete('variable')
+    ->condition('name', 'ubercart_checkoutpayment_%', 'LIKE')
+    ->execute();
+}
+
