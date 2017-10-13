@@ -356,8 +356,6 @@ function ubercart_checkoutpayment_form($form, &$form_state, $order) {
   $instance = ubercart_checkoutpayment_get_instance();
   
   $data     = $instance->getExtraInit($order);
-
-  print_r($data);
   
   $mode     = variable_get('mode', '');
   $hppUrl   = $mode == 'sandbox' ? HOSTED_URL_SANDOX : HOSTED_URL_LIVE;
@@ -377,7 +375,13 @@ function ubercart_checkoutpayment_form($form, &$form_state, $order) {
   $themeColor     = variable_get('themecolor', '');
   $title          = variable_get('title', '');
   $logoUrl        = variable_get('logourl', '');
-  $billingDetails = null; //TODO
+  $billingDetails = '{"addressLine1":"'.$order->billing_street1     .'",
+                      "addressLine2":"'.$order->billing_street2     .'",
+                      "postcode":"    '.$order->billing_postal_code .'",
+                      "country":"     '.$order->billing_country     .'",
+                      "city":"        '.$order->billing_city        .'",
+                      "state":"       '.$order->billing_zone        .'"
+                    }';
 
   // Format data for form
   $data = array(

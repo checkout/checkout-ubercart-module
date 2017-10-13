@@ -80,11 +80,11 @@ class methods_creditcard extends methods_Abstract {
       $config['themecolor']   = variable_get('themecolor', '');
       $config['currencycode'] = variable_get('uc_currency_code', 'EUR');
       $config['email']        = $order->primary_email;
-      $config['name']         = "Test name"; //TODO
+      $config['name']         = $order->billing_first_name . ' ' . $order->billing_last_name;
       $config['amount']       = $amount_cents;
       $config['currency']     = $default_currency;
       $config['paymentMode']  = variable_get('paymentMode', '');
-      $config['paymentToken'] = $payment_token;//['token'];
+      $config['paymentToken'] = $payment_token['token'];
 
       $array['script']       = $config;
       $array['paymentToken'] = $payment_token;
