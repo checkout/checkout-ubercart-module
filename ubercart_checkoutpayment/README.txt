@@ -19,8 +19,8 @@ TODO
 Webhook/success url
 =============
 Webhook url: example.com/checkoutapi/process
-Success url: example.com/commerce_checkoutpayment/success
-Success url: example.com/commerce_checkoutpayment/fail
+Success url: example.com/ubercart_checkoutpayment/success
+Success url: example.com/ubercart_checkoutpayment/fail
 
 
 Maintainers

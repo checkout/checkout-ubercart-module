@@ -8,7 +8,7 @@
 
 const CHECKOUT_API_RESPONSE_CODE_APPROVED       = 10000;
 const CHECKOUT_API_RESPONSE_CODE_APPROVED_RISK  = 10100;
-const CHECKOUT_API_PLUGIN_VERSION               = '7.x-2.9';
+const CHECKOUT_API_PLUGIN_VERSION               = '7.x-2.9'; //TODO
 const HOSTED_URL_SANDOX             = 'https://secure.checkout.com/sandbox/payment/';
 const HOSTED_URL_LIVE               = 'https://secure.checkout.com/payment/';
 const EVENT_TYPE_CHARGE_SUCCEEDED   = 'charge.succeeded';
@@ -17,14 +17,18 @@ const EVENT_TYPE_CHARGE_REFUNDED    = 'charge.refunded';
 const EVENT_TYPE_CHARGE_VOIDED      = 'charge.voided';
 const EVENT_TYPE_INVOICE_CANCELLED  = 'invoice.cancelled';
 
-// Implements hook_init().
+/**
+ * Implements hook_init().
+ */
 function ubercart_checkoutpayment_init() {
   global $conf;
   $conf['i18n_variables'][] = 'ubercart_checkoutpayment_method_title';
   $conf['i18n_variables'][] = 'ubercart_checkoutpayment_checkout_button';
 }
 
-// Implements hook_variable_info().
+/**
+ * Implements hook_variable_info().
+ */
 function ubercart_checkoutpayment_variable_info($options) {
   $variable['ubercart_checkoutpayment_method_title'] = array(
     'title' => t('Checkout.com - method title'),
@@ -38,7 +42,9 @@ function ubercart_checkoutpayment_variable_info($options) {
   return $variable;  
 }
 
-// Implements hook_menu().
+/**
+ * Implements hook_menu().
+ */
 function ubercart_checkoutpayment_menu() {
   $items['checkoutapi/process'] = array(
     'title' => 'Ipn checkout',
@@ -68,11 +74,13 @@ function ubercart_checkoutpayment_menu() {
     'type' => MENU_CALLBACK,
   );
 
-
   return $items;
 }
 
-// Implements hook_uc_payment_method().
+/**
+ * Implements hook_uc_payment_method().
+ * I have no clue where this is used //TODO
+ */
 function ubercart_checkoutpayment_uc_payment_method() {
   $methods[] = array(
     'id' => 'checkoutpayment',
@@ -89,7 +97,9 @@ function ubercart_checkoutpayment_uc_payment_method() {
   return $methods;
 }
 
-// Default settings
+/**
+ * Returns the default settings for the Checkout.Com payment method.
+ */
 function ubercart_checkoutpayment_settings_default() {
   return array(
     'mode' => 'live',
@@ -107,7 +117,10 @@ function ubercart_checkoutpayment_settings_default() {
   );
 }
 
-// Implements hook_payment_method_callback($op, &$arg1, $silent = FALSE)
+/**
+ * Implements hook_payment_method_callback($op, &$arg1, $silent = FALSE)
+ * method callback: settings form.
+ */
 function uc_payment_method_checkoutpayment($op, &$arg1) {
   module_load_include('module', 'uc_credit', 'uc_credit');
   
@@ -127,6 +140,7 @@ function uc_payment_method_checkoutpayment($op, &$arg1) {
         '#collapsible' => TRUE,
         '#collapsed' => FALSE,
       );
+
       $form['checkoutpayment_account']['private_key'] = array(
         '#type' => 'textfield',
         '#title' => t('Secret Key'),
@@ -271,15 +285,15 @@ function uc_payment_method_checkoutpayment($op, &$arg1) {
       break;
 
     case 'cart-details':
-      return array('#markup' => t('placeholder text TODO')); // Under the payment method selection pane, when checkout.com is selected
+      //return array('#markup' => t('placeholder text TODO')); // Under the payment method selection pane, when checkout.com is selected
       break;
     
     case 'cart-process':
-      return array('#markup' => t('placeholder text TODO 2')); // Don't know where this happens
+      //return array('#markup' => t('placeholder text TODO 2')); // TODO
       break;
 
     case 'cart-review':
-      return array('#markup' => t('Click "Proceed" to proceed to the payment server.')); // Add text under the review pane when using Checkout.com
+      return array('#markup' => t('Click "Proceed with payment" to go to Checkout.com for secure payment.')); // Add text under the review pane when using Checkout.com
       break;
 
     case 'customer-view':
@@ -291,7 +305,7 @@ function uc_payment_method_checkoutpayment($op, &$arg1) {
       break;
 
     case 'order-details':
-      return array('#markup' => t('placeholder text TODO 6')); // Shown to admin when edditing orders
+      //return array('#markup' => t('placeholder text TODO 6')); // Shown to admin when edditing orders
       break;
       
     case 'order-load':
@@ -316,7 +330,9 @@ function uc_payment_method_checkoutpayment($op, &$arg1) {
     }
 }
 
-// Implements hook_form_alter() for uc_cart_checkout_review_form().
+/**
+ * Implements hook_form_alter() for uc_cart_checkout_review_form().
+ */
 function ubercart_checkoutpayment_form_uc_cart_checkout_review_form_alter(&$form, &$form_state) {
   if (($order_id = intval($_SESSION['cart_order'])) > 0) {
     $order = uc_order_load($order_id);
@@ -326,16 +342,27 @@ function ubercart_checkoutpayment_form_uc_cart_checkout_review_form_alter(&$form
       unset($form['actions']['submit']);
       $form['#prefix'] = '<table style="display: inline;"><tr class="review-button-row-inner"><td>';
       $form['#suffix'] = '</td><td>' . drupal_render($preparedForm) . '</td></tr></table>';
+
     }
   }
 }
 
-// Handels the submition of the form
+/**
+ * Called when submitting the data to secure.checkout.com
+ */
 function ubercart_checkoutpayment_form($form, &$form_state, $order) {
-
   global $base_url;
 
-  $hppUrl = HOSTED_URL_SANDOX; //TODO
+  $instance = ubercart_checkoutpayment_get_instance();
+  
+  $data     = $instance->getExtraInit($order);
+
+  print_r($data);
+  
+  $mode     = variable_get('mode', '');
+  $hppUrl   = $mode == 'sandbox' ? HOSTED_URL_SANDOX : HOSTED_URL_LIVE;
+
+  //$hppUrl = HOSTED_URL_SANDOX; //TODO
 
   $publicKey      = variable_get('public_key', 'EUR');
   $paymentToken   = "pay_tok_D31E4FC3-BCF3-4E0E-87FD-9EFF3C00A9E3";  //TODO
@@ -387,14 +414,16 @@ function ubercart_checkoutpayment_form($form, &$form_state, $order) {
   $form['#action'] = url($hppUrl);
   $form['actions']['submit'] = array(
     '#type' => 'submit',
-    '#value' => variable_get('ubercart_checkoutpayment_checkout_button', 'Proceed to the payment server.'),
+    '#value' => variable_get('ubercart_checkoutpayment_checkout_button', 'Proceed with payment'),
   );
 
   return $form;
 }
 
-// Check if method is PCI or NON-PCI
-function ubercart_checkoutpayment_check_method_type(){
+/**
+ * Check if method is PCI or NON-PCI
+ */
+function ubercart_checkoutpayment_check_method_type(){ //TODO
   $payment_method = commerce_payment_method_instance_load('commerce_checkoutpayment|commerce_payment_commerce_checkoutpayment');
   if (isset($payment_method['settings']['type']) && $payment_method['settings']['type'] == 'pci') {
     return FALSE;
@@ -404,18 +433,20 @@ function ubercart_checkoutpayment_check_method_type(){
   }
 }
 
-// Retrieves all active instances definitions. TODO
-function ubercart_checkoutpayment_get_instance($settings) {
+/**
+ * Retrieves all active instances definitions.
+ */
+function ubercart_checkoutpayment_get_instance() { //TODO
   
   module_load_include('php', 'ubercart_checkoutpayment', 'includes/autoload');
 
-  switch ($settings['settings']['type']) {
+  switch (variable_get('type', '')) {
     case 'pci':
-      $_instance = CheckoutApi_Lib_Factory::getInstance('methods_creditcardpci');
-      break;
+       // We have no PCI implementation at this point in the development
+      //break;
 
     default:
-      $_instance = CheckoutApi_Lib_Factory::getInstance('methods_creditcard');
+       $_instance = CheckoutApi_Lib_Factory::getInstance('methods_creditcard');
       break;
   }
 
@@ -428,22 +459,23 @@ function ubercart_checkoutpayment_get_instance($settings) {
 ********************************************************************
 **************************************************************** **/
 
-// Mobile Redirect to success url: example.com/ubercart_checkoutpayment/success.
-function ubercart_checkoutpayment_success_order() {
+/**
+ * Mobile Redirect to success url: example.com/ubercart_checkoutpayment/success.
+ */
+function ubercart_checkoutpayment_success_order() { //TODO
   if (!isset($_REQUEST['cko-payment-token'])) {
     drupal_goto();
   }
 
-  module_load_include('php', 'commerce_checkoutpayment', 'includes/autoload');
+  module_load_include('php', 'ubercart_checkoutpayment', 'includes/autoload');
 
   // To do get instance id from session
   $instance_id = $_SESSION['cko_instance_id'];
-  $payment_method = commerce_payment_method_instance_load($instance_id);
 
-  $config['authorization'] = $payment_method['settings']['private_key'];
-  $config['paymentToken'] = $_REQUEST['cko-payment-token'];
+  $config['authorization'] = variable_get('private_key', '');
+  $config['paymentToken']  = $_REQUEST['cko-payment-token'];
 
-  $api = CheckoutApi_Api::getApi(array('mode' => $payment_method['settings']['mode']));
+  $api           = CheckoutApi_Api::getApi(array('mode' => variable_get('mode', '')));
   $object_charge = $api->verifyChargePaymentToken($config);
 
   $order_id = $object_charge->getTrackId();
@@ -486,7 +518,10 @@ function ubercart_checkoutpayment_success_order() {
 
 }
 
-function ubercart_checkoutpayment_process_charge(){
+/**
+ * Process payment with card token
+ */
+function ubercart_checkoutpayment_process_charge(){ //TODO
 
   if($_REQUEST['cko-card-token']){
 
@@ -643,7 +678,7 @@ function ubercart_checkoutpayment_process_charge(){
 
 }
   
-function ubercart_checkoutpayment_fail_order(){ 
+function ubercart_checkoutpayment_fail_order(){ //TODO
   if(!$_SESSION['orderId']){
       drupal_goto();
   }

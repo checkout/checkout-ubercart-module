@@ -224,7 +224,7 @@ abstract class methods_Abstract {
   /**
    * Config settings.
    */
-  public function getExtraInit($order,$payment_method) {
+  public function getExtraInit($order) {
     return NULL;
   }
 

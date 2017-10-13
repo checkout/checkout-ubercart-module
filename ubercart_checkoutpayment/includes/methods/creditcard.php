@@ -8,7 +8,7 @@ class methods_creditcard extends methods_Abstract {
   public function submitFormCharge($payment_method, $pane_form, $pane_values, $order, $charge) {
     
     $config = parent::submitFormCharge($payment_method, $pane_form, $pane_values, $order, $charge);
-    $instance = commerce_checkoutpayment_get_instance($payment_method);
+    $instance = ubercart_checkoutpayment_get_instance($payment_method);
     $data = $instance->getExtraInit($order, $payment_method);
 
   }
@@ -35,20 +35,18 @@ class methods_creditcard extends methods_Abstract {
     );
 
     $form['#attached']['js'] = array(
-      drupal_get_path('module', 'commerce_checkoutpayment') . '/includes/methods/js/checkoutapi.js' => array(
+      drupal_get_path('module', 'ubercart_checkoutpayment') . '/includes/methods/js/checkoutapi.js' => array(
         'type' => 'file',
       ),
     );
 
     $form['#attached']['js'][] = array(
-      'data' => array('commerce_checkoutpayment' => $data['script']),
+      'data' => array('ubercart_checkoutpayment' => $data['script']),
       'type' => 'setting',
     );
 
     return $form;
   }
-
-
 
   /**
    * Payment method settings form.
@@ -61,35 +59,34 @@ class methods_creditcard extends methods_Abstract {
    * @return array
    *   Settings form array
    */
-  public function getExtraInit($order, $payment_method) {
+  public function getExtraInit($order) {
 
     $array = array();
-    module_load_include('inc', 'commerce_payment', 'includes/commerce_payment.credit_card');
 
-    $payment_token = $this->generatePaymentToken($order, $payment_method);
+    $payment_token = $this->generatePaymentToken($order);
 
     if ($order) {
-      $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-      $billing_address = $order_wrapper->commerce_customer_billing->commerce_customer_address->value();
-      $order_array = $order_wrapper->commerce_order_total->value();
-      $default_currency = commerce_default_currency();
-      $amount_cents = commerce_currency_convert($order_array['amount'], $order_array['currency_code'], $default_currency);
-      $config = array();
+      $order_wrapper    = entity_metadata_wrapper('ubercart_order', $order);
+      $billing_address  = null; //TODO
+      $order_array      = null; //TODO
+      $default_currency = "USD"; //TODO
+      $amount_cents     = number_format(round($order->order_total, variable_get('uc_currency_prec', 2)) * 100, 0, '', '');
+      $config           = array();
 
-      $config['publicKey'] = $payment_method['settings']['public_key'];
-      $config['mode'] = $payment_method['settings']['mode'];
-      $config['logourl'] = $payment_method['settings']['logourl'];
-      $config['title'] = $payment_method['settings']['title'];
-      $config['themecolor'] = $payment_method['settings']['themecolor'];
-      $config['currencycode'] = $payment_method['settings']['currencycode'];
-      $config['email'] = $order->mail;
-      $config['name'] = "{$billing_address['first_name']} {$billing_address['last_name']}";
-      $config['amount'] = $amount_cents;
-      $config['currency'] = $default_currency;
-      $config['paymentMode'] = $payment_method['settings']['paymentMode'];
-      $config['paymentToken'] = $payment_token['token'];
+      $config['publicKey']    = variable_get('public_key', '');
+      $config['mode']         = variable_get('mode', '');
+      $config['logourl']      = variable_get('logourl', '');
+      $config['title']        = variable_get('title', '');
+      $config['themecolor']   = variable_get('themecolor', '');
+      $config['currencycode'] = variable_get('uc_currency_code', 'EUR');
+      $config['email']        = $order->primary_email;
+      $config['name']         = "Test name"; //TODO
+      $config['amount']       = $amount_cents;
+      $config['currency']     = $default_currency;
+      $config['paymentMode']  = variable_get('paymentMode', '');
+      $config['paymentToken'] = $payment_token;//['token'];
 
-      $array['script'] = $config;
+      $array['script']       = $config;
       $array['paymentToken'] = $payment_token;
     }
 
@@ -107,96 +104,86 @@ class methods_creditcard extends methods_Abstract {
    * @return array
    * Payment token form array
    */
-  public function generatePaymentToken($order, $payment_method) {
+  public function generatePaymentToken($order) {
 
     $config = array();
-    $shipping_address_config = NULL;
 
-    $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-    $order_array = $order_wrapper->commerce_order_total->value();
-    $product_line_items = $order->commerce_line_items[LANGUAGE_NONE];
+    $product_items = $order->products;
 
     if (isset($order)) {
 
       $order_id = $order->order_id;
-      $default_currency = commerce_default_currency();
-      $amount_cents = number_format(commerce_currency_convert($order->commerce_order_total[LANGUAGE_NONE][0]['amount'], $order_array['currency_code'], $default_currency), 0, '', '');
+      $default_currency = "USD"; //TODO
+      $amount_cents = number_format(100000, 0, '', ''); //TODO
 
-      $secret_key = $payment_method['settings']['private_key'];
-      $mode = $payment_method['settings']['mode'];
-      $timeout = $payment_method['settings']['timeout'];
+      $secret_key = variable_get('private_key', '');
+      $mode       = variable_get('mode', '');
+      $timeout    = variable_get('autocaptime', '');
 
       $config['authorization'] = $secret_key;
-      $config['mode'] = $mode;
-      $config['timeout'] = $timeout;
+      $config['mode']          = $mode;
+      $config['timeout']       = $timeout;
 
-      if ($payment_method['settings']['payment_action'] == 'authorize') {
+      // if ($payment_method['settings']['payment_action'] == 'authorize') {
 
-        $config = array_merge($config, $this->authorizeConfig());
-      }
-      else {
+      //   $config = array_merge($config, $this->authorizeConfig());
+      // }
+      // else {
 
-        $config = array_merge($config, $this->captureConfig($payment_method));
-      }
+      //   $config = array_merge($config, $this->captureConfig($payment_method));
+      // }
 
       $products = array();
-      if (!empty($product_line_items)) {
-        foreach ($product_line_items as $key => $item) {
-
-          $line_item[$key] = commerce_line_item_load($item['line_item_id']);
-          if(isset($line_item[$key]->commerce_product)){
-            $product_id = $line_item[$key]->commerce_product[LANGUAGE_NONE][0]['product_id'];
-            $product = commerce_product_load($product_id);
-            $price = commerce_product_calculate_sell_price($product);
-            $sell_price = number_format(commerce_currency_amount_to_decimal($price['amount'], $price['currency_code']), 2, '.', '');
+      if (!empty($product_items)) {
+        foreach ($product_items as $key => $item) {  
+          if(isset($item)){
+            // $product_id = $item->order_product_id;
+            // $product    = $item->title;
+            // $price      = $item->price;
+            // $sell_price = $item->sell_price;
 
             $products[$key] = array(
-              'name' => commerce_line_item_title($line_item[$key]),
-              'sku' => $line_item[$key]->line_item_label,
-              'price' => $sell_price,
-              'quantity' => (int) $line_item[$key]->quantity,
+              'name'     => $item->title,
+              'sku'      => $item->qty,
+              'price'    => $item->sell_price,
+              'quantity' => $item->qty,
             );
           }
         }
       }
+    
+      $billing_address_config = array(
+        'addressLine1'  => $order->billing_street1,
+        'addressLine2'  => $order->billing_street2,
+        'postcode'      => $order->billing_postal_code,
+        'country'       => $order->billing_country,
+        'city'          => $order->billing_city,
+      );
 
-      $billing_address_config = array();
-      if (!empty($order_wrapper->commerce_customer_billing->commerce_customer_address)){
-        $billing_address = $order_wrapper->commerce_customer_billing->commerce_customer_address->value();
-        $billing_address_config = array(
-          'addressLine1' => $billing_address['thoroughfare'],
-          'addressLine2' => $billing_address['premise'],
-          'postcode' => $billing_address['postal_code'],
-          'country' => $billing_address['country'],
-          'city' => $billing_address['locality'],
-        );
-      }
-
-      if (module_exists('commerce_shipping') && !empty($order_wrapper->commerce_customer_shipping->commerce_customer_address)) {
-        $shipping_address = $order_wrapper->commerce_customer_shipping->commerce_customer_address->value();
-
+      $shipping_address_config = NULL;
+      if (module_exists('uc_shipping')) {
         // Add the shipping address parameters to the request.
         $shipping_address_config = array(
-          'addressLine1' => $shipping_address['thoroughfare'],
-          'addressLine2' => $shipping_address['premise'],
-          'postcode' => $shipping_address['postal_code'],
-          'country' => $shipping_address['country'],
-          'city' => $shipping_address['locality'],
+          'addressLine1'  => $order->delivery_street1,
+          'addressLine2'  => $order->delivery_street2,
+          'postcode'      => $order->delivery_postal_code,
+          'country'       => $order->delivery_country,
+          'city'          => $order->delivery_city,
         );
       }
 
-      $config['postedParam'] = array_merge($config['postedParam'], array(
-        'email' => $order->mail,
-        'value' => $amount_cents,
-        'trackId' => $order_id,
-        'currency' => $default_currency,
-        'description' => 'Order number::' . $order_id,
+      $config['postedParam'] = array(
+        'email'           => $order->primary_email,
+        'value'           => $amount_cents,
+        'trackId'         => $order_id,
+        'currency'        => $default_currency,
+        'description'     => 'Order number::' . $order_id,
         'shippingDetails' => $shipping_address_config,
-        'products' => $products,
-        'card' => array(
-          'billingDetails' => $billing_address_config,
-        ),
-      ));
+        'products'        => $products,
+        'card'            => array(
+                              'billingDetails' => $billing_address_config,
+                             ),
+      );
 
       $api = CheckoutApi_Api::getApi(array('mode' => $mode));
 
@@ -220,6 +207,7 @@ class methods_creditcard extends methods_Abstract {
         $payment_token_array['eventId'] = $payment_token_charge->getEventId();
       }
     }
+    
     return $payment_token_array;
   }
 
@@ -236,7 +224,7 @@ class methods_creditcard extends methods_Abstract {
 
     $config = array();
 
-    $payment_method = commerce_payment_method_instance_load('commerce_checkoutpayment|commerce_payment_commerce_checkoutpayment');
+    $payment_method = ubercart_payment_method_instance_load('ubercart_checkoutpayment|ubercart_payment_ubercart_checkoutpayment');
     $secret_key = $payment_method['settings']['private_key'];
     $mode = $payment_method['settings']['mode'];
     $timeout = $payment_method['settings']['timeout'];
