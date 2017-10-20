@@ -20,17 +20,12 @@ class Api_Autoloader {
       $path = '';
 
       if(!empty($classNameArray)) {
-
           $path = __DIR__.DIRECTORY_SEPARATOR.implode(DIRECTORY_SEPARATOR, $classNameArray). '.php';
 
           if(file_exists($path)) {
-
               require_once $path;
-
           }
-
       } else {
-         
          throw new Exception("Unable to load $class.");
       }
 

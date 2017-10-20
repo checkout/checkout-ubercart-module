@@ -11,6 +11,7 @@ abstract class methods_Abstract {
    * Payment method callback: checkout form submission.
    */
   public function submitFormCharge($payment_method, $pane_form, $pane_values, $order, $charge) {
+    
 
     $config = array();
     $shipping_array = array();
@@ -224,7 +225,7 @@ abstract class methods_Abstract {
   /**
    * Config settings.
    */
-  public function getExtraInit($order) {
+  public function getExtraInit($order, $payment_method) {
     return NULL;
   }
 

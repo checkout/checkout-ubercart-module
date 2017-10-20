@@ -3,6 +3,3 @@ description = Implements Checkout.Com payment services for use with Drupal Uberc
 package = Ubercart - payment
 dependencies[] = uc_payment
 core = 7.x
-
-; Base module files
-files[] = commerce_checkoutpayment.module

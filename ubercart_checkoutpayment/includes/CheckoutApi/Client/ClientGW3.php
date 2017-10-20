@@ -176,8 +176,8 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
      *                                   'expiryYear' => 2017,
      *                                   'cvv' => 956,
      *
-                                        )
-                                     );
+     *                                    )
+     *                                );
      * or by passing a card token:
      *  $param['postedParam'] = array ( 'email'=>'dhiraj@checkout.com',
      *                                   'amount'=>100,
@@ -314,8 +314,8 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
      * @throws Exception
      * Simple usage:
      *      $param['postedParam'] = array (
-                                        'amount'=>150
-                                    );
+     *                                   'amount'=>150
+     *                               );
      *      $refundCharge = $Api->refundCharge($param);
      *
      */
@@ -1122,8 +1122,8 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
      * @throws Exception
      * Simple usage:
      *          $param['token'] = $sessionToken ;
-                 $param['providerId'] = $providerId ;
-                $localPaymentObj = $Api->getLocalPaymentProvider($param);
+     *            $param['providerId'] = $providerId ;
+     *           $localPaymentObj = $Api->getLocalPaymentProvider($param);
      */
 
     public  function getLocalPaymentProvider($param)
@@ -1208,11 +1208,11 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
 
     public function request($uri,array $param, $state)
     {
-
         /** @var CheckoutApi_Lib_RespondObj $respond */
         $respond = CheckoutApi_Lib_Factory::getSingletonInstance('CheckoutApi_Lib_RespondObj');
+        
         $this->setConfig($param);
-
+        
         if(!isset($param['postedParam'])) {
 
             $param['postedParam'] = array();
@@ -1225,18 +1225,21 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
         if($state){
             $headers = $this->initHeader();
             $param['headers'] = $headers;
-
+            
             /** @var CheckoutApi_Client_Adapter_Abstract $adapter */
             $adapter =  $this->getAdapter($this->getProcessType(),array('uri'=>$uri,'config'=>$param));
 
             if($adapter){
+                
                 $adapter->connect();
                 $respondString = $adapter->request()->getRespond();
+
                 $statusResponse = $adapter->getResourceInfo();
                 $this->getParser()->setResourceInfo($statusResponse);
                 $respond = $this->getParser()->parseToObj($respondString);
-
-                if($respond && isset($respond['errors'])  && $respond->hasErrors()  ) {
+                
+                
+                if($respond && isset($respond['errors']) && $respond->hasErrors()  ) {
 
                     /** @var CheckoutApi_Lib_ExceptionState  $exceptionStateObj */
                     $exceptionStateObj = $respond->getExceptionState();
@@ -1260,7 +1263,6 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
             }
 
         }
-
         return $respond;
     }
 

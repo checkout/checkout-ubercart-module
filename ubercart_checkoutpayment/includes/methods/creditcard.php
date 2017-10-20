@@ -5,8 +5,7 @@ class methods_creditcard extends methods_Abstract {
   /**
    * Payment method callback: checkout form submission.
    */
-  public function submitFormCharge($payment_method, $pane_form, $pane_values, $order, $charge) {
-    
+  public function submitFormCharge($payment_method, $pane_form, $pane_values, $order, $charge) {    
     $config = parent::submitFormCharge($payment_method, $pane_form, $pane_values, $order, $charge);
     $instance = ubercart_checkoutpayment_get_instance($payment_method);
     $data = $instance->getExtraInit($order, $payment_method);
@@ -17,7 +16,6 @@ class methods_creditcard extends methods_Abstract {
    * Payment method callback: checkout form.
    */
   public function submitForm($payment_method, $pane_values, $checkout_pane, $order) {
-
     $data = $this->getExtraInit($order, $payment_method);
     $form['pay_method_container'] = array(
       '#type' => 'container',
@@ -59,31 +57,30 @@ class methods_creditcard extends methods_Abstract {
    * @return array
    *   Settings form array
    */
-  public function getExtraInit($order) {
-
+  public function getExtraInit($order, $payment_method) {
     $array = array();
 
-    $payment_token = $this->generatePaymentToken($order);
+    $payment_token = $this->generatePaymentToken($order, $payment_method);
 
     if ($order) {
       $order_wrapper    = entity_metadata_wrapper('ubercart_order', $order);
       $billing_address  = null; //TODO
       $order_array      = null; //TODO
-      $default_currency = "USD"; //TODO
+      $default_currency = variable_get('uc_currency_code', 'EUR');
       $amount_cents     = number_format(round($order->order_total, variable_get('uc_currency_prec', 2)) * 100, 0, '', '');
       $config           = array();
 
-      $config['publicKey']    = variable_get('public_key', '');
-      $config['mode']         = variable_get('mode', '');
-      $config['logourl']      = variable_get('logourl', '');
-      $config['title']        = variable_get('title', '');
-      $config['themecolor']   = variable_get('themecolor', '');
-      $config['currencycode'] = variable_get('uc_currency_code', 'EUR');
+      //$config['publicKey']    = variable_get('public_key', '');
+      //$config['mode']         = variable_get('mode', '');
+      //$config['logourl']      = variable_get('logourl', '');
+      //$config['title']        = variable_get('title', '');
+      //$config['themecolor']   = variable_get('themecolor', '');
+      //$config['currencycode'] = variable_get('uc_currency_code', 'EUR');
       $config['email']        = $order->primary_email;
       $config['name']         = $order->billing_first_name . ' ' . $order->billing_last_name;
       $config['amount']       = $amount_cents;
-      $config['currency']     = $default_currency;
-      $config['paymentMode']  = variable_get('paymentMode', '');
+      $config['currency']     = $order->currency;
+      //$config['paymentMode']  = variable_get('paymentMode', '');
       $config['paymentToken'] = $payment_token['token'];
 
       $array['script']       = $config;
@@ -104,8 +101,7 @@ class methods_creditcard extends methods_Abstract {
    * @return array
    * Payment token form array
    */
-  public function generatePaymentToken($order) {
-
+  public function generatePaymentToken($order, $payment_method) {
     $config = array();
 
     $product_items = $order->products;
@@ -116,36 +112,25 @@ class methods_creditcard extends methods_Abstract {
       $default_currency = "USD"; //TODO
       $amount_cents = number_format(100000, 0, '', ''); //TODO
 
-      $secret_key = variable_get('private_key', '');
-      $mode       = variable_get('mode', '');
-      $timeout    = variable_get('autocaptime', '');
+      $config['authorization'] = $payment_method['settings']['private_key'];
+      $config['mode']          = $payment_method['settings']['mode'];
+      $config['timeout']       = $payment_method['settings']['timeout'];
 
-      $config['authorization'] = $secret_key;
-      $config['mode']          = $mode;
-      $config['timeout']       = $timeout;
-
-      // if ($payment_method['settings']['payment_action'] == 'authorize') {
-
-      //   $config = array_merge($config, $this->authorizeConfig());
-      // }
-      // else {
-
-      //   $config = array_merge($config, $this->captureConfig($payment_method));
-      // }
+      if ($payment_method['settings']['payment_action'] == 'authorize') {
+        $config = array_merge($config, $this->authorizeConfig());
+      }
+      else {
+        $config = array_merge($config, $this->captureConfig($payment_method));
+      }
 
       $products = array();
       if (!empty($product_items)) {
         foreach ($product_items as $key => $item) {  
           if(isset($item)){
-            // $product_id = $item->order_product_id;
-            // $product    = $item->title;
-            // $price      = $item->price;
-            // $sell_price = $item->sell_price;
-
             $products[$key] = array(
               'name'     => $item->title,
               'sku'      => $item->qty,
-              'price'    => $item->sell_price,
+              'price'    => $item->price,
               'quantity' => $item->qty,
             );
           }
@@ -162,7 +147,6 @@ class methods_creditcard extends methods_Abstract {
 
       $shipping_address_config = NULL;
       if (module_exists('uc_shipping')) {
-        // Add the shipping address parameters to the request.
         $shipping_address_config = array(
           'addressLine1'  => $order->delivery_street1,
           'addressLine2'  => $order->delivery_street2,
@@ -173,6 +157,8 @@ class methods_creditcard extends methods_Abstract {
       }
 
       $config['postedParam'] = array(
+        'autoCapture'     => "y",
+        'autoCapTime'     => 0,
         'email'           => $order->primary_email,
         'value'           => $amount_cents,
         'trackId'         => $order_id,
@@ -185,7 +171,7 @@ class methods_creditcard extends methods_Abstract {
                              ),
       );
 
-      $api = CheckoutApi_Api::getApi(array('mode' => $mode));
+      $api = CheckoutApi_Api::getApi(array('mode' => $config['mode']));
 
       $payment_token_charge = $api->getPaymentToken($config);
 
@@ -201,7 +187,6 @@ class methods_creditcard extends methods_Abstract {
         $payment_token_array['success'] = TRUE;
       }
       else {
-
         $payment_token_array['message'] = $payment_token_charge->getExceptionState()->getErrorMessage();
         $payment_token_array['success'] = FALSE;
         $payment_token_array['eventId'] = $payment_token_charge->getEventId();
@@ -221,7 +206,6 @@ class methods_creditcard extends methods_Abstract {
    * Settings form array
    */
   protected function createCharge($config) {
-
     $config = array();
 
     $payment_method = ubercart_payment_method_instance_load('ubercart_checkoutpayment|ubercart_payment_ubercart_checkoutpayment');
