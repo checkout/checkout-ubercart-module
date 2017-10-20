@@ -85,8 +85,8 @@ function ubercart_checkoutpayment_menu() {
  */
 function ubercart_checkoutpayment_uc_payment_method() {  
   $methods[] = array(
-    'id' => 'checkoutpayment',
-    'name' => t('Credit / Debit cards (Checkout.com)'),
+    'id' => 'cko',
+    'name' => t('Checkout.com'),
     'title' => variable_get('ubercart_checkoutpayment_method_title',
       t('Credit / Debit cards (Checkout.com)')),
     'desc' => t('Redirect to Checkout.com to pay.'),
@@ -347,7 +347,7 @@ function ubercart_checkoutpayment_form_uc_cart_checkout_review_form_alter(&$form
     $order = uc_order_load($order_id);
     $preparedForm = drupal_get_form('ubercart_checkoutpayment_form', $order);
 
-    if ($order->payment_method == 'checkoutpayment') {
+    if ($order->payment_method == 'cko') {
       unset($form['actions']['submit']);
       $form['#prefix'] = '<table style="display: inline;"><tr class="review-button-row-inner"><td>';
       $form['#suffix'] = '</td><td>' . drupal_render($preparedForm) . '</td></tr></table>';
@@ -495,6 +495,8 @@ function responseValidation($result) {
  * Mobile Redirect to success url: example.com/ubercart_checkoutpayment/success.
  */
 function ubercart_checkoutpayment_success_order() { //TODO
+
+  print_r(_uc_payment_method_list($action = NULL));
 
   // if (!isset($_REQUEST['cko-payment-token'])) {
   //   drupal_goto();
@@ -685,6 +687,9 @@ function ubercart_checkoutpayment_fail_order($message = "An error has occured. Y
   drupal_goto('cart/checkout/review');
 }
 
+/**
+ * Reaction to the webhook
+ */
 function ubercart_checkoutpayment_process_order() { 
   $post_data = file_get_contents('php://input');
   if ($post_data) {
@@ -712,7 +717,8 @@ function ubercart_checkoutpayment_process_order() {
 
     if ($object_charge->isValid()) {
 
-      $order_total = $data['script']['amount'] / 100;
+      $order_total   = $data['script']['amount'] / 100;
+      $order_balance = uc_payment_balance($order);
 
       switch($eventType){
         case EVENT_TYPE_CHARGE_SUCCEEDED :
@@ -723,10 +729,10 @@ function ubercart_checkoutpayment_process_order() {
         case EVENT_TYPE_CHARGE_CAPTURED :
           $captured = $object_charge->getValue() / 100;
 
-          if($captured == $order_total){
+          if($captured == $order_balance){
             uc_order_update_status($order->order_id, 'payment_received');
             $comment = 'Payment recieved.';
-          } elseif ($captured < $order_total) {
+          } elseif ($captured < $order_balance) {
             uc_order_update_status($order->order_id, 'cko_part_captured');
             $comment = 'Partial payment recieved. (' . $captured . ' recieved instead of ' . $order_total . ')';
           } else {
@@ -735,17 +741,17 @@ function ubercart_checkoutpayment_process_order() {
           }
 
           uc_order_comment_save($order->order_id, 0, t($comment), 'admin');
-          uc_payment_enter($order->order_id, 'free_order', $captured, 0, NULL, $comment);
+          uc_payment_enter($order->order_id, 'cko', $captured, 0, NULL, $comment);
 
           return http_response_code(200);
         
         case EVENT_TYPE_CHARGE_REFUNDED :
           $refunded = $object_charge->getValue() / 100;
 
-          if($refunded == $order_total){
+          if($refunded + $order_balance == $order_total){
             uc_order_update_status($order->order_id, 'cko_refunded');
             $comment = t('Payment fully refunded.');
-          } elseif ($refunded < $order_total) {
+          } elseif ($refunded + $order_balance < $order_total) {
             uc_order_update_status($order->order_id, 'cko_part_refunded');
             $comment = t('Payment partially refunded. (' . $refunded . ' of ' . $order_total . ')');
           } else {
@@ -754,7 +760,7 @@ function ubercart_checkoutpayment_process_order() {
           }
 
           uc_order_comment_save($order->order_id, 0, t($comment), 'admin');
-          uc_payment_enter($order->order_id, 'free_order', -$refunded, 0, NULL, $comment);
+          uc_payment_enter($order->order_id, 'cko', -$refunded, 0, NULL, $comment);
 
           return http_response_code(200);
 
