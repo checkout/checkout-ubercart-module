@@ -82,8 +82,8 @@ function ubercart_checkoutpayment_menu() {
 }
 
 /**
+ * Declaring new payment method in Ubercart
  * Implements hook_uc_payment_method().
- * I have no clue where this is used //TODO
  */
 function ubercart_checkoutpayment_uc_payment_method() {  
   $methods[] = array(
@@ -103,7 +103,6 @@ function ubercart_checkoutpayment_uc_payment_method() {
 
 /**
  * Implements hook_payment_method_callback($op, &$arg1, $silent = FALSE)
- * method callback: settings form.
  */
 function uc_payment_method_checkoutpayment($op, &$arg1) {
   module_load_include('module', 'uc_credit', 'uc_credit');
@@ -243,6 +242,18 @@ function uc_payment_method_checkoutpayment($op, &$arg1) {
         '#default_value' => $settings['cko_integration'],
       );
 
+      $form['checkoutpayment_ui']['cko_render_mode'] = array(
+        '#type' => 'select',
+        '#title' => t('Lightbox Render Mode'),
+        '#description' => t('Choose how the Lightbox will be rendered on the review page.'),
+        '#options' => array(
+          0 => t('Icons and Pay Button'),
+          1 => t('Pay Button only'),
+          3 => t('Active Icons only'),
+        ),
+        '#default_value' => $settings['cko_render_mode'],
+      );
+
       $form['checkoutpayment_ui']['logourl'] = array(
         '#type' => 'textfield',
         '#title' => t('Logo URL'),
@@ -364,16 +375,20 @@ function ubercart_checkoutpayment_form_uc_cart_checkout_review_form_alter(&$form
       $cko_integration = ubercart_checkoutpayment_payment_method()['settings']['cko_integration'];
       
       unset($form['actions']['submit']);
-      $form['#prefix'] = '<table style="display: inline;"><tr class="review-button-row-inner"><td>';
 
       switch ($cko_integration) {
         case 'hosted':
+          $form['#prefix'] = '<table style="display: inline;">
+            <tr class="review-button-row-inner"><td>';
           $preparedForm = drupal_get_form('ubercart_checkoutpayment_form', $order);
           $form['#suffix'] = '</td><td>' . drupal_render($preparedForm) . '</td></tr></table>';
           break;
         
         default:
-          $form['#suffix'] = '</td><td>' . checkout_payment_widget($order) . '</td></tr></table>';
+          $form['#prefix'] = '<table style="display: inline;">
+            <tr><td colspan="2"> '. checkout_payment_widget($order) .' </td></tr>
+            <tr class="review-button-row-inner"><td>';
+          $form['#suffix'] = '</td></tr></table>';
           break;
       }      
     }
@@ -493,6 +508,7 @@ function checkout_payment_widget($order){
   $subtitle       = $settings['subtitle'];
   $buttonLabel    = $settings['button_label'];
   $cko_language   = $settings['cko_language'];
+  $cko_render_mode = $settings['cko_render_mode'];
   $appmode        = 'lightbox';
 
   $cardFormMode   = "cardTokenisation";
@@ -507,7 +523,6 @@ function checkout_payment_widget($order){
   $currency       = $data['script']['currency'];
   
   if($settings['cko_integration'] == 'embedded'){
-    //drupal_add_css($base_url . drupal_get_path('module', 'ubercart_checkoutpayment') . "/includes/embedded_style.css", null, 'all', TRUE);
     $title = $subtitle = $logoUrl = '';
     $appmode = 'embedded';
   }
@@ -529,6 +544,7 @@ function checkout_payment_widget($order){
           localisation: '"    . $cko_language . "',
           useCurrencyCode: '" . $currencycode . "',
           appMode: '"         . $appmode . "',
+          renderMode: '"      . $cko_render_mode . "',
         };
       </script>
       <script async src=\"https://cdn.checkout.com/v2/sandbox/js/checkout.js\"></script>
@@ -538,35 +554,11 @@ function checkout_payment_widget($order){
 }
 
 /**
- * Check if method is PCI or NON-PCI
- */
-function ubercart_checkoutpayment_check_method_type(){ //TODO
-  $payment_method = commerce_payment_method_instance_load('commerce_checkoutpayment|commerce_payment_commerce_checkoutpayment');
-  if (isset($payment_method['settings']['type']) && $payment_method['settings']['type'] == 'pci') {
-    return FALSE;
-  }
-  else {
-    return TRUE;
-  }
-}
-
-/**
  * Retrieves all active instances definitions.
  */
-function ubercart_checkoutpayment_get_instance() { //TODO
+function ubercart_checkoutpayment_get_instance() {
   
   module_load_include('php', 'ubercart_checkoutpayment', 'includes/autoload');
-
-  // switch (variable_get('type', '')) {
-  //   case 'pci':
-  //      // We have no PCI implementation at this point in the development
-  //     //break;
-
-  //   default:
-  //      $_instance = CheckoutApi_Lib_Factory::getInstance('methods_creditcard');
-  //     break;
-  // }
-
   return CheckoutApi_Lib_Factory::getInstance('methods_creditcard');
 }
 
@@ -900,7 +892,8 @@ function ubercart_checkoutpayment_payment_method(){
     'button_label'    => variable_get('button_label', ''),
     'currencycode'    => variable_get('currencycode', 'false'),
     'cko_language'    => variable_get('cko_language', ''),
-    'cko_integration' => variable_get('cko_integration', 'hosted')
+    'cko_integration' => variable_get('cko_integration', 'hosted'),
+    'cko_render_mode' => variable_get('cko_render_mode', 0 ),
   );
 
   return $payment_method;
