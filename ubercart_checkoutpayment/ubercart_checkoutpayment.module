@@ -495,7 +495,7 @@ function responseValidation($result) {
  * Mobile Redirect to success url: example.com/ubercart_checkoutpayment/success.
  */
 function ubercart_checkoutpayment_success_order() { //TODO
-  
+
   // if (!isset($_REQUEST['cko-payment-token'])) {
   //   drupal_goto();
   // }
@@ -689,6 +689,8 @@ function ubercart_checkoutpayment_process_order() {
   $post_data = file_get_contents('php://input');
   if ($post_data) {
 
+    module_load_include('php', 'ubercart_checkoutpayment', 'includes/autoload');
+
     $payment_method = ubercart_checkoutpayment_payment_method();
     
     // Check if the authentication is right.
@@ -698,12 +700,8 @@ function ubercart_checkoutpayment_process_order() {
     // Process the data
     $jsondata = json_decode($post_data);
     $eventType = $jsondata->eventType;
-
-    module_load_include('php', 'ubercart_checkoutpayment', 'includes/autoload');
     
-    $payment_method = ubercart_checkoutpayment_payment_method();
-
-    $cko_contextid = $data->message->metadata->instanceId;
+    $cko_contextid = $jsondata->message->trackId;
     $order = uc_order_load($cko_contextid);
 
     $instance = ubercart_checkoutpayment_get_instance();
@@ -714,7 +712,7 @@ function ubercart_checkoutpayment_process_order() {
 
     if ($object_charge->isValid()) {
 
-      $order_total = $data['script']['amount'];
+      $order_total = $data['script']['amount'] / 100;
 
       switch($eventType){
         case EVENT_TYPE_CHARGE_SUCCEEDED :
@@ -723,34 +721,40 @@ function ubercart_checkoutpayment_process_order() {
           return http_response_code(200);
         
         case EVENT_TYPE_CHARGE_CAPTURED :
-          $captured = $object_charge->getValue();
+          $captured = $object_charge->getValue() / 100;
 
           if($captured == $order_total){
             uc_order_update_status($order->order_id, 'payment_received');
-            uc_order_comment_save($order->order_id, 0, t('Payment recieved.'), 'admin');
+            $comment = 'Payment recieved.';
           } elseif ($captured < $order_total) {
             uc_order_update_status($order->order_id, 'cko_part_captured');
-            uc_order_comment_save($order->order_id, 0, t('Partial payment recieved. (' . $captured . ' recieved instead of ' . $order_total . ')'), 'admin');
+            $comment = 'Partial payment recieved. (' . $captured . ' recieved instead of ' . $order_total . ')';
           } else {
             uc_order_update_status($order->order_id, 'payment_received');
-            uc_order_comment_save($order->order_id, 0, t('Payment recieved with extra funds. (' . $captured . ' recieved instead of ' . $order_total . ')'), 'admin');
+            $comment = 'Payment recieved with extra funds. (' . $captured . ' recieved instead of ' . $order_total . ')';
           }
+
+          uc_order_comment_save($order->order_id, 0, t($comment), 'admin');
+          uc_payment_enter($order->order_id, 'free_order', $captured, 0, NULL, $comment);
 
           return http_response_code(200);
         
         case EVENT_TYPE_CHARGE_REFUNDED :
-          $refunded = $object_charge->getValue();
+          $refunded = $object_charge->getValue() / 100;
 
           if($refunded == $order_total){
             uc_order_update_status($order->order_id, 'cko_refunded');
-            uc_order_comment_save($order->order_id, 0, t('Payment fully refunded.'), 'admin');
+            $comment = t('Payment fully refunded.');
           } elseif ($refunded < $order_total) {
             uc_order_update_status($order->order_id, 'cko_part_refunded');
-            uc_order_comment_save($order->order_id, 0, t('Payment partially refunded. (' . $refunded . ' of ' . $order_total . ')'), 'admin');
+            $comment = t('Payment partially refunded. (' . $refunded . ' of ' . $order_total . ')');
           } else {
             uc_order_update_status($order->order_id, 'cko_refunded');
-            uc_order_comment_save($order->order_id, 0, t('Payment refunded with compensation. (' . $refunded . ' refunded instead of ' . $order_total . ')'), 'admin');
+            $comment = t('Payment refunded with compensation. (' . $refunded . ' refunded instead of ' . $order_total . ')');
           }
+
+          uc_order_comment_save($order->order_id, 0, t($comment), 'admin');
+          uc_payment_enter($order->order_id, 'free_order', -$refunded, 0, NULL, $comment);
 
           return http_response_code(200);
 
@@ -786,7 +790,7 @@ function ubercart_checkoutpayment_payment_method(){
     'public_key'     => variable_get('public_key', ''),
     'webhook_key'    => variable_get('webhook_key', ''),
     'mode'           => variable_get('mode', 'live'),
-    'payment_action' => variable_get('payment_action', UC_CREDIT_AUTH_ONLY),
+    'payment_action' => variable_get('payment_action', ''),
     'autocaptime'    => variable_get('autocaptime', 0),
     'paymentMode'    => variable_get('paymentMode', 'mixed'),
     'type'           => variable_get('type', 'pci'),
