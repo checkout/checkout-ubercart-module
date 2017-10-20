@@ -1,0 +1,7 @@
+/** 
+ * Add styling here for the imbedded form
+ */
+
+iframe.cko-iframe.cko-embedded{
+    position: relative !important;
+}

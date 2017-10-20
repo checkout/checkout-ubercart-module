@@ -70,17 +70,10 @@ class methods_creditcard extends methods_Abstract {
       $amount_cents     = number_format(round($order->order_total, variable_get('uc_currency_prec', 2)) * 100, 0, '', '');
       $config           = array();
 
-      //$config['publicKey']    = variable_get('public_key', '');
-      //$config['mode']         = variable_get('mode', '');
-      //$config['logourl']      = variable_get('logourl', '');
-      //$config['title']        = variable_get('title', '');
-      //$config['themecolor']   = variable_get('themecolor', '');
-      //$config['currencycode'] = variable_get('uc_currency_code', 'EUR');
       $config['email']        = $order->primary_email;
       $config['name']         = $order->billing_first_name . ' ' . $order->billing_last_name;
       $config['amount']       = $amount_cents;
       $config['currency']     = $order->currency;
-      //$config['paymentMode']  = variable_get('paymentMode', '');
       $config['paymentToken'] = $payment_token['token'];
 
       $array['script']       = $config;

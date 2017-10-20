@@ -11,6 +11,8 @@ const CHECKOUT_API_RESPONSE_CODE_APPROVED_RISK  = 10100;
 const CHECKOUT_API_PLUGIN_VERSION               = '7.x-2.9'; //TODO
 const HOSTED_URL_SANDOX             = 'https://secure.checkout.com/sandbox/payment/';
 const HOSTED_URL_LIVE               = 'https://secure.checkout.com/payment/';
+const REDIRECT_URL                  = '?q=/ubercart_checkoutpayment/process_charge';
+const CANCEL_URL                     = '?q=/ubercart_checkoutpayment/fail';
 const EVENT_TYPE_CHARGE_SUCCEEDED   = 'charge.succeeded';
 const EVENT_TYPE_CHARGE_CAPTURED    = 'charge.captured';
 const EVENT_TYPE_CHARGE_REFUNDED    = 'charge.refunded';
@@ -229,6 +231,18 @@ function uc_payment_method_checkoutpayment($op, &$arg1) {
         '#collapsed' => FALSE,
       );
 
+      $form['checkoutpayment_ui']['cko_integration'] = array(
+        '#type' => 'select',
+        '#title' => t('Integration method'),
+        '#description' => t('Change the language of the checkout hosted page'),
+        '#options' => array(
+          'hosted' => t('Hosted'),
+          'lightbox' => t('Overlay (Only cards)'),
+          'embedded' => t('Embedded (Only cards)'),
+        ),
+        '#default_value' => $settings['cko_integration'],
+      );
+
       $form['checkoutpayment_ui']['logourl'] = array(
         '#type' => 'textfield',
         '#title' => t('Logo URL'),
@@ -302,7 +316,6 @@ function uc_payment_method_checkoutpayment($op, &$arg1) {
       break;
 
     case 'cart-review':
-      return array('#markup' => t('Click "Proceed with payment" to go to Checkout.com for secure payment.')); // Add text under the review pane when using Checkout.com
       break;
 
     case 'customer-view':
@@ -345,19 +358,31 @@ function uc_payment_method_checkoutpayment($op, &$arg1) {
 function ubercart_checkoutpayment_form_uc_cart_checkout_review_form_alter(&$form, &$form_state) {
   if (($order_id = intval($_SESSION['cart_order'])) > 0) {
     $order = uc_order_load($order_id);
-    $preparedForm = drupal_get_form('ubercart_checkoutpayment_form', $order);
+    $_SESSION['cko_contextid'] = $order_id;
 
     if ($order->payment_method == 'cko') {
+      $cko_integration = ubercart_checkoutpayment_payment_method()['settings']['cko_integration'];
+      
       unset($form['actions']['submit']);
       $form['#prefix'] = '<table style="display: inline;"><tr class="review-button-row-inner"><td>';
-      $form['#suffix'] = '</td><td>' . drupal_render($preparedForm) . '</td></tr></table>';
 
+      switch ($cko_integration) {
+        case 'hosted':
+          $preparedForm = drupal_get_form('ubercart_checkoutpayment_form', $order);
+          $form['#suffix'] = '</td><td>' . drupal_render($preparedForm) . '</td></tr></table>';
+          break;
+        
+        default:
+          $form['#suffix'] = '</td><td>' . checkout_payment_widget($order) . '</td></tr></table>';
+          break;
+      }      
     }
   }
 }
 
 /**
- * Called when submitting the data to secure.checkout.com
+ * Step: Review page
+ * Create form to POST to hosted page
  */
 function ubercart_checkoutpayment_form($form, &$form_state, $order) {
   global $base_url;
@@ -381,8 +406,8 @@ function ubercart_checkoutpayment_form($form, &$form_state, $order) {
   $cko_language   = $settings['cko_language'];
 
   $cardFormMode   = "cardTokenisation";
-  $redirectUrl    = $base_url . "?q=/ubercart_checkoutpayment/process_charge";
-  $cancelUrl      = $base_url . "?q=/ubercart_checkoutpayment/fail";
+  $redirectUrl    = $base_url . REDIRECT_URL;
+  $cancelUrl      = $base_url . CANCEL_URL;
 
   // Order details
   $contextId      = $order->order_id;
@@ -441,9 +466,75 @@ function ubercart_checkoutpayment_form($form, &$form_state, $order) {
     '#value' => variable_get('ubercart_checkoutpayment_checkout_button', 'Proceed with payment'),
   );
 
-  $_SESSION['cko_contextid'] = $contextId;
-
   return $form;
+}
+
+/**
+ * Step: Review page
+ * Create JS widget
+ */
+function checkout_payment_widget($order){  
+  global $base_url;
+
+  $payment_method = ubercart_checkoutpayment_payment_method();
+  $settings       = $payment_method['settings'];
+
+  $instance = ubercart_checkoutpayment_get_instance();
+  $data     = $instance->getExtraInit($order, $payment_method);
+
+  // Settings
+  $hppUrl   = $settings['mode'] == 'sandbox' ? HOSTED_URL_SANDOX : HOSTED_URL_LIVE;
+  $publicKey      = $settings['public_key'];
+  $paymentMode    = $settings['paymentMode'];
+  $themeColor     = $settings['themecolor'];
+  $title          = $settings['title'];
+  $logoUrl        = $settings['logourl'];
+  $currencycode   = $settings['currencycode'];
+  $subtitle       = $settings['subtitle'];
+  $buttonLabel    = $settings['button_label'];
+  $cko_language   = $settings['cko_language'];
+  $appmode        = 'lightbox';
+
+  $cardFormMode   = "cardTokenisation";
+  $redirectUrl    = $base_url . REDIRECT_URL;
+  $cancelUrl      = $base_url . CANCEL_URL;
+
+  // Order details
+  $contextId      = $order->order_id;
+  $paymentToken   = $data['script']['paymentToken'];
+  $customerEmail  = $data['script']['email'];
+  $value          = $data['script']['amount'];
+  $currency       = $data['script']['currency'];
+  
+  if($settings['cko_integration'] == 'embedded'){
+    //drupal_add_css($base_url . drupal_get_path('module', 'ubercart_checkoutpayment') . "/includes/embedded_style.css", null, 'all', TRUE);
+    $title = $subtitle = $logoUrl = '';
+    $appmode = 'embedded';
+  }
+
+  return "
+  
+    <form class=\"payment-form\" method=\"POST\" action=\"" . $redirectUrl . "\">
+      <script>
+        window.CKOConfig = {
+          publicKey: '"       . $publicKey . "',
+          customerEmail: '"   . $customerEmail . "',
+          value: "            . $value . ",
+          currency: '"        . $currency . "',
+          formButtonLabel: '" . $buttonLabel . "',
+          themeColor: '"      . $themeColor . "',
+          title: '"           . $title . "',
+          subtitle: '"        . $subtitle . "',
+          logoUrl: '"         . $logoUrl . "',
+          localisation: '"    . $cko_language . "',
+          useCurrencyCode: '" . $currencycode . "',
+          appMode: '"         . $appmode . "',
+        };
+      </script>
+      <script async src=\"https://cdn.checkout.com/v2/sandbox/js/checkout.js\"></script>
+    </form>
+
+  ";
 }
 
 /**
@@ -496,8 +587,7 @@ function responseValidation($result) {
  */
 function ubercart_checkoutpayment_success_order() { //TODO
 
-  print_r(_uc_payment_method_list($action = NULL));
-
+  checkout_payment_widget();
   // if (!isset($_REQUEST['cko-payment-token'])) {
   //   drupal_goto();
   // }
@@ -790,25 +880,27 @@ function ubercart_checkoutpayment_payment_method(){
   $payment_method = array();
 
   if(variable_get('autocaptime') == '') variable_set('autocaptime', 0);
+  if(variable_get('cko_integration') != 'hosted') variable_set('paymentMode', 'cards');
 
   $payment_method['settings'] = array(
-    'private_key'    => variable_get('private_key', ''),
-    'public_key'     => variable_get('public_key', ''),
-    'webhook_key'    => variable_get('webhook_key', ''),
-    'mode'           => variable_get('mode', 'live'),
-    'payment_action' => variable_get('payment_action', ''),
-    'autocaptime'    => variable_get('autocaptime', 0),
-    'paymentMode'    => variable_get('paymentMode', 'mixed'),
-    'type'           => variable_get('type', 'pci'),
-    'is3D'           => variable_get('is3D', false),
-    'timeout'        => variable_get('timeout', 60),
-    'logourl'        => variable_get('logourl', ''),
-    'themecolor'     => variable_get('themecolor', ''),
-    'title'          => variable_get('title', variable_get('site_name', "Default site name")),
-    'subtitle'       => variable_get('subtitle', ''),
-    'button_label'   => variable_get('button_label', ''),
-    'currencycode'   => variable_get('currencycode', 'false'),
-    'cko_language'   => variable_get('cko_language', '')
+    'private_key'     => variable_get('private_key', ''),
+    'public_key'      => variable_get('public_key', ''),
+    'webhook_key'     => variable_get('webhook_key', ''),
+    'mode'            => variable_get('mode', 'live'),
+    'payment_action'  => variable_get('payment_action', ''),
+    'autocaptime'     => variable_get('autocaptime', 0),
+    'paymentMode'     => variable_get('paymentMode', 'mixed'),
+    'type'            => variable_get('type', 'pci'),
+    'is3D'            => variable_get('is3D', false),
+    'timeout'         => variable_get('timeout', 60),
+    'logourl'         => variable_get('logourl', ''),
+    'themecolor'      => variable_get('themecolor', ''),
+    'title'           => variable_get('title', variable_get('site_name', "Default site name")),
+    'subtitle'        => variable_get('subtitle', ''),
+    'button_label'    => variable_get('button_label', ''),
+    'currencycode'    => variable_get('currencycode', 'false'),
+    'cko_language'    => variable_get('cko_language', ''),
+    'cko_integration' => variable_get('cko_integration', 'hosted')
   );
 
   return $payment_method;
