@@ -690,12 +690,15 @@ function ubercart_checkoutpayment_success_order() { //TODO
   //   ->fetchAll();
 
   $result = db_select('ubercart_checkoutpayment_charge_details', 'c')
-    ->fields('c')
-    ->condition('order_id', 167,'=')
-    ->execute()
-    ->fetchAll();
+  ->fields('c')
+  ->condition('order_id', "170",'=')
+  ->condition('transaction_type', "captured",'=')
+  ->execute()
+  ->fetchAll();
 
-  var_dump($result);
+  var_dump(sizeof($result));
+
+  var_dump(is_captured("170"));
   //var_dump(drupal_get_schema());
 
   // $config['chargeId']      = $result->charge_id;
@@ -899,8 +902,13 @@ function add_transaction_to_db($charge_id, $order_id, $transaction_type){
 function ubercart_checkoutpayment_uc_payment_entered($order, $method, $amount, $account, $data, $comment){
     if($method == "cko" && $account->uid != "0" && $comment != "Automated balance restore") {
     if($amount > 0) {
-      ubercart_checkoutpayment_capture_order($order, $amount * 100);
-      uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, "Automated balance restore");
+      if(!is_captured($order->order_id)){
+        ubercart_checkoutpayment_capture_order($order, $amount * 100);
+        uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, "Automated balance restore");
+      } else {
+        uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, "Cannot capture more then once");
+      }
+      
     } 
     else {
       ubercart_checkoutpayment_refund_order($order, $amount * -100);
@@ -922,6 +930,19 @@ function ubercart_checkoutpayment_refund_order($order, $value) {
 
   $instance = ubercart_checkoutpayment_get_instance();
   $data     = $instance->refundCharge($order, $payment_method, $value);
+}
+
+function is_captured($order_id){
+  $result = db_select('ubercart_checkoutpayment_charge_details', 'c')
+    ->fields('c')
+    ->condition('order_id', $order_id,'=')
+    ->condition('transaction_type', "captured",'=')
+    ->execute()
+    ->fetchAll();
+
+  if(sizeof($result) == 0) return false;
+  
+  return true;
 }
 
 /**
