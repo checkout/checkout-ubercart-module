@@ -64,7 +64,6 @@ class methods_creditcard extends methods_Abstract {
 
     if ($order) {
       $order_wrapper    = entity_metadata_wrapper('ubercart_order', $order);
-      $billing_address  = null; //TODO
       $order_array      = null; //TODO
       $default_currency = variable_get('uc_currency_code', 'EUR');
       $amount_cents     = number_format(round($order->order_total, variable_get('uc_currency_prec', 2)) * 100, 0, '', '');
@@ -75,6 +74,40 @@ class methods_creditcard extends methods_Abstract {
       $config['amount']       = $amount_cents;
       $config['currency']     = $order->currency;
       $config['paymentToken'] = $payment_token['token'];
+
+      $config['billingDetails'] = array(
+        'addressLine1'  => $order->billing_street1,
+        'addressLine2'  => $order->billing_street2,
+        'postcode'      => $order->billing_postal_code,
+        'country'       => uc_get_country_data(array('country_id' => $order->billing_country))[0]['country_iso_code_2'],
+        'city'          => $order->billing_city,
+        'state'         => $order->delivery_zone,
+        'phone'         => array(
+                             "number"      => $order->billing_phone
+                           )
+      );
+
+      $config['shippingDetails'] = array(
+        'addressLine1'  => $order->delivery_street1,
+        'addressLine2'  => $order->delivery_street2,
+        'postcode'      => $order->delivery_postal_code,
+        'country'       => uc_get_country_data(array('country_id' => $order->delivery_country))[0]['country_iso_code_2'],
+        'city'          => $order->delivery_city,
+        'state'         => $order->delivery_zone,
+        'phone'         => array(
+                              "number"      => $order->delivery_phone
+                           )
+      );
+
+      foreach ($order->products as $order_product_id => $product) {    
+        $config['products'][] = array(
+          'name'        => $product->title,
+          'description' => $product->title,
+          'price'       => round($product->price, 2),
+          'quantity'    => (int)$product->qty,
+          'sku'         => $product->model,
+        );
+      }
 
       $array['script']       = $config;
       $array['paymentToken'] = $payment_token;
@@ -134,20 +167,25 @@ class methods_creditcard extends methods_Abstract {
         'addressLine1'  => $order->billing_street1,
         'addressLine2'  => $order->billing_street2,
         'postcode'      => $order->billing_postal_code,
-        'country'       => $order->billing_country,
+        'country'       => uc_get_country_data(array('country_id' => $order->billing_country))[0]['country_iso_code_2'],
         'city'          => $order->billing_city,
+        'state'         => $order->delivery_zone,
+        'phone'         => array(
+                             "number"      => $order->billing_phone
+                           )
       );
 
-      $shipping_address_config = NULL;
-      if (module_exists('uc_shipping')) {
-        $shipping_address_config = array(
-          'addressLine1'  => $order->delivery_street1,
-          'addressLine2'  => $order->delivery_street2,
-          'postcode'      => $order->delivery_postal_code,
-          'country'       => $order->delivery_country,
-          'city'          => $order->delivery_city,
-        );
-      }
+      $shipping_address_config = array(
+        'addressLine1'  => $order->delivery_street1,
+        'addressLine2'  => $order->delivery_street2,
+        'postcode'      => $order->delivery_postal_code,
+        'country'       => uc_get_country_data(array('country_id' => $order->delivery_country))[0]['country_iso_code_2'],
+        'city'          => $order->delivery_city,
+        'state'         => $order->delivery_zone,
+        'phone'         => array(
+                            "number"      => $order->delivery_phone
+                          )
+      );
 
       $config['postedParam'] = array(
         'autoCapture'     => "y",
@@ -243,6 +281,18 @@ class methods_creditcard extends methods_Abstract {
       'autoCapTime' => 0,
     );
     return $to_return;
+  }
+
+  private function format_address($addressLine1, $addressLine2, $postcode, $country, $city, $state){
+    $address = '{"addressLine1":"'.$addressLine1.'",
+      "addressLine2":"'.$addressLine2.'",
+      "postcode":"'.$postcode.'",
+      "country":"'.$country.'",
+      "city":"'.$city.'",
+      "state":"'.$state.'"
+     }';
+  
+    return $address;
   }
 
 }
