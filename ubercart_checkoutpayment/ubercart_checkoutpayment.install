@@ -6,6 +6,40 @@
  */
 
 /**
+ * Implements hook_schema().
+ */
+function ubercart_checkoutpayment_schema() {
+  $schema = array();
+
+  $schema['ubercart_checkoutpayment_charge_details'] = array(
+    'description' => 'Logs charge details.',
+    'fields' => array(
+      'charge_id' => array(
+        'description' => 'The charge ID.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'order_id' => array(
+        'description' => 'The order ID.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'transaction_type' => array(
+        'description' => 'The type of the transaction.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('charge_id'),
+  );
+
+  return $schema;
+}
+
+/**
  * Implements hook_install().
  */
 function ubercart_checkoutpayment_install() {

@@ -337,10 +337,10 @@ function uc_payment_method_checkoutpayment($op, &$arg1) {
       break;
 
     case 'order-details':
-      //return array('#markup' => t('placeholder text TODO 6')); // Shown to admin when edditing orders
+      // Shown to admin when edditing orders
       break;
       
-    case 'order-load':
+    case 'order-load': 
       // Called from hook_uc_order('load') when this payment method is selected for the order.
       break;
 
@@ -678,8 +678,47 @@ function responseValidation($result) {
  * Mobile Redirect to success url: example.com/ubercart_checkoutpayment/success.
  */
 function ubercart_checkoutpayment_success_order() { //TODO
+
+  // $config = array();
+  // $config['authorization'] = $payment_method['settings']['private_key'];
+
+  //add_transaction_to_db("charge_test_Afezfzefzefzefzefze9AEA5", "150", "captured");
+
+  // $result = db_select('ubercart_checkoutpayment_charge_details', 'c')
+  //   ->fields('c')
+  //   ->execute()
+  //   ->fetchAll();
+
+  $result = db_select('ubercart_checkoutpayment_charge_details', 'c')
+    ->fields('c')
+    ->condition('order_id', 167,'=')
+    ->execute()
+    ->fetchAll();
+
+  var_dump($result);
+  //var_dump(drupal_get_schema());
+
+  // $config['chargeId']      = $result->charge_id;
+    
+  // $config['postedParam']   = array( 
+  //   'amount' => $value 
+  // );
   
-    var_dump(module_exists('uc_shipping'));
+  // module_load_include('php', 'ubercart_checkoutpayment', 'includes/autoload');
+  // $api = CheckoutApi_Api::getApi(array('mode' => $payment_method['settings']['mode']));
+
+  // var_dump($config);
+  // $result = $Api->captureCharge($config);
+  //var_dump($data);
+
+  // $temp = db_insert('ubercart_checkoutpayment_charge_details')
+  // ->fields(array(
+  //   'charge_id' => 'charge_test_25B8DBAE674N64D9AF92',
+  //   'order_id' => '125',
+  // ))
+  // ->execute();
+
+
     // if (!isset($_REQUEST['cko-payment-token'])) {
     //   drupal_goto();
     // }
@@ -787,6 +826,9 @@ function ubercart_checkoutpayment_process_order() {
         case EVENT_TYPE_CHARGE_SUCCEEDED :
           uc_order_update_status($order->order_id, 'cko_authorised');
           uc_order_comment_save($order->order_id, 0, t('Payment authorised.'), 'admin');
+
+          add_transaction_to_db($object_charge->getId(), $order->order_id, 'succeeded');
+
           return http_response_code(200);
         
         case EVENT_TYPE_CHARGE_CAPTURED :
@@ -800,6 +842,7 @@ function ubercart_checkoutpayment_process_order() {
             $comment = 'Partial payment recieved. (' . $captured . ' recieved instead of ' . $order_total . ')';
           }
 
+          add_transaction_to_db($object_charge->getId(), $order->order_id, 'captured');
           uc_order_comment_save($order->order_id, 0, t($comment), 'admin');
           uc_payment_enter($order->order_id, 'cko', $captured, 0, NULL, $comment);
 
@@ -838,6 +881,47 @@ function ubercart_checkoutpayment_process_order() {
   }
   
   return NULL;
+}
+
+function add_transaction_to_db($charge_id, $order_id, $transaction_type){
+  db_insert('ubercart_checkoutpayment_charge_details')
+  ->fields(array(
+    'charge_id'   => $charge_id,
+    'order_id'    => $order_id,
+    'transaction_type' => $transaction_type,
+  ))
+  ->execute();
+}
+
+/**
+ * Implements hook_uc_payment_entered($order, $method, $amount, $account, $data, $comment)
+ */
+function ubercart_checkoutpayment_uc_payment_entered($order, $method, $amount, $account, $data, $comment){
+    if($method == "cko" && $account->uid != "0" && $comment != "Automated balance restore") {
+    if($amount > 0) {
+      ubercart_checkoutpayment_capture_order($order, $amount * 100);
+      uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, "Automated balance restore");
+    } 
+    else {
+      ubercart_checkoutpayment_refund_order($order, $amount * -100);
+      uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, "Automated balance restore");
+    }
+  }
+  
+}
+
+function ubercart_checkoutpayment_capture_order($order, $value) {
+  $payment_method = ubercart_checkoutpayment_payment_method();
+
+  $instance = ubercart_checkoutpayment_get_instance();
+  $data     = $instance->captureCharge($order, $payment_method, $value);
+}
+
+function ubercart_checkoutpayment_refund_order($order, $value) {
+  $payment_method = ubercart_checkoutpayment_payment_method();
+
+  $instance = ubercart_checkoutpayment_get_instance();
+  $data     = $instance->refundCharge($order, $payment_method, $value);
 }
 
 /**
