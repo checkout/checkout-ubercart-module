@@ -326,27 +326,33 @@ class methods_creditcard extends methods_Abstract {
    * Settings form array
    */
   public function refundCharge($order, $payment_method, $value) {
-    $config = array();
+    $payedAmount = ($order->order_total - uc_payment_balance($order)) * 100;
 
-    $secret_key = $payment_method['settings']['private_key'];
-    $mode       = $payment_method['settings']['mode'];
+    if($value <= $payedAmount){
+      
+      $config = array();
 
+      $secret_key = $payment_method['settings']['private_key'];
+      $mode       = $payment_method['settings']['mode'];
 
-    $result = db_select('ubercart_checkoutpayment_charge_details', 'c')
-      ->fields('c')
-      ->condition('order_id', $order->order_id,'=')
-      ->condition('transaction_type', "captured",'=')
-      ->execute()
-      ->fetchObject();
+      $result = db_select('ubercart_checkoutpayment_charge_details', 'c')
+        ->fields('c')
+        ->condition('order_id', $order->order_id,'=')
+        ->condition('transaction_type', "captured",'=')
+        ->execute()
+        ->fetchObject();
 
-    $config['authorization'] = $secret_key;
-    $config['chargeId']      = $result->charge_id;
-    $config['postedParam']   = array( 
-       'value' => $value 
-    );
+      $config['authorization'] = $secret_key;
+      $config['chargeId']      = $result->charge_id;
+      $config['postedParam']   = array( 
+        'value' => $value 
+      );
 
-    $api = CheckoutApi_Api::getApi(array('mode' => $mode));
-    $api->refundCharge($config);
+      $api = CheckoutApi_Api::getApi(array('mode' => $mode));
+      return $api->refundCharge($config);
+    }    
+
+    error_log("Trying to refund " . $value . " while only " . $payedAmount . " has been captured.", 0);
   }
 
   private function format_address($addressLine1, $addressLine2, $postcode, $country, $city, $state){
