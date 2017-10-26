@@ -156,6 +156,17 @@ function uc_payment_method_checkoutpayment($op, &$order) {
           'sandbox' => t('Sandbox'),
         ),
       );
+
+      $form['checkoutpayment_account']['debugMode'] = array(
+        '#type' => 'select',
+        '#title' => t('Enable debug mode'),
+        '#description' => t('See all error messages from the hub'),
+        '#options' => array(
+          FALSE => t('Off'),
+          TRUE  => t('On'),
+        ),
+        '#default_value' => $settings['debugMode'],
+      );
     
       $form['checkoutpayment_transaction'] = array(
         '#type' => 'fieldset',
@@ -357,6 +368,12 @@ function admin_order_payment_action_form($form, &$form_state, $order){
     '#value'  => $order->order_id,
     '#name'   => 'order_id'
   );
+
+  if(is_flagged($order->order_id)){
+    $form['flagged'] = array(
+      '#markup' => '<div class="warning messages">'. t('Flagged.') .'</div>',
+    );
+  }
   
   if(!is_captured($order->order_id)) {
     $form['capture'] = array(
@@ -680,30 +697,22 @@ function uc_checkoutpayment_process_charge(){
 
   $result = $Api->createCharge($config);
 
-  if ($Api->getExceptionState()->hasError()) {
-    $message = t('An error has occured while processing your transaction. Please verify your information again or try a different card.');
+  if ($Api->getExceptionState()->hasError() || TRUE) {
+    $message = t('An error has occured while processing a transaction. The API returned an error.');
+    watchdog('uc_checkoutpayment', $message, $variables = NULL, $severity = WATCHDOG_ERROR, $link = NULL);
+    uc_checkoutpayment_fail_order();
   }  
 
   if ($result->isValid() && responseValidation($result)) {
-    if(!empty($result->getRedirectUrl())) drupal_goto($result->getRedirectUrl());
-    $output = uc_cart_complete_sale($order);
+    if(!empty($result->getRedirectUrl())) drupal_goto($result->getRedirectUrl()); // Go to 3D redirect
+    return uc_checkoutpayment_success_order(); // Go to success page
   } 
-  else {
-    switch((int)$result->getResponseCode()){
-      case 20051 :
-        $message = t('You have insufficient funds. Please try again with more funds or try a different card.');
-        break;
-      case 20054 : 
-        $message = t('The card you used is expired. Please try again with a different card.');
-        break;
-      default :
-        $message = t('An error has occured while processing your transaction. Please verify your information again or try a different card.');
-    }
+
+  if($payment_method['settings']['debugMode']){
+    drupal_set_message(t('Response code: @responsecode | Message: @message', array('@responsecode' => (int)$result->getResponseCode(), '@message' => $result->getResponseMessage())), 'error');
   }
-
-  if(!empty($message)) uc_checkoutpayment_fail_order($message);
-
-  return $output;
+    
+  uc_checkoutpayment_fail_order();
 }
 
 /**
@@ -737,7 +746,7 @@ function uc_checkoutpayment_success_order() {
 /**
  * Redirect back to cart page with error message.
  */
-function uc_checkoutpayment_fail_order($message = "An error has occured. Your order has been canceled."){
+function uc_checkoutpayment_fail_order(){
   if(!$_SESSION['cko_contextid']){
       drupal_goto();
   }
@@ -745,7 +754,7 @@ function uc_checkoutpayment_fail_order($message = "An error has occured. Your or
     $order = uc_order_load($_SESSION['cko_contextid']);
   }
 
-  drupal_set_message(t($message), 'error');
+  drupal_set_message(t("An error has occured while processing your transaction. Please verify your information again or try a different card."), 'error');
   drupal_goto('cart/checkout/review');
 }
 
@@ -785,9 +794,15 @@ function uc_checkoutpayment_process_order() {
       switch($eventType){
         case EVENT_TYPE_CHARGE_SUCCEEDED :
           uc_order_update_status($order->order_id, 'cko_authorised');
-          uc_order_comment_save($order->order_id, 0, t('Payment authorised.'), 'admin');
-
-          add_transaction_to_db($object_charge->getId(), $order->order_id, 'succeeded');
+          
+          if($object_charge->getResponseCode()==10100){
+            uc_order_comment_save($order->order_id, 0, t('Payment authorised and flagged.'), 'admin');
+            add_transaction_to_db($object_charge->getId(), $order->order_id, 'succeeded', TRUE);
+          }
+          else{
+            uc_order_comment_save($order->order_id, 0, t('Payment authorised.'), 'admin');
+            add_transaction_to_db($object_charge->getId(), $order->order_id, 'succeeded');
+          }
 
           return http_response_code(200);
         
@@ -843,7 +858,7 @@ function uc_checkoutpayment_process_order() {
   return NULL;
 }
 
-function add_transaction_to_db($charge_id, $order_id, $transaction_type){
+function add_transaction_to_db($charge_id, $order_id, $transaction_type, $is_flagged = FALSE){
   db_insert('uc_checkoutpayment_charge_details')
   ->fields(array(
     'charge_id'   => $charge_id,
@@ -851,6 +866,15 @@ function add_transaction_to_db($charge_id, $order_id, $transaction_type){
     'transaction_type' => $transaction_type,
   ))
   ->execute();
+
+  if($transaction_type == 'succeeded'){
+    db_insert('uc_checkoutpayment_flagged_orders')
+    ->fields(array(
+      'order_id'         => $order_id,
+      'is_flagged' => ($is_flagged? 1 : 0),
+    ))
+    ->execute();
+  }
 }
 
 /**
@@ -861,7 +885,7 @@ function uc_checkoutpayment_uc_payment_entered($order, $method, $amount, $accoun
   $instance = uc_checkoutpayment_get_instance();  
 
   $payments = uc_payment_load_payments($order->order_id);
-  $payed_amount = ($order->order_total - uc_payment_balance($order));
+  $payed_amount = ($order->order_total - (uc_payment_balance($order) + $amount));
   
   if($method == "cko" && $account->uid != "0" && $comment != "Automated balance restore") {
     if($amount > 0 && !is_captured($order->order_id)){
@@ -903,16 +927,15 @@ function is_captured($order_id){
 
 function is_flagged($order_id){
   $result = array();
-  $result = db_select('uc_checkoutpayment_charge_details', 'c')
+  $result = db_select('uc_checkoutpayment_flagged_orders', 'c')
     ->fields('c')
     ->condition('order_id', $order_id,'=')
-    ->condition('transaction_type', "captured",'=')
     ->execute()
-    ->fetchAll();
+    ->fetchObject();
 
-  if(sizeof($result) == 0) return false;
+  if($result->is_flagged == 0) return FALSE;
   
-  return true;
+  return TRUE;
 }
 
 /**
@@ -930,6 +953,7 @@ function uc_checkoutpayment_payment_method(){
     'public_key'      => variable_get('public_key', ''),
     'webhook_key'     => variable_get('webhook_key', ''),
     'mode'            => variable_get('mode', 'live'),
+    'debugMode'       => variable_get('debugMode', FALSE),
     'payment_action'  => variable_get('payment_action', ''),
     'autocaptime'     => variable_get('autocaptime', 0),
     'paymentMode'     => variable_get('paymentMode', 'mixed'),
