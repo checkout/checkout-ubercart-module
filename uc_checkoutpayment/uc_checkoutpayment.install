@@ -2,16 +2,16 @@
 
 /**
  * @file
- * Installing ubercart_checkoutpayment schema
+ * Installing uc_checkoutpayment schema
  */
 
 /**
  * Implements hook_schema().
  */
-function ubercart_checkoutpayment_schema() {
+function uc_checkoutpayment_schema() {
   $schema = array();
 
-  $schema['ubercart_checkoutpayment_charge_details'] = array(
+  $schema['uc_checkoutpayment_charge_details'] = array(
     'description' => 'Logs charge details.',
     'fields' => array(
       'charge_id' => array(
@@ -36,8 +36,9 @@ function ubercart_checkoutpayment_schema() {
     'primary key' => array('charge_id'),
   );
 
-  $schema['uc_cko_flagged_orders'] = array(
+  $schema['uc_checkoutpayment_flagged_orders'] = array(
     'description' => 'Logs order ID and if it is flagged',
+    'fields' => array(
       'order_id' => array(
         'description' => 'The order ID.',
         'type' => 'varchar',
@@ -60,7 +61,7 @@ function ubercart_checkoutpayment_schema() {
 /**
  * Implements hook_install().
  */
-function ubercart_checkoutpayment_install() {
+function uc_checkoutpayment_install() {
   db_insert('uc_order_statuses')
   ->fields(array(
     'order_status_id' => 'cko_authorised',
@@ -115,7 +116,7 @@ function ubercart_checkoutpayment_install() {
 /**
  * Implements hook_uninstall().
  */
-function ubercart_checkoutpayment_uninstall() {
+function uc_checkoutpayment_uninstall() {
   db_delete('uc_order_statuses')
     ->condition('order_status_id', 'cko_%', 'LIKE')
     ->execute();

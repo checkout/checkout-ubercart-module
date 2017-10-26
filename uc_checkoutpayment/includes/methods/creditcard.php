@@ -7,7 +7,7 @@ class methods_creditcard extends methods_Abstract {
    */
   public function submitFormCharge($payment_method, $pane_form, $pane_values, $order, $charge) {    
     $config = parent::submitFormCharge($payment_method, $pane_form, $pane_values, $order, $charge);
-    $instance = ubercart_checkoutpayment_get_instance($payment_method);
+    $instance = uc_checkoutpayment_get_instance($payment_method);
     $data = $instance->getExtraInit($order, $payment_method);
 
   }
@@ -33,13 +33,13 @@ class methods_creditcard extends methods_Abstract {
     );
 
     $form['#attached']['js'] = array(
-      drupal_get_path('module', 'ubercart_checkoutpayment') . '/includes/methods/js/checkoutapi.js' => array(
+      drupal_get_path('module', 'uc_checkoutpayment') . '/includes/methods/js/checkoutapi.js' => array(
         'type' => 'file',
       ),
     );
 
     $form['#attached']['js'][] = array(
-      'data' => array('ubercart_checkoutpayment' => $data['script']),
+      'data' => array('uc_checkoutpayment' => $data['script']),
       'type' => 'setting',
     );
 
@@ -63,7 +63,7 @@ class methods_creditcard extends methods_Abstract {
     $payment_token = $this->generatePaymentToken($order, $payment_method);
 
     if ($order) {
-      $order_wrapper    = entity_metadata_wrapper('ubercart_order', $order);
+      $order_wrapper    = entity_metadata_wrapper('uc_order', $order);
       $order_array      = null; //TODO
       $default_currency = variable_get('uc_currency_code', 'EUR');
       $amount_cents     = number_format(round($order->order_total, variable_get('uc_currency_prec', 2)) * 100, 0, '', '');
@@ -241,7 +241,7 @@ class methods_creditcard extends methods_Abstract {
   protected function createCharge($config) {
     $config = array();
 
-    $payment_method = ubercart_payment_method_instance_load('ubercart_checkoutpayment|ubercart_payment_ubercart_checkoutpayment');
+    $payment_method = ubercart_payment_method_instance_load('uc_checkoutpayment|ubercart_payment_uc_checkoutpayment');
     $secret_key = $payment_method['settings']['private_key'];
     $mode = $payment_method['settings']['mode'];
     $timeout = $payment_method['settings']['timeout'];
@@ -301,7 +301,7 @@ class methods_creditcard extends methods_Abstract {
     $mode       = $payment_method['settings']['mode'];
 
 
-    $result = db_select('ubercart_checkoutpayment_charge_details', 'c')
+    $result = db_select('uc_checkoutpayment_charge_details', 'c')
       ->fields('c')
       ->condition('order_id', $order->order_id,'=')
       ->condition('transaction_type', "succeeded",'=')
@@ -337,7 +337,7 @@ class methods_creditcard extends methods_Abstract {
       $secret_key = $payment_method['settings']['private_key'];
       $mode       = $payment_method['settings']['mode'];
 
-      $result = db_select('ubercart_checkoutpayment_charge_details', 'c')
+      $result = db_select('uc_checkoutpayment_charge_details', 'c')
         ->fields('c')
         ->condition('order_id', $order->order_id,'=')
         ->condition('transaction_type', "captured",'=')
