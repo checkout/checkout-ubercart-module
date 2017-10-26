@@ -36,6 +36,24 @@ function ubercart_checkoutpayment_schema() {
     'primary key' => array('charge_id'),
   );
 
+  $schema['uc_cko_flagged_orders'] = array(
+    'description' => 'Logs order ID and if it is flagged',
+      'order_id' => array(
+        'description' => 'The order ID.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'is_flagged' => array(
+        'description' => 'Is the order flagged',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0
+      ),
+    ),
+    'primary key' => array('order_id'),
+  );
+
   return $schema;
 }
 

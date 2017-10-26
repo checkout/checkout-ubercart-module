@@ -330,8 +330,6 @@ class methods_creditcard extends methods_Abstract {
   public function refundCharge($order, $payment_method, $value) {
     $payedAmount = ($order->order_total - uc_payment_balance($order)) * 100;
 
-    error_log("Trying to refund " . $value, 0);
-
     if($value <= $payedAmount){
       
       $config = array();
@@ -355,20 +353,5 @@ class methods_creditcard extends methods_Abstract {
       $api = CheckoutApi_Api::getApi(array('mode' => $mode));
       return $api->refundCharge($config);
     }    
-
-    error_log("Trying to refund " . $value . " while only " . $payedAmount . " has been captured.", 0);
   }
-
-  private function format_address($addressLine1, $addressLine2, $postcode, $country, $city, $state){
-    $address = '{"addressLine1":"'.$addressLine1.'",
-      "addressLine2":"'.$addressLine2.'",
-      "postcode":"'.$postcode.'",
-      "country":"'.$country.'",
-      "city":"'.$city.'",
-      "state":"'.$state.'"
-     }';
-  
-    return $address;
-  }
-
 }
