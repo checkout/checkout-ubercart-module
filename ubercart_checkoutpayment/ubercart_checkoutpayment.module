@@ -187,7 +187,7 @@ function uc_payment_method_checkoutpayment($op, &$arg1) {
         '#title' => t('Payment Mode'),
         '#options' => array(
           'cards' => t('Card'),
-          'localPayment' => t('Local Payment'),
+          'localpayments' => t('Local Payment'),
           'mixed' => t('Mixed')
         ),
         '#default_value' => $settings['paymentMode'],
@@ -430,13 +430,14 @@ function ubercart_checkoutpayment_form($form, &$form_state, $order) {
   $value          = $data['script']['amount'];
   $currency       = $data['script']['currency'];
   
-  $billingDetails = '{"addressLine1":"'.$order->billing_street1     .'",
-                      "addressLine2":"'.$order->billing_street2     .'",
-                      "postcode":"    '.$order->billing_postal_code .'",
-                      "country":"     '.uc_get_country_data(array('country_id' => $order->billing_country))[0]['country_iso_code_2']     .'",                                                  
-                      "city":"        '.$order->billing_city        .'",
-                      "state":"       '.$order->billing_zone        .'"
-                    }'; 
+  $billingDetails = '{
+    "addressLine1":"'.$order->billing_street1     .'",
+    "addressLine2":"'.$order->billing_street2     .'",
+    "postcode":"    '.$order->billing_postal_code .'",
+    "country":"     '.uc_get_country_data(array('country_id' => $order->billing_country))[0]['country_iso_code_2']     .'",                                                  
+    "city":"        '.$order->billing_city        .'",
+    "state":"       '.$order->billing_zone        .'"
+  }'; 
 
   // Format data for form
   $data = array(
@@ -519,7 +520,7 @@ function checkout_payment_widget($order){
   $paymentToken   = $data['script']['paymentToken'];
   $customerEmail  = $data['script']['email'];
   $value          = $data['script']['amount'];
-  $currency       = $data['script']['currency'];
+  $currency       = "EUR"; //$data['script']['currency'];
   
   if($settings['cko_integration'] == 'embedded'){
     $title = $subtitle = $logoUrl = '';
@@ -643,6 +644,7 @@ function ubercart_checkoutpayment_process_charge(){
   }  
 
   if ($result->isValid() && responseValidation($result)) {
+    if(!empty($result->getRedirectUrl())) drupal_goto($result->getRedirectUrl());
     $output = uc_cart_complete_sale($order);
   } 
   else {
@@ -659,6 +661,14 @@ function ubercart_checkoutpayment_process_charge(){
   }
 
   if(!empty($message)) ubercart_checkoutpayment_fail_order($message);
+
+
+  /**
+   * IF REDIRECT -> REDIRECT
+   * IF SUCCESS -> SUCCESS
+   * IF ERROR -> FAIL
+   */
+
 
   return $output;
 }
@@ -679,103 +689,7 @@ function responseValidation($result) {
  */
 function ubercart_checkoutpayment_success_order() { //TODO
 
-  // $config = array();
-  // $config['authorization'] = $payment_method['settings']['private_key'];
-
-  //add_transaction_to_db("charge_test_Afezfzefzefzefzefze9AEA5", "150", "captured");
-
-  // $result = db_select('ubercart_checkoutpayment_charge_details', 'c')
-  //   ->fields('c')
-  //   ->execute()
-  //   ->fetchAll();
-
-  //ubercart_checkoutpayment_refund_order("15", 10);
-
-  // $result = db_select('ubercart_checkoutpayment_charge_details', 'c')
-  // ->fields('c')
-  // ->condition('order_id', "168",'=')
-  // ->condition('transaction_type', "captured",'=')
-  // ->execute()
-  // ->fetchAll();
-
-  // var_dump($result);
-
-  // var_dump(is_captured("170"));
-  //var_dump(drupal_get_schema());
-
-  // $config['chargeId']      = $result->charge_id;
-    
-  // $config['postedParam']   = array( 
-  //   'amount' => $value 
-  // );
-  
-  // module_load_include('php', 'ubercart_checkoutpayment', 'includes/autoload');
-  // $api = CheckoutApi_Api::getApi(array('mode' => $payment_method['settings']['mode']));
-
-  // var_dump($config);
-  // $result = $Api->captureCharge($config);
-  //var_dump($data);
-
-  // $temp = db_insert('ubercart_checkoutpayment_charge_details')
-  // ->fields(array(
-  //   'charge_id' => 'charge_test_25B8DBAE674N64D9AF92',
-  //   'order_id' => '125',
-  // ))
-  // ->execute();
-
-
-    // if (!isset($_REQUEST['cko-payment-token'])) {
-    //   drupal_goto();
-    // }
-  
-    // module_load_include('php', 'ubercart_checkoutpayment', 'includes/autoload');
-  
-    // // To do get instance id from session
-    // $instance_id = $_SESSION['cko_instance_id'];
-  
-    // $config['authorization'] = variable_get('private_key', '');
-    // $config['paymentToken']  = $_REQUEST['cko-payment-token'];
-  
-    // $api           = CheckoutApi_Api::getApi(array('mode' => variable_get('mode', '')));
-    // $object_charge = $api->verifyChargePaymentToken($config);
-  
-    // $order_id = $object_charge->getTrackId();
-    // $order = commerce_order_load($order_id);
-    // $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-    // $order_total = $order_wrapper->commerce_order_total->value();
-  
-    // $transaction = commerce_payment_transaction_new($payment_method['method_id'], $order->order_id);
-    // $transaction->instance_id = $payment_method['instance_id'];
-    // $transaction->amount = $order_total['amount'];
-    // $transaction->currency_code = $order_total['currency_code'];
-    // $transaction->payload[REQUEST_TIME] = $object_charge->getCreated();
-  
-    // $default_currency = commerce_default_currency();
-    // $amount = number_format(commerce_currency_convert($order_total['amount'], $order_total['currency_code'], $default_currency), 0, '', '');
-    // $to_validate = array(
-    //   'currency' => $default_currency,
-    //   'value' => $amount,
-    //   'trackId' => $order_id,
-    // );
-    // $validate_request = $api::validateRequest($to_validate, $object_charge);
-  
-    // if (preg_match('/^1[0-9]+$/', $object_charge->getResponseCode())) {
-    //   $transaction->message = 'Your transaction has been successfully authorized with transaction id : ' . $object_charge->getId();
-    //   $transaction->status = COMMERCE_PAYMENT_STATUS_PENDING;
-    //   commerce_payment_transaction_save($transaction);
-    //   $order = commerce_order_status_update($order, 'checkout_complete', FALSE, TRUE, 'Your payment has been successfully completed');
-    //   commerce_checkout_complete($order);
-    //   drupal_goto(commerce_checkout_order_uri($order));
-    // }
-    // else { 
-    //   $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
-    //   $transaction->message = $object_charge->getRawRespond();
-    //   commerce_payment_transaction_save($transaction);
-    //   drupal_set_message(t('An error has occured while processing your transaction. Please verify your information again or try a different card.'), 'error');
-    //   $order = commerce_order_status_update($order, 'checkout_review', FALSE, TRUE, t('Proceed to review page'));
-    //   drupal_goto('checkout/' . $order->order_id . '/review');
-    //   watchdog('checkoutpayment_return_url', '!charge', array('!charge' => $object_charge->getRawRespond()), WATCHDOG_WARNING);
-    // }
+  return "LOL";
   
 }
 
@@ -902,37 +816,25 @@ function add_transaction_to_db($charge_id, $order_id, $transaction_type){
  * Implements hook_uc_payment_entered($order, $method, $amount, $account, $data, $comment)
  */
 function ubercart_checkoutpayment_uc_payment_entered($order, $method, $amount, $account, $data, $comment){
-    if($method == "cko" && $account->uid != "0" && $comment != "Automated balance restore") {
-      if($amount > 0 && !is_captured($order->order_id)){
-        ubercart_checkoutpayment_capture_order($order, $amount * 100);
-        uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, "Automated balance restore");
-      }
-      elseif ($amount > 0) {
-        uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, "Cannot capture more then once.");
-      }
-      elseif (is_captured($order->order_id)){
-        ubercart_checkoutpayment_refund_order($order, $amount * -100);
-        uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, "Automated balance restore");
-      }
-      else {
-        uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, "You cannot refund before you capture.");
-      }
-  }
+  $payment_method = ubercart_checkoutpayment_payment_method();
+  $instance = ubercart_checkoutpayment_get_instance();  
   
-}
-
-function ubercart_checkoutpayment_capture_order($order, $value) {
-  $payment_method = ubercart_checkoutpayment_payment_method();
-
-  $instance = ubercart_checkoutpayment_get_instance();
-  $data     = $instance->captureCharge($order, $payment_method, $value);
-}
-
-function ubercart_checkoutpayment_refund_order($order, $value) {
-  $payment_method = ubercart_checkoutpayment_payment_method();
-
-  $instance = ubercart_checkoutpayment_get_instance();
-  $data     = $instance->refundCharge($order, $payment_method, $value);
+  if($method == "cko" && $account->uid != "0" && $comment != "Automated balance restore") {
+    if($amount > 0 && !is_captured($order->order_id)){
+      uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, "Automated balance restore");
+      $data = $instance->captureCharge($order, $payment_method, ($amount * 100));
+    }
+    elseif ($amount > 0) {
+      uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, "Cannot capture more then once.");
+    }
+    elseif (is_captured($order->order_id)){
+      uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, "Automated balance restore");
+      $data = $instance->refundCharge($order, $payment_method, ($amount * -100));
+    }
+    else {
+      uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, "You cannot refund before you capture.");
+    }
+  }
 }
 
 function is_captured($order_id){

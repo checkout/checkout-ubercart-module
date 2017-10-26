@@ -82,9 +82,9 @@ class methods_creditcard extends methods_Abstract {
         'country'       => uc_get_country_data(array('country_id' => $order->billing_country))[0]['country_iso_code_2'],
         'city'          => $order->billing_city,
         'state'         => $order->delivery_zone,
-        'phone'         => array(
-                             "number"      => $order->billing_phone
-                           )
+        'phone'         => array( 
+          "number"        => $order->billing_phone
+        )
       );
 
       $config['shippingDetails'] = array(
@@ -95,8 +95,8 @@ class methods_creditcard extends methods_Abstract {
         'city'          => $order->delivery_city,
         'state'         => $order->delivery_zone,
         'phone'         => array(
-                              "number"      => $order->delivery_phone
-                           )
+          "number"        => $order->delivery_phone
+        )
       );
 
       foreach ($order->products as $order_product_id => $product) {    
@@ -135,8 +135,9 @@ class methods_creditcard extends methods_Abstract {
     if (isset($order)) {
 
       $order_id = $order->order_id;
-      $default_currency = "USD"; //TODO
-      $amount_cents = number_format(100000, 0, '', ''); //TODO
+      $default_currency = $order->currency;
+      $amount_cents = number_format((100 * $order->order_total), 0, '', '');
+      $autoCapture = ($payment_method['settings']['payment_action'] == UC_CREDIT_AUTH_CAPTURE ? "y" : "n");
 
       $config['authorization'] = $payment_method['settings']['private_key'];
       $config['mode']          = $payment_method['settings']['mode'];
@@ -188,8 +189,9 @@ class methods_creditcard extends methods_Abstract {
       );
 
       $config['postedParam'] = array(
-        'autoCapture'     => "y",
-        'autoCapTime'     => 0,
+        'chargeMode'      => "3", // Should always be 3 in a payment token
+        'autoCapture'     => $autoCapture, 
+        'autoCapTime'     => $payment_method['settings']['autocaptime'],
         'email'           => $order->primary_email,
         'value'           => $amount_cents,
         'trackId'         => $order_id,
@@ -327,6 +329,7 @@ class methods_creditcard extends methods_Abstract {
    */
   public function refundCharge($order, $payment_method, $value) {
     $payedAmount = ($order->order_total - uc_payment_balance($order)) * 100;
+    error_log("Balance " . uc_payment_balance($order), 0);
 
     if($value <= $payedAmount){
       
