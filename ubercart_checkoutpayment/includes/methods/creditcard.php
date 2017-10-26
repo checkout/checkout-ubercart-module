@@ -329,7 +329,8 @@ class methods_creditcard extends methods_Abstract {
    */
   public function refundCharge($order, $payment_method, $value) {
     $payedAmount = ($order->order_total - uc_payment_balance($order)) * 100;
-    error_log("Balance " . uc_payment_balance($order), 0);
+
+    error_log("Trying to refund " . $value, 0);
 
     if($value <= $payedAmount){
       

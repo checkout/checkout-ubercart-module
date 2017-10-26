@@ -104,7 +104,7 @@ function ubercart_checkoutpayment_uc_payment_method() {
 /**
  * Implements hook_payment_method_callback($op, &$arg1, $silent = FALSE)
  */
-function uc_payment_method_checkoutpayment($op, &$arg1) {
+function uc_payment_method_checkoutpayment($op, &$order) {
   module_load_include('module', 'uc_credit', 'uc_credit');
   
   switch ($op) {
@@ -356,10 +356,61 @@ function uc_payment_method_checkoutpayment($op, &$arg1) {
       // Called from hook_uc_order('submit') when this payment method is selected for the order.
       break;
       
-    case 'order-save':
-      // Called when the order is being displayed on the order admin pages.
+    case 'order-view':
+      return drupal_get_form('my_form', $order);
       break;
     }
+}
+
+function my_form($form, &$form_state, $order){
+  $form['order_id'] = array(
+    '#type'   => 'hidden',
+    '#value'  => $order->order_id,
+    '#name'   => 'order_id'
+  );
+  
+  if(!is_captured($order->order_id)) {
+    $form['capture'] = array(
+      '#type'   => 'submit',
+      '#value'  => t('Full Capture'),
+      '#name'   => 'capture'
+    );
+  }
+  elseif(uc_payment_balance($order) != $order->order_total) {
+    $form['refund'] = array(
+      '#type'   => 'submit',
+      '#value'  => t('Full Refund'),
+      '#name'   => 'refund'
+    );
+  }
+  else{
+    $form['message'] = array(
+      '#markup' =>  t('Payment has been fully refunded.'),
+    );
+  }
+
+  return $form;
+}
+
+function my_form_submit($form, &$form_state) {
+  $order_id = $form_state['values']['order_id'];
+  $values = $form_state['input'];
+
+  $payment_method = ubercart_checkoutpayment_payment_method();
+  $instance = ubercart_checkoutpayment_get_instance(); 
+  $order = uc_order_load($order_id);
+
+  if(!is_captured($order_id) && isset($values['capture'])) {
+    $instance->captureCharge($order, $payment_method, ($order->order_total * 100));
+    drupal_set_message("The payment was captured.", 'status');
+  }
+  elseif(is_captured($order_id) && isset($values['refund'])) {
+    $ammount = $order->order_total - uc_payment_balance($order);
+    $instance->refundCharge($order, $payment_method, ($ammount * 100));
+    drupal_set_message("The payment was refunded.", 'status');
+  }
+
+  
 }
 
 /**
@@ -645,7 +696,7 @@ function ubercart_checkoutpayment_process_charge(){
 
   if ($result->isValid() && responseValidation($result)) {
     if(!empty($result->getRedirectUrl())) drupal_goto($result->getRedirectUrl());
-    $output = uc_cart_complete_sale($order);
+    
   } 
   else {
     switch((int)$result->getResponseCode()){
@@ -687,16 +738,24 @@ function responseValidation($result) {
 /**
  * Mobile Redirect to success url: example.com/ubercart_checkoutpayment/success.
  */
-function ubercart_checkoutpayment_success_order() { //TODO
+function ubercart_checkoutpayment_success_order() {
 
-  return "LOL";
+  if($_SESSION['cko_contextid'] != null){
+    $order = uc_order_load($_SESSION['cko_contextid']);
+  } else {
+    drupal_goto();
+  }
+
+  $output = uc_cart_complete_sale($order);
+
+  return $output;
   
 }
 
 /**
  * Redirect back to cart page with error message.
  */
-function ubercart_checkoutpayment_fail_order($message = "An error has occured. Your order has been canceled."){ //TODO
+function ubercart_checkoutpayment_fail_order($message = "An error has occured. Your order has been canceled."){
   if(!$_SESSION['cko_contextid']){
       drupal_goto();
   }
@@ -818,6 +877,8 @@ function add_transaction_to_db($charge_id, $order_id, $transaction_type){
 function ubercart_checkoutpayment_uc_payment_entered($order, $method, $amount, $account, $data, $comment){
   $payment_method = ubercart_checkoutpayment_payment_method();
   $instance = ubercart_checkoutpayment_get_instance();  
+
+  $payments = uc_payment_load_payments($order->order_id);
   
   if($method == "cko" && $account->uid != "0" && $comment != "Automated balance restore") {
     if($amount > 0 && !is_captured($order->order_id)){
@@ -825,14 +886,16 @@ function ubercart_checkoutpayment_uc_payment_entered($order, $method, $amount, $
       $data = $instance->captureCharge($order, $payment_method, ($amount * 100));
     }
     elseif ($amount > 0) {
-      uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, "Cannot capture more then once.");
+      uc_payment_delete(end($payments)->receipt_id);     
+      drupal_set_message("You cannot capture more than once.", 'error');
     }
     elseif (is_captured($order->order_id)){
       uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, "Automated balance restore");
       $data = $instance->refundCharge($order, $payment_method, ($amount * -100));
     }
     else {
-      uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, "You cannot refund before you capture.");
+      uc_payment_delete(end($payments)->receipt_id);
+      drupal_set_message("You cannot refund before you captured the payment", 'error');
     }
   }
 }
