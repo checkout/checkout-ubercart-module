@@ -22,7 +22,7 @@ const EVENT_TYPE_INVOICE_CANCELLED  = 'invoice.cancelled';
 /**
  * Implements hook_init().
  */
-function uc_checkoutpayment_init() {
+function uc_checkoutpayment_init() {  
   global $conf;
   $conf['i18n_variables'][] = 'uc_checkoutpayment_method_title';
   $conf['i18n_variables'][] = 'uc_checkoutpayment_checkout_button';
@@ -431,17 +431,36 @@ function uc_checkoutpayment_form_uc_cart_checkout_review_form_alter(&$form, &$fo
     if ($order->payment_method == 'cko') {
       $cko_integration = uc_checkoutpayment_payment_method()['settings']['cko_integration'];
       
-      unset($form['actions']['submit']);
+      
 
       switch ($cko_integration) {
         case 'hosted':
+          unset($form['actions']['submit']);
           $form['#prefix'] = '<table style="display: inline;">
             <tr class="review-button-row-inner"><td>';
           $preparedForm = drupal_get_form('uc_checkoutpayment_form', $order);
           $form['#suffix'] = '</td><td>' . drupal_render($preparedForm) . '</td></tr></table>';
           break;
         
+        case 'embedded':
+          $form['actions']['submit']['#disabled'] = TRUE;
+          $form['actions']['submit']['#attributes']['class'][] = 'cko-disabled';
+          $form['#prefix'] = '<table style="display: inline;">
+            <tr><td colspan="2"> '. checkout_payment_widget($order) .' </td></tr>
+            <tr class="review-button-row-inner"><td>';
+          $form['#suffix'] = '</td></tr>
+          
+          <script>
+              var submitButton = document.getElementById("edit-submit");
+              submitButton.addEventListener("click", function () {
+                  if (Checkout.isCardFormValid()) Checkout.submitCardForm();
+              });
+          </script>
+          </table>';
+          break;
+
         default:
+          unset($form['actions']['submit']);
           $form['#prefix'] = '<table style="display: inline;">
             <tr><td colspan="2"> '. checkout_payment_widget($order) .' </td></tr>
             <tr class="review-button-row-inner"><td>';
@@ -578,7 +597,7 @@ function checkout_payment_widget($order){
   $paymentToken   = $data['script']['paymentToken'];
   $customerEmail  = $data['script']['email'];
   $value          = $data['script']['amount'];
-  $currency       = "EUR"; //$data['script']['currency'];
+  $currency       = $data['script']['currency'];
   
   if($settings['cko_integration'] == 'embedded'){
     $title = $subtitle = $logoUrl = '';
@@ -603,6 +622,11 @@ function checkout_payment_widget($order){
           useCurrencyCode: '" . $currencycode . "',
           appMode: '"         . $appmode . "',
           renderMode: '"      . $cko_render_mode . "',
+          cardFormValidationChanged: function (event) {
+            submitButton.disabled = !Checkout.isCardFormValid()
+            if(Checkout.isCardFormValid()) submitButton.classList.remove('cko-disabled');
+            else submitButton.classList.add('cko-disabled');
+          }
         };
       </script>
       <script async src=\"https://cdn.checkout.com/v2/sandbox/js/checkout.js\"></script>
@@ -614,8 +638,7 @@ function checkout_payment_widget($order){
 /**
  * Retrieves all active instances definitions.
  */
-function uc_checkoutpayment_get_instance() {
-  
+function uc_checkoutpayment_get_instance() {  
   module_load_include('php', 'uc_checkoutpayment', 'includes/autoload');
   return CheckoutApi_Lib_Factory::getInstance('methods_creditcard');
 }
@@ -624,7 +647,6 @@ function uc_checkoutpayment_get_instance() {
  * Process payment with card token
  */
 function uc_checkoutpayment_process_charge(){
-
   if($_REQUEST['cko-card-token']){
     $cardToken = $_REQUEST['cko-card-token'];
 
@@ -697,7 +719,7 @@ function uc_checkoutpayment_process_charge(){
 
   $result = $Api->createCharge($config);
 
-  if ($Api->getExceptionState()->hasError() || TRUE) {
+  if ($Api->getExceptionState()->hasError()) {
     $message = t('An error has occured while processing a transaction. The API returned an error.');
     watchdog('uc_checkoutpayment', $message, $variables = NULL, $severity = WATCHDOG_ERROR, $link = NULL);
     uc_checkoutpayment_fail_order();
@@ -730,7 +752,6 @@ function responseValidation($result) {
  * Mobile Redirect to success url: example.com/uc_checkoutpayment/success.
  */
 function uc_checkoutpayment_success_order() {
-
   if($_SESSION['cko_contextid'] != null){
     $order = uc_order_load($_SESSION['cko_contextid']);
   } else {

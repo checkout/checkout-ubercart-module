@@ -279,7 +279,6 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
             $this->throwException('Please provide a valid currency code (ISO currency code)', array('pram'=>$param));
         }
 
-        error_log($this->getUriCharge(), 0);
         return $this->_responseUpdateStatus($this->request( $this->getUriCharge() ,$param,!$hasError));
     }
 

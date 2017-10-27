@@ -1,50 +1,6 @@
 <?php
 
-class methods_creditcard extends methods_Abstract {
-
-  /**
-   * Payment method callback: checkout form submission.
-   */
-  public function submitFormCharge($payment_method, $pane_form, $pane_values, $order, $charge) {    
-    $config = parent::submitFormCharge($payment_method, $pane_form, $pane_values, $order, $charge);
-    $instance = uc_checkoutpayment_get_instance($payment_method);
-    $data = $instance->getExtraInit($order, $payment_method);
-
-  }
-
-  /**
-   * Payment method callback: checkout form.
-   */
-  public function submitForm($payment_method, $pane_values, $checkout_pane, $order) {
-    $data = $this->getExtraInit($order, $payment_method);
-    $form['pay_method_container'] = array(
-      '#type' => 'container',
-      '#attributes' => array(
-        'class' => array('widget-container'),
-      ),
-    );
-
-    $form['credit_card']['cko-cc-paymenToken'] = array(
-      '#type' => 'hidden',
-      '#value' => !empty($data['paymentToken']['token']) ? $data['paymentToken']['token'] : '',
-      '#attributes' => array(
-        'id' => array('cko-cc-paymenToken'),
-      ),
-    );
-
-    $form['#attached']['js'] = array(
-      drupal_get_path('module', 'uc_checkoutpayment') . '/includes/methods/js/checkoutapi.js' => array(
-        'type' => 'file',
-      ),
-    );
-
-    $form['#attached']['js'][] = array(
-      'data' => array('uc_checkoutpayment' => $data['script']),
-      'type' => 'setting',
-    );
-
-    return $form;
-  }
+class methods_creditcard {
 
   /**
    * Payment method settings form.
