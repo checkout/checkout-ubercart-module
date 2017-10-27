@@ -57,6 +57,13 @@ function uc_checkoutpayment_menu() {
     'type' => MENU_CALLBACK,
   );
 
+  $items['uc_checkoutpayment/admin'] = array(
+    'title' => 'Admin ajex call',
+    'page callback' => 'uc_checkoutpayment_admin_call',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
   $items['uc_checkoutpayment/success'] = array(
     'title' => 'Success page',
     'page callback' => 'uc_checkoutpayment_success_order',
@@ -114,7 +121,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#markup' => '<div class="help">' . t('<h4><strong>Checkout.com Payment Settings</strong></h4><p>Go to https://sandbox.checkout.com to properly install this module.</p>', array('%base_url' => $base_url)) . '</div>',
       );
 
-      $settings = uc_checkoutpayment_payment_method()['settings'];
+      $settings = cko_store_settings()['settings'];
 
       $form['checkoutpayment_account'] = array(
         '#type' => 'fieldset',
@@ -363,10 +370,14 @@ function uc_payment_method_checkoutpayment($op, &$order) {
 }
 
 function admin_order_payment_action_form($form, &$form_state, $order){
+  global $base_url;
+
   $form['order_id'] = array(
     '#type'   => 'hidden',
     '#value'  => $order->order_id,
-    '#name'   => 'order_id'
+    '#attributes' => array(
+      'id' => 'order_id',
+    ),
   );
 
   if(is_flagged($order->order_id)){
@@ -381,20 +392,48 @@ function admin_order_payment_action_form($form, &$form_state, $order){
       '#value'  => t('Full Capture'),
       '#name'   => 'capture'
     );
+
+    $form['cko-action'] = array(
+      '#type'   => 'hidden',
+      '#value'  => 'capture',
+      '#attributes' => array(
+        'id' => 'cko-action',
+      ),
+    );
   }
-  elseif(uc_payment_balance($order) != $order->order_total) {
+  elseif(!is_refunded($order->order_id)) {
     $form['refund'] = array(
       '#type'   => 'submit',
       '#value'  => t('Full Refund'),
       '#name'   => 'refund'
+    );
+
+    $form['cko-action'] = array(
+      '#type'   => 'hidden',
+      '#value'  => 'refund',
+      '#attributes' => array(
+        'id' => 'cko-action',
+      ),
     );
   }
   else{
     $form['message'] = array(
       '#markup' =>  t('Payment has been fully refunded.'),
     );
+
+    $form['cko-action'] = array(
+      '#type'   => 'hidden',
+      '#value'  => 'none',
+      '#attributes' => array(
+        'id' => 'cko-action',
+      ),
+    );
   }
 
+
+  $path = $base_url;
+  $path = drupal_get_path('module', 'uc_checkoutpayment');
+  drupal_add_js($path . "/includes/admin_refresh.js", array('type' => 'file', 'scope' => 'footer',));
   return $form;
 }
 
@@ -402,7 +441,7 @@ function admin_order_payment_action_form_submit($form, &$form_state) {
   $order_id = $form_state['values']['order_id'];
   $values = $form_state['input'];
 
-  $payment_method = uc_checkoutpayment_payment_method();
+  $payment_method = cko_store_settings();
   $instance = uc_checkoutpayment_get_instance(); 
   $order = uc_order_load($order_id);
 
@@ -415,9 +454,6 @@ function admin_order_payment_action_form_submit($form, &$form_state) {
     $data = $instance->refundCharge($order, $payment_method, ($ammount * 100));
     drupal_set_message(t("The payment was refunded."), 'status');
   }
-
-  sleep(1);
-  drupal_goto(current_path());
 }
 
 /**
@@ -429,7 +465,7 @@ function uc_checkoutpayment_form_uc_cart_checkout_review_form_alter(&$form, &$fo
     $_SESSION['cko_contextid'] = $order_id;
 
     if ($order->payment_method == 'cko') {
-      $cko_integration = uc_checkoutpayment_payment_method()['settings']['cko_integration'];
+      $cko_integration = cko_store_settings()['settings']['cko_integration'];
       
       
 
@@ -478,7 +514,7 @@ function uc_checkoutpayment_form_uc_cart_checkout_review_form_alter(&$form, &$fo
 function uc_checkoutpayment_form($form, &$form_state, $order) {
   global $base_url;
 
-  $payment_method = uc_checkoutpayment_payment_method();
+  $payment_method = cko_store_settings();
   $settings       = $payment_method['settings'];
 
   $instance = uc_checkoutpayment_get_instance();
@@ -568,7 +604,7 @@ function uc_checkoutpayment_form($form, &$form_state, $order) {
 function checkout_payment_widget($order){  
   global $base_url;
 
-  $payment_method = uc_checkoutpayment_payment_method();
+  $payment_method = cko_store_settings();
   $settings       = $payment_method['settings'];
 
   $instance = uc_checkoutpayment_get_instance();
@@ -659,7 +695,7 @@ function uc_checkoutpayment_process_charge(){
 
   module_load_include('php', 'uc_checkoutpayment', 'includes/autoload');
 
-  $payment_method = uc_checkoutpayment_payment_method();
+  $payment_method = cko_store_settings();
 
   $instance = uc_checkoutpayment_get_instance();
   $data     = $instance->getExtraInit($order, $payment_method);
@@ -788,7 +824,7 @@ function uc_checkoutpayment_process_order() {
 
     module_load_include('php', 'uc_checkoutpayment', 'includes/autoload');
 
-    $payment_method = uc_checkoutpayment_payment_method();
+    $payment_method = cko_store_settings();
     
     // Check if the authentication is right.
     $headers = getallheaders();
@@ -902,7 +938,7 @@ function add_transaction_to_db($charge_id, $order_id, $transaction_type, $is_fla
  * Implements hook_uc_payment_entered($order, $method, $amount, $account, $data, $comment)
  */
 function uc_checkoutpayment_uc_payment_entered($order, $method, $amount, $account, $data, $comment){
-  $payment_method = uc_checkoutpayment_payment_method();
+  $payment_method = cko_store_settings();
   $instance = uc_checkoutpayment_get_instance();  
 
   $payments = uc_payment_load_payments($order->order_id);
@@ -946,6 +982,12 @@ function is_captured($order_id){
   return true;
 }
 
+function is_refunded($order_id){
+  $order = uc_order_load($order_id);
+  if($order->order_status == 'cko_refunded') return true;
+  return false;
+}
+
 function is_flagged($order_id){
   $result = array();
   $result = db_select('uc_checkoutpayment_flagged_orders', 'c')
@@ -963,7 +1005,7 @@ function is_flagged($order_id){
  * Own methods to reduce wrong entries
  * Should be turned into object
  */
-function uc_checkoutpayment_payment_method(){
+function cko_store_settings(){
   $payment_method = array();
 
   if(variable_get('autocaptime') == '') variable_set('autocaptime', 0);
@@ -993,4 +1035,19 @@ function uc_checkoutpayment_payment_method(){
   );
 
   return $payment_method;
+}
+
+function uc_checkoutpayment_admin_call($action, $contextId = 0){
+  switch($action){
+    case 'capture':
+      echo is_captured($contextId);
+      break;
+
+    case 'refund':
+      echo is_refunded($contextId);
+      break;
+    
+    default:
+      echo FALSE;
+  }
 }
