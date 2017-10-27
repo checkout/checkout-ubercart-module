@@ -130,7 +130,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#collapsed' => FALSE,
       );
 
-      $form['checkoutpayment_account']['private_key'] = array(
+      $form['checkoutpayment_account']['cko_private_key'] = array(
         '#type' => 'textfield',
         '#title' => t('Secret Key'),
         '#required' => TRUE,
@@ -138,7 +138,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#default_value' => $settings['private_key'],
       );
     
-      $form['checkoutpayment_account']['public_key'] = array(
+      $form['checkoutpayment_account']['cko_public_key'] = array(
         '#type' => 'textfield',
         '#title' => t('Public Key'),
         '#required' => TRUE,
@@ -146,14 +146,14 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#default_value' => $settings['public_key'],
       );
 
-      $form['checkoutpayment_account']['webhook_key'] = array(
+      $form['checkoutpayment_account']['cko_webhook_key'] = array(
         '#type' => 'textfield',
         '#title' => t('Webhook shared private key'),
         '#description' => t('The private shared key to check that the message comes from Checkout.'),
         '#default_value' => $settings['webhook_key'],
       );
     
-      $form['checkoutpayment_account']['mode'] = array(
+      $form['checkoutpayment_account']['cko_mode'] = array(
         '#type' => 'select',
         '#title' => t('Endpoint Url Mode'),
         '#description' => t('Perform transactions on the production server or on the testing server.'),
@@ -164,7 +164,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         ),
       );
 
-      $form['checkoutpayment_account']['debugMode'] = array(
+      $form['checkoutpayment_account']['cko_debugMode'] = array(
         '#type' => 'select',
         '#title' => t('Enable debug mode'),
         '#description' => t('See all error messages from the hub'),
@@ -182,7 +182,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#collapsed' => FALSE,
       );
 
-      $form['checkoutpayment_transaction']['payment_action'] = array(
+      $form['checkoutpayment_transaction']['cko_payment_action'] = array(
         '#type' => 'select',
         '#title' => t('Transaction Method'),
         '#description' => t('The processing method to use for each transaction.'),
@@ -193,14 +193,14 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         ),
       );
     
-      $form['checkoutpayment_transaction']['autocaptime'] = array(
+      $form['checkoutpayment_transaction']['cko_autocaptime'] = array(
         '#type' => 'textfield',
         '#title' => t('Set Gateway auto capture time.'),
         '#description' => t('Set how long will the payment be capture.'),
         '#default_value' => $settings['autocaptime'],
       );
 
-      $form['checkoutpayment_transaction']['paymentMode'] = array(
+      $form['checkoutpayment_transaction']['cko_paymentMode'] = array(
         '#type' => 'select',
         '#title' => t('Payment Mode'),
         '#options' => array(
@@ -211,7 +211,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#default_value' => $settings['paymentMode'],
       );
     
-      $form['checkoutpayment_transaction']['is3D'] = array(
+      $form['checkoutpayment_transaction']['cko_is3D'] = array(
         '#type' => 'select',
         '#title' => t('Enable 3D'),
         '#description' => t('If you want to process all transactions as 3D secure, select Yes'),
@@ -222,7 +222,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#default_value' => $settings['is3D'],
       );
     
-      $form['checkoutpayment_transaction']['timeout'] = array(
+      $form['checkoutpayment_transaction']['cko_timeout'] = array(
         '#type' => 'textfield',
         '#title' => t('Set Gateway timeout.'),
         '#description' => t('Set how long request timeout on server.'),
@@ -260,35 +260,35 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#default_value' => $settings['cko_render_mode'],
       );
 
-      $form['checkoutpayment_ui']['logourl'] = array(
+      $form['checkoutpayment_ui']['cko_logourl'] = array(
         '#type' => 'textfield',
         '#title' => t('Logo URL'),
         '#description' => t('This is the setting to display the logo on checkout.js (Max size: 180 x 36)'),
         '#default_value' => $settings['logourl'],
       );
     
-      $form['checkoutpayment_ui']['themecolor'] = array(
+      $form['checkoutpayment_ui']['cko_themecolor'] = array(
         '#type' => 'textfield',
         '#title' => t('Theme color'),
         '#description' => t('Set theme color for checkout hosted'),
         '#default_value' => $settings['themecolor'],
       );
     
-      $form['checkoutpayment_ui']['title'] = array(
+      $form['checkoutpayment_ui']['cko_title'] = array(
         '#type' => 'textfield',
         '#title' => t('Title'),
         '#description' => t('Add a title on the hosted payment page'),
         '#default_value' => $settings['title'],
       );
 
-      $form['checkoutpayment_ui']['subtitle'] = array(
+      $form['checkoutpayment_ui']['cko_subtitle'] = array(
         '#type' => 'textfield',
         '#title' => t('Subtitle'),
         '#description' => t('Add a subtitle on the hosted payment page'),
         '#default_value' => $settings['subtitle'],
       );
 
-      $form['checkoutpayment_ui']['button_label'] = array(
+      $form['checkoutpayment_ui']['cko_button_label'] = array(
         '#type' => 'textfield',
         '#title' => t('Button label'),
         '#description' => t('Change the button label on the hosted payment page'),
@@ -310,7 +310,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#default_value' => $settings['cko_language'],
       );
     
-      $form['checkoutpayment_ui']['currencycode'] = array(
+      $form['checkoutpayment_ui']['cko_currencycode'] = array(
         '#type' => 'select',
         '#title' => t('Widget currency format'),
         '#description' => t('Display currency code or currency symbol on the checkout hosted'),
@@ -683,15 +683,10 @@ function uc_checkoutpayment_get_instance() {
  * Process payment with card token
  */
 function uc_checkoutpayment_process_charge(){
-  if($_REQUEST['cko-card-token']){
-    $cardToken = $_REQUEST['cko-card-token'];
+  if(!$_REQUEST['cko-card-token'] || $_SESSION['cko_contextid'] == null) drupal_goto();
 
-    if($_SESSION['cko_contextid'] != null){
-      $order = uc_order_load($_SESSION['cko_contextid']);
-    } else {
-      drupal_goto();
-    }
-  }
+  $cardToken = $_REQUEST['cko-card-token'];
+  $order = uc_order_load($_SESSION['cko_contextid']);
 
   module_load_include('php', 'uc_checkoutpayment', 'includes/autoload');
 
@@ -1008,28 +1003,27 @@ function is_flagged($order_id){
 function cko_store_settings(){
   $payment_method = array();
 
-  if(variable_get('autocaptime') == '') variable_set('autocaptime', 0);
-  if(variable_get('cko_integration') != 'hosted') variable_set('paymentMode', 'cards');
+  if(variable_get('cko_autocaptime') == '') variable_set('cko_autocaptime', 0);
+  if(variable_get('cko_integration') != 'hosted') variable_set('cko_paymentMode', 'cards');
 
   $payment_method['settings'] = array(
-    'private_key'     => variable_get('private_key', ''),
-    'public_key'      => variable_get('public_key', ''),
-    'webhook_key'     => variable_get('webhook_key', ''),
-    'mode'            => variable_get('mode', 'live'),
-    'debugMode'       => variable_get('debugMode', FALSE),
-    'payment_action'  => variable_get('payment_action', ''),
-    'autocaptime'     => variable_get('autocaptime', 0),
-    'paymentMode'     => variable_get('paymentMode', 'mixed'),
-    'type'            => variable_get('type', 'pci'),
-    'is3D'            => variable_get('is3D', false),
-    'timeout'         => variable_get('timeout', 60),
-    'logourl'         => variable_get('logourl', ''),
-    'themecolor'      => variable_get('themecolor', ''),
-    'title'           => variable_get('title', variable_get('site_name', "Default site name")),
-    'subtitle'        => variable_get('subtitle', ''),
-    'button_label'    => variable_get('button_label', ''),
-    'currencycode'    => variable_get('currencycode', 'false'),
-    'cko_language'    => variable_get('cko_language', ''),
+    'private_key'     => variable_get('cko_private_key', ''),
+    'public_key'      => variable_get('cko_public_key', ''),
+    'webhook_key'     => variable_get('cko_webhook_key', ''),
+    'mode'            => variable_get('cko_mode', 'live'),
+    'debugMode'       => variable_get('cko_debugMode', FALSE),
+    'payment_action'  => variable_get('cko_payment_action', ''),
+    'autocaptime'     => variable_get('cko_autocaptime', 0),
+    'paymentMode'     => variable_get('cko_paymentMode', 'mixed'),
+    'is3D'            => variable_get('cko_is3D', false),
+    'timeout'         => variable_get('cko_timeout', 60),
+    'logourl'         => variable_get('cko_logourl', ''),
+    'themecolor'      => variable_get('cko_themecolor', ''),
+    'title'           => variable_get('cko_title', variable_get('site_name', "Default site name")),
+    'subtitle'        => variable_get('cko_subtitle', ''),
+    'button_label'    => variable_get('cko_button_label', ''),
+    'currencycode'    => variable_get('cko_currencycode', 'false'),
+    'cko_language'    => variable_get('cko_language', 'EN-GB'),
     'cko_integration' => variable_get('cko_integration', 'hosted'),
     'cko_render_mode' => variable_get('cko_render_mode', 0 ),
   );
