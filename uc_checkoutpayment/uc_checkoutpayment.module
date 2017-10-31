@@ -53,6 +53,7 @@ function uc_checkoutpayment_menu() {
   $items['checkoutapi/process'] = array(
     'title' => 'Ipn checkout',
     'page callback' => 'uc_checkoutpayment_process_order',
+    /* Access neccecary for webhooks */
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
@@ -60,6 +61,7 @@ function uc_checkoutpayment_menu() {
   $items['uc_checkoutpayment/admin'] = array(
     'title' => 'Admin ajex call',
     'page callback' => 'uc_checkoutpayment_admin_call',
+    /* Access neccecary for AJAX request */
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
@@ -67,6 +69,7 @@ function uc_checkoutpayment_menu() {
   $items['uc_checkoutpayment/success'] = array(
     'title' => 'Success page',
     'page callback' => 'uc_checkoutpayment_success_order',
+    /* Redirect costumers to this address when succesfull */
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
@@ -74,6 +77,7 @@ function uc_checkoutpayment_menu() {
   $items['uc_checkoutpayment/process_charge'] = array(
     'title' => 'Create Order page',
     'page callback' => 'uc_checkoutpayment_process_charge',
+    /* Redirect costumers to this address when processing the card entry */
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
@@ -446,12 +450,12 @@ function admin_order_payment_action_form_submit($form, &$form_state) {
   $order = uc_order_load($order_id);
 
   if(!is_captured($order_id) && isset($values['capture'])) {
-    $data = $instance->captureCharge($order, $payment_method, ($order->order_total * 100));
+    $instance->captureCharge($order, $payment_method, ($order->order_total * 100));
     drupal_set_message(t("The payment was captured."), 'status');
   }
   elseif(is_captured($order_id) && isset($values['refund'])) {
-    $ammount = $order->order_total - uc_payment_balance($order);
-    $data = $instance->refundCharge($order, $payment_method, ($ammount * 100));
+    $amount = $order->order_total - uc_payment_balance($order);
+    $instance->refundCharge($order, $payment_method, ($amount * 100));
     drupal_set_message(t("The payment was refunded."), 'status');
   }
 }
@@ -611,9 +615,7 @@ function checkout_payment_widget($order){
   $data     = $instance->getExtraInit($order, $payment_method);
 
   // Settings
-  $hppUrl   = $settings['mode'] == 'sandbox' ? HOSTED_URL_SANDOX : HOSTED_URL_LIVE;
   $publicKey      = $settings['public_key'];
-  $paymentMode    = $settings['paymentMode'];
   $themeColor     = $settings['themecolor'];
   $title          = $settings['title'];
   $logoUrl        = $settings['logourl'];
@@ -624,13 +626,9 @@ function checkout_payment_widget($order){
   $cko_render_mode = $settings['cko_render_mode'];
   $appmode        = 'lightbox';
 
-  $cardFormMode   = "cardTokenisation";
   $redirectUrl    = $base_url . REDIRECT_URL;
-  $cancelUrl      = $base_url . CANCEL_URL;
 
   // Order details
-  $contextId      = $order->order_id;
-  $paymentToken   = $data['script']['paymentToken'];
   $customerEmail  = $data['script']['email'];
   $value          = $data['script']['amount'];
   $currency       = $data['script']['currency'];
@@ -751,8 +749,8 @@ function uc_checkoutpayment_process_charge(){
   $result = $Api->createCharge($config);
 
   if ($Api->getExceptionState()->hasError()) {
-    $message = t('An error has occured while processing a transaction. The API returned an error.');
-    watchdog('uc_checkoutpayment', $message, $variables = NULL, $severity = WATCHDOG_ERROR, $link = NULL);
+    $message = t('An error has occurred while processing a transaction. The API returned an error.');
+    watchdog('uc_checkoutpayment', $message, NULL, WATCHDOG_ERROR, NULL);
     uc_checkoutpayment_fail_order();
   }  
 
@@ -802,11 +800,8 @@ function uc_checkoutpayment_fail_order(){
   if(!$_SESSION['cko_contextid']){
       drupal_goto();
   }
-  else {
-    $order = uc_order_load($_SESSION['cko_contextid']);
-  }
 
-  drupal_set_message(t("An error has occured while processing your transaction. Please verify your information again or try a different card."), 'error');
+  drupal_set_message(t("An error has occurred while processing your transaction. Please verify your information again or try a different card."), 'error');
   drupal_goto('cart/checkout/review');
 }
 
@@ -863,10 +858,10 @@ function uc_checkoutpayment_process_order() {
 
           if($captured == $order_balance){
             uc_order_update_status($order->order_id, 'payment_received');
-            $comment = t('Payment recieved.');
+            $comment = t('Payment received.');
           } elseif ($captured < $order_balance) {
             uc_order_update_status($order->order_id, 'cko_part_captured');
-            $comment = t('Partial payment recieved @captured recieved instead of @order_total.', array('@captured' => uc_currency_format($captured), '@order_total' => uc_currency_format($order_total)));
+            $comment = t('Partial payment received @captured received instead of @order_total.', array('@captured' => uc_currency_format($captured), '@order_total' => uc_currency_format($order_total)));
           }
 
           add_transaction_to_db($object_charge->getId(), $order->order_id, 'captured');
@@ -958,7 +953,7 @@ function uc_checkoutpayment_uc_payment_entered($order, $method, $amount, $accoun
     }
     else{
       uc_payment_delete(end($payments)->receipt_id);
-      drupal_set_message(t("You cannot refund more than you've recieved"), 'error');
+      drupal_set_message(t("You cannot refund more than you've received"), 'error');
     }
   }
 }
@@ -1034,14 +1029,16 @@ function cko_store_settings(){
 function uc_checkoutpayment_admin_call($action, $contextId = 0){
   switch($action){
     case 'capture':
-      echo is_captured($contextId);
+      $response = is_captured($contextId);
       break;
 
     case 'refund':
-      echo is_refunded($contextId);
+      $response = is_refunded($contextId);
       break;
     
     default:
-      echo FALSE;
+      $response = FALSE;
   }
+
+  drupal_json_output($response);
 }

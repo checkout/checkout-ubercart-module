@@ -7,7 +7,7 @@ function loadDoc() {
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
       setTimeout(loadDoc, interval);
-      if(this.responseText == 1){
+      if(this.responseText == 'true'){
         location.reload();
       }
     }

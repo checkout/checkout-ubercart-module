@@ -1,9 +1,11 @@
-Checkout.Com (https://www.checkout.com/) Payment Gateway integration with Drupal.
+Checkout.Com (https://www.checkout.com/) 
+Payment Gateway integration with Drupal Ubercart.
 
 
 Introduction
 ============
-Checkout.com connects your website or application to all major credit cards as well as an expansive range of local payments, all through one simple interface.
+Checkout.com connects your website or application to all major credit cards as
+well as an expansive range of local payments, all through one simple interface.
 
 
 Installation
