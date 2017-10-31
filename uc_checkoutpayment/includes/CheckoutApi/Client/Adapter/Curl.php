@@ -95,8 +95,8 @@ class CheckoutApi_Client_Adapter_Curl extends CheckoutApi_Client_Adapter_Abstrac
 		curl_setopt($resource, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($resource, CURLOPT_SSL_VERIFYPEER, false);
 
-		$response = curl_exec($resource);
 
+		$response = curl_exec($resource);
 		$http_status = curl_getinfo($resource, CURLINFO_HTTP_CODE);
 
 		if($http_status != 200 ) {

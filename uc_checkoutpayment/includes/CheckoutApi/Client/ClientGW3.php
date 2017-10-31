@@ -82,6 +82,7 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
         $this->setUriToken();
         $this->setUriCustomer();
         $this->setUriProvider();
+        $this->setUriRecurringPayments();
 	}
 
     /**
@@ -162,7 +163,7 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
      * This methods can be call to create charge for checkout.com gateway 3.0 by passing
      * full card details :
      *  $param['postedParam'] = array ( 'email'=>'dhiraj@checkout.com',
-     *                                   'amount'=>100,
+     *                                   'value'=>100,
      *                                    'currency'=>'usd',
      *                                   'description'=>'desc',
      *                                   'caputure'=>false,
@@ -176,11 +177,11 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
      *                                   'expiryYear' => 2017,
      *                                   'cvv' => 956,
      *
-     *                                    )
-     *                                );
+                                        )
+                                     );
      * or by passing a card token:
      *  $param['postedParam'] = array ( 'email'=>'dhiraj@checkout.com',
-     *                                   'amount'=>100,
+     *                                   'value'=>100,
      *                                    'currency'=>'usd',
      *                                   'description'=>'desc',
      *                                   'caputure'=>false,
@@ -189,7 +190,7 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
      *
      * or by passing a card id:
      * $param['postedParam'] = array ( 'email'=>'dhiraj@checkout.com',
-     *                                   'amount'=>100,
+     *                                   'value'=>100,
      *                                   'currency'=>'usd',
      *                                   'description'=>'desc',
      *                                   'caputure'=>false,
@@ -290,10 +291,10 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
         $param['method'] = CheckoutApi_Client_Adapter_Constant::API_GET;
         $this->flushState();
 
-        $isToenValid = CheckoutApi_Client_Validation_GW3::isPaymentToken($param);
+        $isTokenValid = CheckoutApi_Client_Validation_GW3::isPaymentToken($param);
         $uri = $this->getUriCharge();
 
-        if(!$isToenValid) {
+        if(!$isTokenValid) {
             $hasError = true;
             $this->throwException('Please provide a valid payment token ',array('param'=>$param));
 
@@ -304,6 +305,41 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
 
         return $this->request( $uri ,$param,!$hasError);
     }
+
+    /**
+     * Refund  Info
+     * This method returns the Captured amount, total refunded amount and the amount remaing
+     * to refund
+     *
+     * $refundInfo = $Api->getRefundInfo($param);
+     *
+     */
+    public function getRefundAmountInfo($param){
+
+        $chargeHistory = $this->getChargeHistory($param);
+        $charges = $chargeHistory->getCharges();
+        $chargesArray = $charges->toArray();
+        $totalRefunded = 0;
+
+        foreach($chargesArray as $num => $values) {
+            if (in_array(CheckoutApi_Client_Constant::STATUS_CAPTURE,$values)){  
+                $capturedAmount = $values[ 'value' ];
+            }
+
+            if (in_array(CheckoutApi_Client_Constant::STATUS_REFUND,$values)){  
+                    $totalRefunded += $values[ 'value' ];
+            }
+        }
+
+        $refundInfo = array(
+            'capturedAmount' => $capturedAmount,
+            'totalRefunded' => $totalRefunded,
+            'remainingAmount' => $capturedAmount - $totalRefunded
+        );
+
+        return $refundInfo;         
+    }
+    
     /**
      * Refund  Charge
      *  This method refunds a Card Charge that has previously been created but not yet refunded
@@ -314,8 +350,8 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
      * @throws Exception
      * Simple usage:
      *      $param['postedParam'] = array (
-     *                                   'amount'=>150
-     *                               );
+                                        'value'=>150
+                                    );
      *      $refundCharge = $Api->refundCharge($param);
      *
      */
@@ -324,20 +360,44 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
     {
         $chargeHistory = $this->getChargeHistory($param);
         $charges = $chargeHistory->getCharges();
-        $chargesArray = $charges->toArray();
-        $toRefund = false;
-        $toRefundData = false;
+        $uri = $this->getUriCharge();
 
-        foreach ($chargesArray as $key=> $charge) {
-            if(strtolower($charge['status'])==strtolower(CheckoutApi_Client_Constant::STATUS_CAPTURE)) {
-                $toRefund = true;
-                $toRefundData = $charge;
-                break;
+        if(!empty($charges)) {
+          $chargesArray = $charges->toArray();
+          $toRefund = false;
+          $toVoid = false;
+          $toRefundData = false;
+          $toVoidData = false;
+          
+          foreach ($chargesArray as $key=> $charge) {
+            if (in_array(CheckoutApi_Client_Constant::STATUS_CAPTURE, $charge) 
+				|| in_array(CheckoutApi_Client_Constant::STATUS_REFUND,$charge)){    
+                if(strtolower($charge['status']) == strtolower(CheckoutApi_Client_Constant::STATUS_CAPTURE)) {
+                  $toRefund = true;
+                  $toRefundData = $charge;
+                  break;
+              }
             }
-        }
+            else {
+                $toVoid = true;
+                $toVoidData = $charge;
+              }
+          }
 
-        if($toRefund) {
-            $refundChargeId = $toRefundData['id'];
+          if($toRefund) {
+              $refundChargeId = $toRefundData['id'];
+              $param['chargeId'] = $refundChargeId;
+              $uri = "$uri/{$param['chargeId']}/refund";
+          }
+
+          if($toVoid) {
+              $voidChargeId = $toVoidData['id'];
+              $param['chargeId'] = $voidChargeId;
+              $uri = "$uri/{$param['chargeId']}/void";
+          }
+        }
+        else {
+          $this->throwException('Please provide a valid charge id',array('param'=>$param));
         }
 
         $hasError = false;
@@ -345,26 +405,20 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
 
         $param['method'] = CheckoutApi_Client_Adapter_Constant::API_POST;
         $postedParam = $param['postedParam'];
-        $param['chargeId'] = $refundChargeId;
+        
         $this->flushState();
         $isAmountValid = CheckoutApi_Client_Validation_GW3::isValueValid($postedParam);
         $isChargeIdValid = CheckoutApi_Client_Validation_GW3::isChargeIdValid($param);
-        $uri = $this->getUriCharge();
 
         if(!$isChargeIdValid) {
             $hasError = true;
             $this->throwException('Please provide a valid charge id',array('param'=>$param));
 
-        } else {
-
-            $uri = "$uri/{$param['chargeId']}/refund";
-
         }
-         if(!$isAmountValid) {
+        
+        if(!$isAmountValid) {
              $this->throwException('Please provide a amount (in cents)',array('param'=>$param),false);
-         }
-
-   
+        }
          return $this->_responseUpdateStatus($this->request($uri ,$param,!$hasError));
     }
 
@@ -377,7 +431,7 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
      * @return CheckoutApi_Lib_RespondObj
      * @throws Exception
      * Simple usage:
-     *      $param['postedParam'] = array ('amount'=>150);
+     *      $param['postedParam'] = array ('value'=>150);
      *      $refundCharge = $Api->refundCharge($param);
      *
      */
@@ -413,7 +467,7 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
      * @return CheckoutApi_Lib_RespondObj
      * @throws Exception
      * Simple usage:
-     *      $param['postedParam'] = array ( 'amount'=>150 );
+     *      $param['postedParam'] = array ( 'value'=>150 );
      *      captureCharge = $Api->captureCharge($param);
      */
 
@@ -431,14 +485,16 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
         if(!$isChargeIdValid) {
             $hasError = true;
             $this->throwException('Please provide a valid charge id',array('param'=>$param));
+
         } else {
+
             $uri = "$uri/{$param['chargeId']}/capture";
         }
         if(!$isAmountValid) {
             $this->throwException('Please provide a amount (in cents)',array('param'=>$param),false);
         }
 
-        return $this->request( $uri ,$param,!$hasError);return $this->__responseUpdateStatus($this->request( $this->getUriCharge() ,$param,!$hasError));
+        return $this->_responseUpdateStatus($this->request( $uri ,$param,!$hasError));
     }
 
     /**
@@ -500,7 +556,7 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
             $metaArray = $chargeObj->getMetadata()->toArray();
         }
      
-        $newMetadata = array_merge($metaData,$metaArray);
+        $newMetadata = array_merge($metaArray,$metaData);
 
         $param['postedParam']['metadata']    =    $newMetadata;
         $uri = $this->getUriCharge();
@@ -537,6 +593,30 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
        
 
         return $this->request( $uri ,$param,!$hasError);
+    }
+    
+        /**
+     * Update PaymentToken Charge.
+     * Updates the specified Card Charge by setting the values of the parameters passed.
+     * @param array $param payload param
+     * @return CheckoutApi_Lib_RespondObj
+     * @throws Exception
+     *  Simple usage:
+     *      
+     *      $updatePaymentToken = $Api->updatePaymentToken($paymentToken);
+     */
+
+    public function  updatePaymentToken($param)
+    {
+        $hasError = false;
+        $param['postedParam']['type'] = CheckoutApi_Client_Constant::CHARGE_TYPE;
+        $param['method'] = CheckoutApi_Client_Adapter_Constant::API_PUT;
+
+        $this->flushState();
+            
+        $uri = $this->getUriToken()."/payment/{$param['paymentToken']}";
+        
+        return $this->request($uri ,$param,!$hasError);
     }
 
     /**
@@ -1119,8 +1199,8 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
      * @throws Exception
      * Simple usage:
      *          $param['token'] = $sessionToken ;
-     *            $param['providerId'] = $providerId ;
-     *           $localPaymentObj = $Api->getLocalPaymentProvider($param);
+                 $param['providerId'] = $providerId ;
+                $localPaymentObj = $Api->getLocalPaymentProvider($param);
      */
 
     public  function getLocalPaymentProvider($param)
@@ -1194,6 +1274,200 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
 
         return $this->request( $uri ,$param,!$hasError);
     }
+
+    /**
+     * Update   Recurring Payment Plan.
+     * Updates the specified Recurring Payment Plan by setting the values of the parameters passed.
+     * @param array $param payload param
+     * @return CheckoutApi_Lib_RespondObj
+     * @throws Exception
+     *  Simple usage:
+     *      $param['planId'] = {$planId} ;
+     *      $param['postedParam'] = array (
+     *                          'name'          =>  'New subscription name',
+     *                          'planTrackId'   =>  'newPlanTrackId',
+     *                          'autoCapTime'   =>  24,
+     *                          'value'   =>  200,
+     *                          'status'   =>  4
+     *                          );
+     *      $updateCharge = $Api->updateCharge($param);
+     */
+
+    public function  updatePaymentPlan($param)
+    {
+        $hasError = false;
+
+        $param['method'] = CheckoutApi_Client_Adapter_Constant::API_PUT;
+        $this->flushState();
+
+        $uri = $this->getUriRecurringPayments().'/plans';;
+        $isPlanIdValid = CheckoutApi_Client_Validation_GW3::isPlanIdValid($param);
+
+        if(!$isPlanIdValid) {
+            $hasError = true;
+            $this->throwException('Please provide a valid plan id',array('param'=>$param));
+
+        } else {
+
+            $uri = "$uri/{$param['planId']}";
+        }
+
+        return $this->_responseUpdateStatus($this->request( $uri ,$param,!$hasError));
+    }
+
+    /**
+     * Cancel a payment plan
+     * @param array $param payload param for deleting a payment plan
+     * @return CheckoutApi_Lib_RespondObj
+     * @throws Exception
+     * This method can be call this way:
+     *      $param['planId'] = {$planId} ;
+     *      cancelPaymentPlan = $Api->cancelPaymentPlan($param);
+     */
+
+    public function cancelPaymentPlan($param)
+    {
+        $param['method'] = CheckoutApi_Client_Adapter_Constant::API_DELETE;
+        $this->flushState();
+        $uri = $this->getUriRecurringPayments().'/plans';
+        $hasError = false;
+        $isPlanIdValid = CheckoutApi_Client_Validation_GW3::isPlanIdValid($param);
+        if(!$isPlanIdValid ) {
+            $hasError = true;
+            $this->throwException('Please provide a valid plan id',array('param'=>$param));
+        }else {
+
+            $uri = "$uri/{$param['planId']}";
+        }
+
+        return $this->request( $uri ,$param,!$hasError);
+    }
+
+    /**
+     * Get payment plan
+     * @param array $param payload param for returning a payment plan
+     * @return CheckoutApi_Lib_RespondObj
+     * @throws Exception
+     * Simple usage :
+     *      $param['planId'] = {planId} ;
+     *      $getPaymentPlan = $Api->getPaymentPlan($param);
+     */
+
+    public  function getPaymentPlan($param)
+    {
+        $hasError = false;
+
+        $param['method'] = CheckoutApi_Client_Adapter_Constant::API_GET;
+        $this->flushState();
+        $uri = $this->getUriRecurringPayments().'/plans';;
+        $isPlanIdValid = CheckoutApi_Client_Validation_GW3::isPlanIdValid($param);
+
+        if(!$isPlanIdValid) {
+            $hasError = true;
+            $this->throwException('Please provide a valid plan id',array('param'=>$param));
+        }else {
+
+            $uri = "$uri/{$param['customerId']}";
+        }
+
+        return $this->request( $uri ,$param,!$hasError);
+    }
+
+    /**
+     * Update   Recurring Customer Payment Plan.
+     * Updates the specified Recurring Customer Payment Plan by setting the values of the parameters passed.
+     * @param array $param payload param
+     * @return CheckoutApi_Lib_RespondObj
+     * @throws Exception
+     *  Simple usage:
+     *      $param['customerPlanId'] = {$customerPlanId} ;
+     *      $param['postedParam'] = array (
+     *                          'cardId'   =>  'card_XXXXXXXX',
+     *                          'status'   =>  1
+     *                          );
+     *      $updateCharge = $Api->updateCharge($param);
+     */
+
+    public function  updateCustomerPaymentPlan($param)
+    {
+        $hasError = false;
+
+        $param['method'] = CheckoutApi_Client_Adapter_Constant::API_PUT;
+        $this->flushState();
+
+        $uri = $this->getUriRecurringPayments().'/customers';;
+        $isCustomerPlanIdValid = CheckoutApi_Client_Validation_GW3::isCustomerPlanIdValid($param);
+
+        if(!$isCustomerPlanIdValid) {
+            $hasError = true;
+            $this->throwException('Please provide a valid customer plan id',array('param'=>$param));
+
+        } else {
+
+            $uri = "$uri/{$param['customerPlanId']}";
+        }
+
+        return $this->_responseUpdateStatus($this->request( $uri ,$param,!$hasError));
+    }
+
+    /**
+     * Cancel a customer payment plan
+     * @param array $param payload param for deleting a payment plan
+     * @return CheckoutApi_Lib_RespondObj
+     * @throws Exception
+     * This method can be call this way:
+     *      $param['customerPlanId'] = {$customerPlanId} ;
+     *      cancelCustomerPaymentPlan = $Api->cancelCustomerPaymentPlan($param);
+     */
+
+    public function cancelCustomerPaymentPlan($param)
+    {
+        $param['method'] = CheckoutApi_Client_Adapter_Constant::API_DELETE;
+        $this->flushState();
+        $uri = $this->getUriRecurringPayments().'/customers';
+        $hasError = false;
+        $isCustomerPlanIdValid = CheckoutApi_Client_Validation_GW3::isCustomerPlanIdValid($param);
+        if(!$isCustomerPlanIdValid ) {
+            $hasError = true;
+            $this->throwException('Please provide a valid customer plan id',array('param'=>$param));
+        }else {
+
+            $uri = "$uri/{$param['customerPlanId']}";
+        }
+
+        return $this->request( $uri ,$param,!$hasError);
+    }
+
+    /**
+     * Get customer payment plan
+     * @param array $param payload param for returning a payment plan
+     * @return CheckoutApi_Lib_RespondObj
+     * @throws Exception
+     * Simple usage :
+     *      $param['customerPlanId'] = {customerPlanId} ;
+     *      $getCustomerPaymentPlan = $Api->getCustomerPaymentPlan($param);
+     */
+
+    public  function getCustomerPaymentPlan($param)
+    {
+        $hasError = false;
+
+        $param['method'] = CheckoutApi_Client_Adapter_Constant::API_GET;
+        $this->flushState();
+        $uri = $this->getUriRecurringPayments().'/customers';;
+        $isCustomerPlanIdValid = CheckoutApi_Client_Validation_GW3::isCustomerPlanIdValid($param);
+
+        if(!$isCustomerPlanIdValid) {
+            $hasError = true;
+            $this->throwException('Please provide a valid plan id',array('param'=>$param));
+        }else {
+
+            $uri = "$uri/{$param['customerPlanId']}";
+        }
+
+        return $this->request( $uri ,$param,!$hasError);
+    }
+
     /**
      * Build up the request to the gateway
      * @param string $uri endpoint to be used
@@ -1205,11 +1479,11 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
 
     public function request($uri,array $param, $state)
     {
+
         /** @var CheckoutApi_Lib_RespondObj $respond */
         $respond = CheckoutApi_Lib_Factory::getSingletonInstance('CheckoutApi_Lib_RespondObj');
-        
         $this->setConfig($param);
-        
+
         if(!isset($param['postedParam'])) {
 
             $param['postedParam'] = array();
@@ -1222,21 +1496,18 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
         if($state){
             $headers = $this->initHeader();
             $param['headers'] = $headers;
-            
+
             /** @var CheckoutApi_Client_Adapter_Abstract $adapter */
             $adapter =  $this->getAdapter($this->getProcessType(),array('uri'=>$uri,'config'=>$param));
 
             if($adapter){
-                
                 $adapter->connect();
                 $respondString = $adapter->request()->getRespond();
-
                 $statusResponse = $adapter->getResourceInfo();
                 $this->getParser()->setResourceInfo($statusResponse);
                 $respond = $this->getParser()->parseToObj($respondString);
-                
-                
-                if($respond && isset($respond['errors']) && $respond->hasErrors()  ) {
+
+                if($respond && isset($respond['errors'])  && $respond->hasErrors()  ) {
 
                     /** @var CheckoutApi_Lib_ExceptionState  $exceptionStateObj */
                     $exceptionStateObj = $respond->getExceptionState();
@@ -1260,6 +1531,7 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
             }
 
         }
+
         return $respond;
     }
 
@@ -1405,6 +1677,31 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
 	}
 
     /**
+     * set uri recurring payments
+     * @param null|string $uri the uri for the recurring payments
+     */
+
+    public function setUriRecurringPayments($uri = null)
+    {
+        $toSetUri = $uri;
+        if(!$uri) {
+            $toSetUri = $this->getUriPrefix().'recurringPayments';
+        }
+
+        $this->_uriRecurringPayments = $toSetUri;
+    }
+
+    /**
+     * return uri recurring payments
+     * @return string
+     */
+
+    public function getUriRecurringPayments()
+    {
+        return $this->_uriRecurringPayments ;
+    }
+
+    /**
      * return which uri prefix to be used base on mode type
      * @return string
      */
@@ -1451,6 +1748,7 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
         $this->setUriToken();
         $this->setUriCustomer();
         $this->setUriProvider();
+        $this->setUriRecurringPayments();
 
     }
 
@@ -1550,5 +1848,134 @@ class CheckoutApi_Client_ClientGW3 extends CheckoutApi_Client_Client
 
         return $result;
 
+    }
+    
+    public function valueToDecimal($amount, $currencySymbol)
+    {
+      $currency = strtoupper($currencySymbol);
+      $threeDecimalCurrencyList = array('BHD', 'LYD', 'JOD', 'IQD', 'KWD', 'OMR', 'TND');
+      $zeroDecimalCurencyList = array('BYR', 'XOF', 'BIF', 'XAF', 'KMF', 'XOF', 'DJF', 'XPF', 'GNF', 'JPY', 'KRW', 'PYG', 'RWF', 'VUV', 'VND');
+
+      if (in_array($currency, $threeDecimalCurrencyList)) { 
+        $value = (int) ($amount * 1000);
+        
+      } elseif (in_array($currency, $zeroDecimalCurencyList)){
+         $value = floor ($amount);   
+         
+      } else {
+
+        $value = round($amount * 100);
+        
+      }
+      
+      return $value;
+      
+    }
+    
+    public function decimalToValue($amount, $currencySymbol)
+    {
+      $currency = strtoupper($currencySymbol);
+      $threeDecimalCurrencyList = array('BHD', 'LYD', 'JOD', 'IQD', 'KWD', 'OMR', 'TND');
+      $zeroDecimalCurencyList = array('BYR', 'XOF', 'BIF', 'XAF', 'KMF', 'XOF', 'DJF', 'XPF', 'GNF', 'JPY', 'KRW', 'PYG', 'RWF', 'VUV', 'VND');
+
+      if (in_array($currency, $threeDecimalCurrencyList)) { 
+        $value =  $amount / 1000;
+        
+      } elseif (in_array($currency, $zeroDecimalCurencyList)){
+         $value = $amount;   
+         
+      } else {
+        $value = $amount / 100;
+        
+      }
+      
+      return $value;
+      
+    }
+	
+	/**
+     * Check charge response
+	 * If response is approve or has error, return boolean
+    */
+	public function isAuthorise($response){
+        $result = false;
+        $hasError = $this->isError($response);
+        $isApprove = $this->isApprove($response);
+
+        if(!$hasError && $isApprove){
+            $result = true;
+        }
+
+        return $result;
+    }
+
+	/**
+	 * Check if response contain error code
+	 * return boolean
+    */
+    protected function isError($response){
+        $hasError = false;
+
+        if($response->getErrorCode()){
+            $hasError =  true;
+        }
+
+        return $hasError;
+    }
+
+	/**
+	 * Check if response is approve
+	 * return boolean
+    */
+    protected function isApprove($response){
+        $result = false;
+
+        if($response->getResponseCode() == CheckoutApi_Client_Constant::RESPONSE_CODE_APPROVED
+            || $response->getResponseCode()== CheckoutApi_Client_Constant::RESPONSE_CODE_APPROVED_RISK ){
+            $result = true;
+        }
+
+        return $result;
+    }
+
+	/**
+	 * return eventId if charge has error.
+	 * return chargeID if charge is decline
+    */
+    public function getResponseId($response){
+        $isError = $this->isError($response);
+
+        if($isError){
+            $result = array (
+                'message' => $response->getMessage(),
+                'eventId' => $response->getEventId()
+            );
+
+            return $result;
+
+        } else {
+            $result = array (
+                'responseMessage' => $response->getResponseMessage(),
+                'id' => $response->getId()
+            );
+
+            return $result;
+        }
+    }
+
+	/**
+	 * Check if response is flag
+	 * return response message
+    */
+    public function isFlagResponse($response){
+        $result = false;
+
+        if($response->getResponseCode() == CheckoutApi_Client_Constant::RESPONSE_CODE_APPROVED_RISK){
+            $result = array(
+                'responseMessage' => $response->getResponseMessage(),
+            );
+        }
+
+        return $result;
     }
 }

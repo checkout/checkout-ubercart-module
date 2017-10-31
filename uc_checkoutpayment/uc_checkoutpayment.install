@@ -1,8 +1,10 @@
 <?php
 
 /**
+ * Installation of the Checkout.com module.
+ *
  * @file
- * Installing uc_checkoutpayment schema
+ *   Installing uc_checkoutpayment schema
  */
 
 /**
@@ -49,7 +51,7 @@ function uc_checkoutpayment_schema() {
         'description' => 'Is the order flagged',
         'type' => 'int',
         'not null' => TRUE,
-        'default' => 0
+        'default' => 0,
       ),
     ),
     'primary key' => array('order_id'),
@@ -63,54 +65,54 @@ function uc_checkoutpayment_schema() {
  */
 function uc_checkoutpayment_install() {
   db_insert('uc_order_statuses')
-  ->fields(array(
-    'order_status_id' => 'cko_authorised',
-    'title' => 'Authorised',
-    'state' => 'post_checkout',
-    'weight' => 6,
-    'locked' => 1,
-  ))
-  ->execute();
+    ->fields(array(
+      'order_status_id' => 'cko_authorised',
+      'title' => 'Authorised',
+      'state' => 'post_checkout',
+      'weight' => 6,
+      'locked' => 1,
+    ))
+    ->execute();
 
   db_insert('uc_order_statuses')
-  ->fields(array(
-    'order_status_id' => 'cko_part_captured',
-    'title' => 'Partial payment received',
-    'state' => 'payment_received',
-    'weight' => 9,
-    'locked' => 1,
-  ))
-  ->execute();
+    ->fields(array(
+      'order_status_id' => 'cko_part_captured',
+      'title' => 'Partial payment received',
+      'state' => 'payment_received',
+      'weight' => 9,
+      'locked' => 1,
+    ))
+    ->execute();
 
   db_insert('uc_order_statuses')
-  ->fields(array(
-    'order_status_id' => 'cko_refunded',
-    'title' => 'Refunded',
-    'state' => 'canceled',
-    'weight' => 12,
-    'locked' => 1,
-  ))
-  ->execute();
+    ->fields(array(
+      'order_status_id' => 'cko_refunded',
+      'title' => 'Refunded',
+      'state' => 'canceled',
+      'weight' => 12,
+      'locked' => 1,
+    ))
+    ->execute();
 
   db_insert('uc_order_statuses')
-  ->fields(array(
-    'order_status_id' => 'cko_part_refunded',
-    'title' => 'Partially refunded',
-    'state' => 'payment_received',
-    'weight' => 11,
-    'locked' => 1,
-  ))
-  ->execute();
+    ->fields(array(
+      'order_status_id' => 'cko_part_refunded',
+      'title' => 'Partially refunded',
+      'state' => 'payment_received',
+      'weight' => 11,
+      'locked' => 1,
+    ))
+    ->execute();
 
   db_insert('uc_order_statuses')
-  ->fields(array(
-    'order_status_id' => 'cko_flagged',
-    'title' => 'Authorised and Flagged',
-    'state' => 'post_checkout',
-    'weight' => 7,
-    'locked' => 1,
-  ))
-  ->execute();
+    ->fields(array(
+      'order_status_id' => 'cko_flagged',
+      'title' => 'Authorised and Flagged',
+      'state' => 'post_checkout',
+      'weight' => 7,
+      'locked' => 1,
+    ))
+    ->execute();
 }
 
 /**
@@ -122,8 +124,7 @@ function uc_checkoutpayment_uninstall() {
     ->execute();
 
   db_delete('variable')
-    ->condition('name', 'cko_%','LIKE')
+    ->condition('name', 'cko_%', 'LIKE')
     ->execute();
   cache_clear_all('variables', 'cache_bootstrap');
 }
-

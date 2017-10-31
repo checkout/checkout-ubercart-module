@@ -8,10 +8,13 @@ class methods_creditcard {
   /**
    * Get and format all data for posting to the server.
    *
-   * @param object $order A Ubercart order object
-   * @param array $payment_method An array with the CKO settings
+   * @param object $order
+   *   A Ubercart order object.
+   * @param array $payment_method
+   *   An array with the CKO settings.
    *
-   * @return array An array with all data formatted to send to the cko server
+   * @return array
+   *   An array with all data formatted to send to the cko server.
    */
   public function getExtraInit($order, $payment_method) {
     $array = array();
@@ -19,8 +22,8 @@ class methods_creditcard {
     $payment_token = $this->generatePaymentToken($order, $payment_method);
 
     if ($order) {
-      $amount_cents     = number_format(round($order->order_total, variable_get('uc_currency_prec', 2)) * 100, 0, '', '');
-      $config           = array();
+      $amount_cents = number_format(round($order->order_total, variable_get('uc_currency_prec', 2)) * 100, 0, '', '');
+      $config       = array();
 
       $config['email']        = $order->primary_email;
       $config['name']         = $order->billing_first_name . ' ' . $order->billing_last_name;
@@ -70,14 +73,17 @@ class methods_creditcard {
   }
 
   /**
-   * Method to create a paymenttoken to allow local payment methods
+   * Method to create a paymenttoken to allow local payment methods.
    *
-   * @param object $order A Ubercart order object
-   * @param array $payment_method An array with the CKO settings
-   * 
-   * @var chargeMode should always be set to "3". (legacy of depricated option)
+   * @param object $order
+   *   A Ubercart order object.
+   * @param array $payment_method
+   *   An array with the CKO settings.
    *
-   * @return array Payment token message array
+   * @var chargeMode should always be set to "3". (legacy of deprecated option).
+   *
+   * @return array
+   *   Payment token message array.
    */
   public function generatePaymentToken($order, $payment_method) {
     $config = array();
@@ -184,11 +190,14 @@ class methods_creditcard {
   /**
    * Create a cko charge request.
    *
-   * This request contains a payment- or card-token and all other neccessary information to make a charge request.
+   * This request contains a payment- or card-token and all other necessary
+   * information to make a charge request.
    *
-   * @param array $config An array with the requiremnts to create a charge request
+   * @param array $config
+   *   An array with the requiremnts to create a charge request.
    *
-   * @return array http result
+   * @return array
+   *   Http result.
    */
   protected function createCharge($config) {
     $config = array();
@@ -209,9 +218,11 @@ class methods_creditcard {
   /**
    * Configure the autocapture.
    *
-   * @param array $action An array with the CKO settings
+   * @param array $action
+   *   An array with the CKO settings.
    *
    * @return array
+   *   An array.
    */
   protected function captureConfig($action) {
     $to_return['postedParam'] = array(
@@ -225,6 +236,7 @@ class methods_creditcard {
    * Authorize config settings.
    *
    * @return array
+   *   An array.
    */
   protected function authorizeConfig() {
     $to_return['postedParam'] = array(
@@ -237,11 +249,15 @@ class methods_creditcard {
   /**
    * Create a cko capture request for an order which is Authorized.
    *
-   * @param object $order A Ubercart order object
-   * @param array $payment_method An array with the CKO settings
-   * @param int $value Is the value which should be captured
+   * @param object $order
+   *   A Ubercart order object.
+   * @param array $payment_method
+   *   An array with the CKO settings.
+   * @param int $value
+   *   Is the value which should be captured.
    *
-   * @return void
+   * @return httpresponse
+   *   The response from the CKO server.
    */
   public function captureCharge($order, $payment_method, $value) {
     $config = array();
@@ -259,21 +275,25 @@ class methods_creditcard {
     $config['authorization'] = $secret_key;
     $config['chargeId']      = $result->charge_id;
     $config['postedParam']   = array(
-       'value' => $value,
+      'value' => $value,
     );
 
     $api = CheckoutApi_Api::getApi(array('mode' => $mode));
-    $api->captureCharge($config);
+    return $api->captureCharge($config);
   }
 
   /**
    * Create a cko refund request for an order which is captured.
-   * 
-   * @param object $order A Ubercart order object
-   * @param array $payment_method An array with the CKO settings
-   * @param int $value Is the value which should be captured
    *
-   * @return void
+   * @param object $order
+   *   A Ubercart order object.
+   * @param array $payment_method
+   *   An array with the CKO settings.
+   * @param int $value
+   *   Is the value which should be captured.
+   *
+   * @return httpresponse
+   *   The response from the CKO server.
    */
   public function refundCharge($order, $payment_method, $value) {
     $payedAmount = ($order->order_total - uc_payment_balance($order)) * 100;
