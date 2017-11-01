@@ -3,7 +3,7 @@
 /**
  * Auto load the included methods.
  */
-class Api_Autoloader {
+class UcCheckoutpaymentApiAutoloader {
 
   private static $_instance;
 
@@ -28,15 +28,22 @@ class Api_Autoloader {
    *   The name of the class.
    */
   public function autoload($class) {
-    $classNameArray = explode('_', $class);
+    if (strpos($class, "_")) {
+      $classNameArray = explode('_', $class);
+    }
+    else {
+      $classNameArray = preg_split('/(?=[A-Z])/', $class);
+    }
+
     $includePath = get_include_path();
     set_include_path($includePath);
     $path = '';
 
     if (!empty($classNameArray)) {
       $path = __DIR__ . DIRECTORY_SEPARATOR . implode(DIRECTORY_SEPARATOR, $classNameArray) . '.php';
+      error_log($path, 0);
       if (file_exists($path)) {
-          require_once $path;
+        require_once $path;
       }
     }
     else {
@@ -54,5 +61,5 @@ class Api_Autoloader {
 
 }
 
-$autoload = new Api_Autoloader();
-Api_Autoloader::register();
+$autoload = new UcCheckoutpaymentApiAutoloader();
+UcCheckoutpaymentApiAutoloader::register();

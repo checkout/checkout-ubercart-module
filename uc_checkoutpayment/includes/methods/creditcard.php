@@ -3,7 +3,7 @@
 /**
  * Handle all payment request to the cko server.
  */
-class methods_creditcard {
+class MethodsCreditcard {
 
   /**
    * Get and format all data for posting to the server.
@@ -16,7 +16,7 @@ class methods_creditcard {
    * @return array
    *   An array with all data formatted to send to the cko server.
    */
-  public function getExtraInit($order, $payment_method) {
+  public function getExtraInit($order, array $payment_method) {
     $array = array();
 
     $payment_token = $this->generatePaymentToken($order, $payment_method);
@@ -85,7 +85,7 @@ class methods_creditcard {
    * @return array
    *   Payment token message array.
    */
-  public function generatePaymentToken($order, $payment_method) {
+  public function generatePaymentToken($order, array $payment_method) {
     $config = array();
 
     $product_items = $order->products;
@@ -199,7 +199,7 @@ class methods_creditcard {
    * @return array
    *   Http result.
    */
-  protected function createCharge($config) {
+  protected function createCharge(array $config) {
     $config = array();
 
     $payment_method = ubercart_payment_method_instance_load('uc_checkoutpayment|ubercart_payment_uc_checkoutpayment');
@@ -259,7 +259,7 @@ class methods_creditcard {
    * @return httpresponse
    *   The response from the CKO server.
    */
-  public function captureCharge($order, $payment_method, $value) {
+  public function captureCharge($order, array $payment_method, $value) {
     $config = array();
 
     $secret_key = $payment_method['settings']['private_key'];
@@ -295,7 +295,7 @@ class methods_creditcard {
    * @return httpresponse
    *   The response from the CKO server.
    */
-  public function refundCharge($order, $payment_method, $value) {
+  public function refundCharge($order, array $payment_method, $value) {
     $payedAmount = ($order->order_total - uc_payment_balance($order)) * 100;
 
     if ($value <= $payedAmount) {
