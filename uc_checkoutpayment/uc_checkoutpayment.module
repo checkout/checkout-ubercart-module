@@ -663,7 +663,7 @@ function checkout_payment_widget($order) {
  */
 function uc_checkoutpayment_get_instance() {
   module_load_include('php', 'uc_checkoutpayment', 'includes/autoload');
-  return Checkoutapi_Lib_Factory::getInstance('methods_creditcard');
+  return CheckoutApi_Lib_Factory::getInstance('methods_creditcard');
 }
 
 /**
