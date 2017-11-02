@@ -1,7 +1,7 @@
 Installation
 ============
 
-See the [installation guide|https://github.com/checkout/checkout-ubercart-module/wiki/Installation] on our [Wiki|https://github.com/checkout/checkout-ubercart-module/wiki].
+See the [installation guide](https://github.com/checkout/checkout-ubercart-module/wiki/Installation) on our [Wiki](https://github.com/checkout/checkout-ubercart-module/wiki).
 
 Webhook
 ========
