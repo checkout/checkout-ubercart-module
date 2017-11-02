@@ -9,7 +9,6 @@ Url: example.com/checkoutapi/process
 
 Redirect Url
 ========
-Success Url: example.com/uc_checkoutpayment/success
-Fail Url: example.com/uc_checkoutpayment/fail
+Redirection Url: example.com/uc_checkoutpayment/success
 
-
+Redirection Fail Url: example.com/uc_checkoutpayment/fail
