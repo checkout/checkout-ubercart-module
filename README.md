@@ -1,15 +1,15 @@
 Installation
 ============
 
-See the [installation guide](TODO) on our [Wiki](TODO).
+See the [installation guide|https://github.com/checkout/checkout-ubercart-module/wiki/Installation] on our [Wiki|https://github.com/checkout/checkout-ubercart-module/wiki].
 
 Webhook
 ========
-Url: example.com/?q=checkoutapi/process
+Url: example.com/checkoutapi/process
 
 Redirect Url
 ========
-Success Url: example.com/?q=uc_checkoutpayment/success
-Fail Url: example.com/?q=uc_checkoutpayment/fail
+Success Url: example.com/uc_checkoutpayment/success
+Fail Url: example.com/uc_checkoutpayment/fail
 
 
