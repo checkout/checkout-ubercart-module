@@ -663,7 +663,7 @@ function checkout_payment_widget($order) {
  */
 function uc_checkoutpayment_get_instance() {
   module_load_include('php', 'uc_checkoutpayment', 'includes/autoload');
-  return CheckoutApi_Lib_Factory::getInstance('MethodsCreditcard');
+  return CheckoutapiLibFactory::getInstance('MethodsCreditcard');
 }
 
 /**
@@ -685,9 +685,9 @@ function uc_checkoutpayment_process_charge() {
   $instance = uc_checkoutpayment_get_instance();
   $data     = $instance->getExtraInit($order, $payment_method);
 
-  $api = Checkoutapi_api::getapi(array('mode' => $payment_method['settings']['mode']));
+  $api = CheckoutapiApi::getapi(array('mode' => $payment_method['settings']['mode']));
 
-  $autoCapture      = $payment_method['settings']['payment_action'] == 'authorize' ? Checkoutapi_Client_Constant::AUTOCAPUTURE_AUTH : Checkoutapi_Client_Constant::AUTOCAPUTURE_CAPTURE;
+  $autoCapture      = $payment_method['settings']['payment_action'] == 'authorize' ? CheckoutapiClientConstant::AUTOCAPUTURE_AUTH : CheckoutapiClientConstant::AUTOCAPUTURE_CAPTURE;
   $autoCapTime      = $payment_method['settings']['autocaptime'];
   $chargeMode       = $payment_method['settings']['is3D'];
   $integration_type = $payment_method['settings']['cko_integration'];
@@ -725,7 +725,7 @@ function uc_checkoutpayment_process_charge() {
     'metadata'          => array(
       'server'            => $_SERVER['HTTP_USER_AGENT'],
       'plugin_version'    => CHECKOUT_API_PLUGIN_VERSION,
-      'lib_version'       => Checkoutapi_Client_Constant::VERSION,
+      'lib_version'       => CheckoutapiClientConstant::VERSION,
       'integration_type'  => $integration_type,
       'time'              => date('Y-m-d H:i:s'),
       'instanceId'        => $order->order_id,
@@ -742,7 +742,7 @@ function uc_checkoutpayment_process_charge() {
 
   $result = $api->createCharge($config);
 
-  if ($api->getExceptionState()->hasError()) {
+  if ($api->getExceptionstate()->hasError()) {
     $message = t('An error has occurred while processing a transaction. The api returned an error.');
     watchdog('uc_checkoutpayment', $message, NULL, WATCHDOG_ERROR, NULL);
     uc_checkoutpayment_fail_order();
@@ -835,7 +835,7 @@ function uc_checkoutpayment_process_order() {
     $instance = uc_checkoutpayment_get_instance();
     $data     = $instance->getExtraInit($order, $payment_method);
 
-    $api = Checkoutapi_api::getapi(array('mode' => $payment_method['settings']['mode']));
+    $api = CheckoutapiApi::getapi(array('mode' => $payment_method['settings']['mode']));
     $object_charge = $api->chargeToObj($post_data);
 
     if ($object_charge->isValid()) {
