@@ -1,7 +1,0 @@
-name = Checkout.com
-description = Implements Checkout.Com payment services for use with Drupal Ubercart.
-package = Ubercart - payment
-dependencies[] = uc_payment
-core = 7.x
-
-stylesheets[all][] = includes/embedded_style.css
