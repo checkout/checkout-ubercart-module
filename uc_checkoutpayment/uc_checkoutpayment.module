@@ -679,6 +679,9 @@ function uc_checkoutpayment_get_instance() {
 /**
  * Processes card payment after validation by CKO.
  *
+ * This page is called after entering the card details in our system.
+ * Checks the card details and will redirect accordingly.
+ *
  * @return array
  *   redirect to succes, fail, or 3D Secure page.
  */
@@ -1084,6 +1087,14 @@ function is_captured($order_id) {
     ->execute()
     ->fetchAll();
 
+    add_log(
+      "Check if the order was captured.",
+      array(
+        'order_id' => $order_id,
+        'result' => $result,
+      )
+    );
+
   if (count($result) == 0) {
     return FALSE;
   }
@@ -1102,6 +1113,15 @@ function is_captured($order_id) {
  */
 function is_refunded($order_id) {
   $order = uc_order_load($order_id);
+
+  add_log(
+    "Check if the order was fully refunded.",
+    array(
+      'order_id' => $order_id,
+      'order' => $order,
+    )
+  );
+
   if ($order->order_status == 'cko_refunded') {
     return TRUE;
   }
@@ -1125,6 +1145,14 @@ function is_flagged($order_id) {
     ->condition('order_id', $order_id, '=')
     ->execute()
     ->fetchObject();
+
+  add_log(
+    "Check if the order was flagged.",
+    array(
+      'order_id' => $order_id,
+      'result' => $result,
+    )
+  );
 
   if ($result->is_flagged == 0) {
     return FALSE;
