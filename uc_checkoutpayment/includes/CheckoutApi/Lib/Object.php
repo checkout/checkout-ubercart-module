@@ -94,12 +94,6 @@ class CheckoutapiLibObject implements ArrayAccess
         $classException = "CheckoutapiLibExceptionstate";
 
         if (class_exists($classException)) {
-
-            /**
-* 
-             *
- * @var CheckoutapiLibExceptionstate $class 
-*/
             $class = CheckoutapiLibFactory::getSingletonInstance($classException);
               
         } else {

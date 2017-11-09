@@ -562,6 +562,11 @@ function uc_checkoutpayment_form(array $form, array &$form_state, $order) {
     'useCurrencyCode' => $currencycode,
   );
 
+  add_log(
+    "Payment form data is collected.", 
+    array('data' => $data)
+  );
+
   // Set form objects.
   foreach ($data as $name => $value) {
     if (!empty($value)) {
@@ -626,6 +631,11 @@ function checkout_payment_widget($order) {
     $appmode = 'embedded';
   }
 
+  add_log(
+    "Widget data is collected.", 
+    array('settings' => $settings, 'data' => $data)
+  );
+
   return "
     <form class=\"payment-form\" method=\"POST\" action=\"" . $redirectUrl . "\">
       <script>
@@ -673,6 +683,14 @@ function uc_checkoutpayment_get_instance() {
  *   redirect to succes, fail, or 3D Secure page.
  */
 function uc_checkoutpayment_process_charge() {
+  add_log(
+    "Process charge page was opened.", 
+    array(
+      'request' => $_REQUEST, 
+      'session' => $_SESSION,
+    )
+  );
+
   if (!$_REQUEST['cko-card-token'] || $_SESSION['cko_contextid'] == NULL) {
     drupal_goto();
   }
@@ -740,24 +758,42 @@ function uc_checkoutpayment_process_charge() {
     $config['postedParam']['products'] = $data['script']['products'];
   }
 
+  add_log(
+    "Data to create a charge was collected.", 
+    array('config' => $config,)
+  );
+
   $result = $api->createCharge($config);
 
   if ($api->getExceptionstate()->hasError()) {
     $message = t('An error has occurred while processing a transaction. The api returned an error.');
-    watchdog('uc_checkoutpayment', $message, NULL, WATCHDOG_ERROR, NULL);
+    watchdog('uc_checkoutpayment', $message, $api, WATCHDOG_ERROR, NULL);
     uc_checkoutpayment_fail_order();
   }
 
   if ($result->isValid() && response_validation($result)) {
     if (!empty($result->getRedirectUrl())) {
+      add_log(
+        "3D Secure redirect was followed.", 
+        array('result' => $result)
+      );
       drupal_goto($result->getRedirectUrl());
     }
+    add_log(
+      "Charge was succesfully created.", 
+      array('result' => $result)
+    );
     return uc_checkoutpayment_success_order();
   }
 
-  if ($payment_method['settings']['debugMode']) {
-    drupal_set_message(t('Response code: @responsecode | Message: @message', array('@responsecode' => (int) $result->getResponseCode(), '@message' => $result->getResponseMessage())), 'error');
-  }
+
+  add_log(
+    'Response code: @responsecode | Message: @message',
+    array(
+      '@responsecode' => (int) $result->getResponseCode(),
+      '@message' => $result->getResponseMessage(),
+    )
+  );
 
   uc_checkoutpayment_fail_order();
 }
@@ -774,6 +810,10 @@ function uc_checkoutpayment_process_charge() {
 function response_validation($result) {
   $responseCode = (int) $result->getResponseCode();
   if ($responseCode !== CHECKOUT_API_RESPONSE_CODE_APPROVED && $responseCode !== CHECKOUT_API_RESPONSE_CODE_APPROVED_RISK) {
+    add_log(
+      "Response was not valid.", 
+      array('responseCode' => $responseCode,)
+    );
     return FALSE;
   }
   return TRUE;
@@ -783,10 +823,19 @@ function response_validation($result) {
  * Redirect to success url: example.com/uc_checkoutpayment/success.
  */
 function uc_checkoutpayment_success_order() {
+  add_log(
+    "Success page was opened.", 
+    array('session' => $_SESSION)
+  );
+
   if ($_SESSION['cko_contextid'] != NULL) {
     $order = uc_order_load($_SESSION['cko_contextid']);
   }
   else {
+    add_log(
+      "Context ID was null", 
+      array('session' => $_SESSION)
+    );
     drupal_goto();
   }
 
@@ -815,6 +864,12 @@ function uc_checkoutpayment_fail_order() {
  */
 function uc_checkoutpayment_process_order() {
   $post_data = file_get_contents('php://input');
+
+  add_log(
+    "The webhook listener was opened.",
+    array('post_data' => $post_data,)
+  );
+
   if ($post_data) {
 
     $payment_method = cko_store_settings();
@@ -837,6 +892,17 @@ function uc_checkoutpayment_process_order() {
 
     $api = CheckoutapiApi::getapi(array('mode' => $payment_method['settings']['mode']));
     $object_charge = $api->chargeToObj($post_data);
+
+    add_log(
+      "The webhook information.",
+      array(
+        'headers' => $headers,
+        'payment_method' => $payment_method,
+        'object_charge' => $object_charge,
+        'api' => $api,
+        'data' => $data,
+      )
+    );
 
     if ($object_charge->isValid()) {
 
@@ -942,6 +1008,16 @@ function add_transaction_to_db($charge_id, $order_id, $transaction_type, $is_fla
       ->execute();
   }
 
+  add_log(
+    "Transaction added to database",
+    array(
+      'charge_id' => $charge_id,
+      'order_id' => $order_id,
+      'transaction_type' => $transaction_type,
+      'is_flagged' => $is_flagged,
+    )
+  );
+
 }
 
 /**
@@ -953,6 +1029,18 @@ function uc_checkoutpayment_uc_payment_entered($order, $method, $amount, $accoun
 
   $payments = uc_payment_load_payments($order->order_id);
   $payed_amount = ($order->order_total - (uc_payment_balance($order) + $amount));
+
+  add_log(
+    "An payment was added for an order.",
+    array(
+      'order' => $order,
+      'method' => $method,
+      'amount' => $amount,
+      'account' => $account,
+      'data' => $data,
+      'comment' => $comment,
+    )
+  );
 
   if ($method == "cko" && $account->uid != "0" && $comment != "Automated balance restore") {
     if ($amount > 0 && !is_captured($order->order_id)) {
@@ -1110,4 +1198,23 @@ function uc_checkoutpayment_admin_call($action, $contextId = 0) {
   }
 
   drupal_json_output($response);
+}
+
+/**
+ * Adds logmessages to Watchdog when in debug mode.
+ *
+ * Simple usage:
+ *   add_log('An action happened', array('key'=>'value'));
+ *
+ * @param string $string
+ *   The message to be set in Watchdogs.
+ * @param array|null $variables
+ *   The variables used when the log is made.
+ */
+function add_log($string, array $variables = array()){
+  $settings = cko_store_settings()['settings'];
+
+  if ($settings['debugMode']) {
+    watchdog('uc_checkoutpayment', $string, $variables, WATCHDOG_DEBUG);
+  }
 }
