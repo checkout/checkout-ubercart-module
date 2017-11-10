@@ -1,70 +1,94 @@
 <?php
+
 /**
- * Class CheckoutapiParserJSON
- * a parser to handle JSON
+ * CheckoutapiApi.
  *
- * @package   Checkoutapi
- * @category  Api
- * @author    Dhiraj Gangoosirdar <dhiraj.gangoosirdar@checkout.com>
- * @copyright 2014 Integration team (http://www.checkout.com)
+ * PHP Version 5.6
+ *
+ * @category Api
+ * @package Checkoutapi
+ * @license https://checkout.com/terms/ MIT License
+ * @link https://www.checkout.com/
  */
-class CheckoutapiParserJSON extends CheckoutapiParserParser
-{
-    /**
-     * 
-     *
-     * @var array $_headers  Content negotiation relies on the use of specific headers 
-     */
-    protected $_headers = array ('Content-Type: application/json;charset=UTF-8','Accept: application/json');
 
-    /**
-     * Convert a json to a CheckoutapiLibRespondObj object
-     *
-     * @param  JSON $parser
-     * @return CheckoutapiLibRespondObj|null
-     * @throws Exception
-     */
-    public function parseToObj($parser)
-    {
-        /**
-* 
-         *
- * @var CheckoutapiLibRespondObj $respondObj 
-*/
-        $respondObj = CheckoutapiLibFactory::getInstance('CheckoutapiLibRespondObj');
+/**
+ * Parser to handle JSON.
+ *
+ * @category Parser
+ * @version Release: @package_version@
+ */
+class CheckoutapiParserJSON extends CheckoutapiParserParser {
 
-        if($parser && is_string($parser)) {
-            $encoding = mb_detect_encoding($parser);
-            
-            if($encoding =="ASCII") {
-                $parser = iconv('ASCII', 'UTF-8', $parser);
-            }else {
-                $parser =  mb_convert_encoding($parser, "UTF-8", $encoding);
-            }
-            
-            $jsonObj = json_decode($parser, true);
-            $jsonObj['rawOutput'] = $parser;
+  /**
+   * Prefilled header array.
+   *
+   * @var array
+   */
+  protected $headers = array(
+    'Content-Type: application/json;charset=UTF-8',
+    'Accept: application/json',
+  );
 
-            $respondObj->setConfig($jsonObj);
+  /**
+   * Convert a json to a CheckoutapiLibRespondobj object.
+   *
+   * @param JSON $parser
+   *   A JSON string.
+   *
+   * @return CheckoutapiLibRespondobj|null
+   *   A an object converted from the JSON string.
+   *
+   * @throws Exception
+   */
+  public function parseToObj($parser) {
 
+    // @var CheckoutapiLibRespondobj $respondObj
+    $respondObj = CheckoutapiLibFactory::getInstance(
+      'CheckoutapiLibRespondobj'
+    );
 
-        }
-        $respondObj->setConfig($this->getResourceInfo());
-        return $respondObj;
+    if ($parser && is_string($parser)) {
+      $encoding = mb_detect_encoding($parser);
+
+      if ($encoding == "ASCII") {
+        $parser = iconv('ASCII', 'UTF-8', $parser);
+      }
+      else {
+        $parser = mb_convert_encoding($parser, "UTF-8", $encoding);
+      }
+
+      $jsonObj = json_decode($parser, TRUE);
+      $jsonObj['rawOutput'] = $parser;
+
+      $respondObj->setConfig($jsonObj);
+
     }
+    $respondObj->setConfig($this->getResourceInfo());
+    return $respondObj;
 
-    /**
-     * This method prepare a posted value, so it match the header of the parser
-     *
-     * @param  mixed $postedparam
-     * @return JSON
-     */
-    public function preparePosted($postedParam)
-    {
-        return json_encode($postedParam);
-    }
-    public function setResourceInfo($info)
-    {
-        $this->_info = $info;
-    }
+  }
+
+  /**
+   * Prepares posted values, so they match the header of the parser.
+   *
+   * @param mixed $postedParam
+   *   The array or object.
+   *
+   * @return JSON
+   *   A JSON encoded array.
+   */
+  public function preparePosted($postedParam) {
+    return json_encode($postedParam);
+  }
+
+  /**
+   * Set the resource info.
+   *
+   * @param mixed $info
+   *   The info array.
+   */
+  public function setResourceInfo($info) {
+    $this->info = $info;
+  }
+
 }

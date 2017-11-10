@@ -1,17 +1,25 @@
 <?php
 
 /**
- * Class CheckoutapiParserConstant
+ * CheckoutapiApi.
  *
- * @package   Checkoutapi
- * @category  Api
- * @author    Dhiraj Gangoosirdar <dhiraj.gangoosirdar@checkout.com>
- * @copyright 2014 Integration team (http://www.checkout.com)
+ * PHP Version 5.6
+ *
+ * @category Api
+ * @package Checkoutapi
+ * @license https://checkout.com/terms/ MIT License
+ * @link https://www.checkout.com/
  */
-final class CheckoutapiParserConstant
-{
-    const API_RESPOND_TYPE_JSON = 'Json';
-    const API_RESPOND_TYPE_XML = 'XML';
-    const API_RESPOND_TYPE_HTTP = 'HTTP';
-}
 
+/**
+ * Lass CheckoutapiParserConstant.
+ *
+ * @category Parser
+ * @version Release: @package_version@
+ */
+final class CheckoutapiParserConstant {
+  const API_RESPOND_TYPE_JSON = 'Json';
+  const API_RESPOND_TYPE_XML = 'XML';
+  const API_RESPOND_TYPE_HTTP = 'HTTP';
+
+}

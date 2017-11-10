@@ -1,15 +1,22 @@
 <?php
 
 /**
- * class that contain all constant variable that should be use in the utility class
- * Class CheckoutapiUtilityConstant
+ * CheckoutapiApi.
+ *
+ * PHP Version 5.6
+ *
+ * @category Api
+ * @package Checkoutapi
+ * @license https://checkout.com/terms/ MIT License
+ * @link https://www.checkout.com/
  */
-final class CheckoutapiUtilityConstant
-{
 
+/**
+ * Lass that contain all constant variable for the utility class.
+ *
+ * @category Utility
+ * @version Release: @package_version@
+ */
+final class CheckoutapiUtilityConstant {
 
-
-
-    
 }
-

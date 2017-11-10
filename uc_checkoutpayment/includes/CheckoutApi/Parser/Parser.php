@@ -1,75 +1,114 @@
 <?php
-/**
- * An abstract class that contain the basic functionally all parser need to inherit
 
- * @package   Checkoutapi
- * @category  Api
- * @author    Dhiraj Gangoosirdar <dhiraj.gangoosirdar@checkout.com>
- * @copyright 2014 Integration team (http://www.checkout.com)
+/**
+ * CheckoutapiApi.
+ *
+ * PHP Version 5.6
+ *
+ * @category Api
+ * @package Checkoutapi
+ * @license https://checkout.com/terms/ MIT License
+ * @link https://www.checkout.com/
  */
 
-abstract class CheckoutapiParserParser extends CheckoutapiLibObject
-{
-    /**
-     * @var $_headers  array Checkoutapi hold value for headers to be send by the transport message layer
-     */
-    protected $_headers = array();
+/**
+ * The basic functionally all parsers need to inherit.
+ *
+ * @category Parser
+ * @version Release: @package_version@
+ */
+abstract class CheckoutapiParserParser extends CheckoutapiLibObject {
 
-    /**
-     * 
-     *
-     * @var $_respondObj null|CheckoutapiLibRespondobj  * Checkoutapi hold an  value for 
-     */
-    protected $_respondObj = null;
-    protected $_info = array( 'httpStatus'=>0);
+  /**
+   * Headers.
+   *
+   * @var array
+   *   Array to hold value for headers to be send by the transport layer.
+   */
+  protected $headers = array();
 
-    /**
-     * This method need to be implimented by all children. It take a string, parse it  and then map it to an object
-     *
-     * @param  $parser
-     * @return CheckoutapiLibRespondobj
-     */
-    abstract public function parseToObj($parser);
+  /**
+   * Response object.
+   *
+   * @var object
+   *   Null|CheckoutapiLibRespondobj Checkoutapi.
+   */
+  protected $respondObj = NULL;
+  protected $info = array('httpStatus' => 0);
 
-    /**
-     * setter $_respondObj
-     *
-     * @param $obj CheckoutapiLibRespondobj
-     */
-    public function setRespondobj($obj)
-    {
-        $this->_respondObj = $obj;
-    }
+  /**
+   * It takes a string, parse it and then map it to an object.
+   *
+   * This method need to be implemented by all children.
+   *
+   * @param mixed $parser
+   *   A string to mchange into an object.
+   *
+   * @return CheckoutapiLibRespondobj
+   *   A CheckoutapiLibRespondobj.
+   */
+  abstract public function parseToObj($parser);
 
-    /**
-     * @getter  $_respondObj
-     * @return CheckoutapiLibRespondobj|null
-     */
-    public function getRespondobj()
-    {
-        return $this->_respondObj ;
-    }
+  /**
+   * Setter respondObj.
+   *
+   * @param object $obj
+   *   A CheckoutapiLibRespondobj.
+   */
+  public function setRespondobj($obj) {
+    $this->respondObj = $obj;
+  }
 
-    /**
-     *  getter $_headers
-     *
-     * @return array
-     */
-    public function getHeaders()
-    {
-        return $this->_headers;
-    }
+  /**
+   * Getter respondObj.
+   *
+   * @return CheckoutapiLibRespondobj|null
+   *   A CheckoutapiLibRespondobj.
+   */
+  public function getRespondobj() {
+    return $this->respondObj;
+  }
 
-    /**
-     *  format the value base on the parser type
-     *
-     * @param  $postedParam
-     * @return mixed
-     */
-    abstract public function preparePosted($postedParam);
-    abstract public function setResourceInfo($info);
-    public function getResourceInfo()
-    {
-        return $this->_info;
-    }
+  /**
+   * Getter headers.
+   *
+   * @return array
+   *   An array with the header information.
+   */
+  public function getHeaders() {
+    return $this->headers;
+  }
+
+  /**
+   * Format the value base on the parser type.
+   *
+   * @param mixed $postedParam
+   *   The array to prepare for posting.
+   *
+   * @return mixed
+   *   A mixed the prepared array or object.
+   */
+  abstract public function preparePosted($postedParam);
+
+  /**
+   * Set Resource Info.
+   *
+   * @param mixed $info
+   *   The info of the recource.
+   *
+   * @return mixed
+   *   An bool to exert succes.
+   */
+  abstract public function setResourceInfo($info);
+
+  /**
+   * Get Resource Info.
+   *
+   * @return array
+   *   An array with the resource info.
+   */
+  public function getResourceInfo() {
+    return $this->info;
+  }
+
 }
