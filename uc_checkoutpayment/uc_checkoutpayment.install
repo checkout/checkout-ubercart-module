@@ -1,10 +1,11 @@
 <?php
 
 /**
- * Installation of the Checkout.com module.
- *
  * @file
- *   Installing uc_checkoutpayment schema
+ * Checkout.com integration module.
+ *
+ * This module provides Checkout.com payment gateway integration to Ubercart,
+ * Ubercart Checkoutpayment offers a PCI-compliant way to process payments.
  */
 
 /**
@@ -128,4 +129,3 @@ function uc_checkoutpayment_uninstall() {
     ->execute();
   cache_clear_all('variables', 'cache_bootstrap');
 }
-

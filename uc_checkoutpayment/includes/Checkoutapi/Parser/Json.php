@@ -32,7 +32,7 @@ class CheckoutapiParserJSON extends CheckoutapiParserParser {
   /**
    * Convert a json to a CheckoutapiLibRespondobj object.
    *
-   * @param JSON $parser
+   * @param mixed $parser
    *   A JSON string.
    *
    * @return CheckoutapiLibRespondobj|null

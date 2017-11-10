@@ -1,9 +1,8 @@
 <?php
 
 /**
- * Checkout.com integration module.
- *
  * @file
+ * Checkout.com integration module.
  *
  * This module provides Checkout.com payment gateway integration to Ubercart,
  * Ubercart Checkoutpayment offers a PCI-compliant way to process payments.
@@ -422,6 +421,8 @@ function admin_order_payment_action_form_submit($form, &$form_state) {
   $order_id = $form_state['values']['order_id'];
   $values   = $form_state['input'];
 
+  error_log(print_r($form_state, true), 0);
+
   $payment_method = cko_store_settings();
   $instance       = uc_checkoutpayment_get_instance();
   $order          = uc_order_load($order_id);
@@ -563,7 +564,7 @@ function uc_checkoutpayment_form(array $form, array &$form_state, $order) {
   );
 
   add_log(
-    "Payment form data is collected.", 
+    "Payment form data is collected.",
     array('data' => $data)
   );
 
@@ -572,7 +573,7 @@ function uc_checkoutpayment_form(array $form, array &$form_state, $order) {
     if (!empty($value)) {
       $form[$name] = array(
         '#type' => 'hidden',
-        '#value' => t($value),
+        '#value' => $value,
         '#attributes' => array(
           'name' => array($name),
         ),
@@ -584,7 +585,10 @@ function uc_checkoutpayment_form(array $form, array &$form_state, $order) {
   $form['#action'] = url($hppUrl);
   $form['actions']['submit'] = array(
     '#type' => 'submit',
-    '#value' => t(variable_get('uc_checkoutpayment_checkout_button', 'Proceed with payment')),
+    '#value' => variable_get(
+      'uc_checkoutpayment_checkout_button',
+      'Proceed with payment'
+    ),
   );
 
   return $form;
@@ -632,7 +636,7 @@ function checkout_payment_widget($order) {
   }
 
   add_log(
-    "Widget data is collected.", 
+    "Widget data is collected.",
     array('settings' => $settings, 'data' => $data)
   );
 
@@ -646,8 +650,8 @@ function checkout_payment_widget($order) {
           currency: '" . $currency . "',
           formButtonLabel: '" . $buttonLabel . "',
           themeColor: '" . $themeColor . "',
-          title: '" . t($title) . "',
-          subtitle: '" . t($subtitle) . "',
+          title: '" . $title . "',
+          subtitle: '" . $subtitle . "',
           logoUrl: '" . $logoUrl . "',
           localisation: '" . $cko_language . "',
           useCurrencyCode: '" . $currencycode . "',
@@ -687,9 +691,9 @@ function uc_checkoutpayment_get_instance() {
  */
 function uc_checkoutpayment_process_charge() {
   add_log(
-    "Process charge page was opened.", 
+    "Process charge page was opened.",
     array(
-      'request' => $_REQUEST, 
+      'request' => $_REQUEST,
       'session' => $_SESSION,
     )
   );
@@ -762,8 +766,8 @@ function uc_checkoutpayment_process_charge() {
   }
 
   add_log(
-    "Data to create a charge was collected.", 
-    array('config' => $config,)
+    "Data to create a charge was collected.",
+    array('config' => $config)
   );
 
   $result = $api->createCharge($config);
@@ -777,18 +781,17 @@ function uc_checkoutpayment_process_charge() {
   if ($result->isValid() && response_validation($result)) {
     if (!empty($result->getRedirectUrl())) {
       add_log(
-        "3D Secure redirect was followed.", 
+        "3D Secure redirect was followed.",
         array('result' => $result)
       );
       drupal_goto($result->getRedirectUrl());
     }
     add_log(
-      "Charge was succesfully created.", 
+      "Charge was successfully created.",
       array('result' => $result)
     );
     return uc_checkoutpayment_success_order();
   }
-
 
   add_log(
     'Response code: @responsecode | Message: @message',
@@ -814,8 +817,8 @@ function response_validation($result) {
   $responseCode = (int) $result->getResponseCode();
   if ($responseCode !== CHECKOUT_API_RESPONSE_CODE_APPROVED && $responseCode !== CHECKOUT_API_RESPONSE_CODE_APPROVED_RISK) {
     add_log(
-      "Response was not valid.", 
-      array('responseCode' => $responseCode,)
+      "Response was not valid.",
+      array('responseCode' => $responseCode)
     );
     return FALSE;
   }
@@ -827,7 +830,7 @@ function response_validation($result) {
  */
 function uc_checkoutpayment_success_order() {
   add_log(
-    "Success page was opened.", 
+    "Success page was opened.",
     array('session' => $_SESSION)
   );
 
@@ -836,7 +839,7 @@ function uc_checkoutpayment_success_order() {
   }
   else {
     add_log(
-      "Context ID was null", 
+      "Context ID was null",
       array('session' => $_SESSION)
     );
     drupal_goto();
@@ -870,7 +873,7 @@ function uc_checkoutpayment_process_order() {
 
   add_log(
     "The webhook listener was opened.",
-    array('post_data' => $post_data,)
+    array('post_data' => $post_data)
   );
 
   if ($post_data) {
@@ -1087,13 +1090,13 @@ function is_captured($order_id) {
     ->execute()
     ->fetchAll();
 
-    add_log(
-      "Check if the order was captured.",
-      array(
-        'order_id' => $order_id,
-        'result' => $result,
-      )
-    );
+  add_log(
+    "Check if the order was captured.",
+    array(
+      'order_id' => $order_id,
+      'result' => $result,
+    )
+  );
 
   if (count($result) == 0) {
     return FALSE;
@@ -1239,7 +1242,7 @@ function uc_checkoutpayment_admin_call($action, $contextId = 0) {
  * @param array|null $variables
  *   The variables used when the log is made.
  */
-function add_log($string, array $variables = array()){
+function add_log($string, array $variables = array()) {
   $settings = cko_store_settings()['settings'];
 
   if ($settings['debugMode']) {
