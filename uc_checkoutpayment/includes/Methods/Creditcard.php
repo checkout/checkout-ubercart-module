@@ -23,49 +23,49 @@ class MethodsCreditcard {
 
     if ($order) {
       $amount_cents = number_format(round($order->order_total, variable_get('uc_currency_prec', 2)) * 100, 0, '', '');
-      $config       = array();
+      $config = array();
 
-      $config['email']        = $order->primary_email;
-      $config['name']         = $order->billing_first_name . ' ' . $order->billing_last_name;
-      $config['amount']       = $amount_cents;
-      $config['currency']     = $order->currency;
+      $config['email'] = $order->primary_email;
+      $config['name'] = $order->billing_first_name . ' ' . $order->billing_last_name;
+      $config['amount'] = $amount_cents;
+      $config['currency'] = $order->currency;
       $config['paymentToken'] = $payment_token['token'];
 
       $config['billingDetails'] = array(
-        'addressLine1'  => $order->billing_street1,
-        'addressLine2'  => $order->billing_street2,
-        'postcode'      => $order->billing_postal_code,
-        'country'       => uc_get_country_data(array('country_id' => $order->billing_country))[0]['country_iso_code_2'],
-        'city'          => $order->billing_city,
-        'state'         => $order->delivery_zone,
-        'phone'         => array(
-          "number"        => $order->billing_phone,
+        'addressLine1' => $order->billing_street1,
+        'addressLine2' => $order->billing_street2,
+        'postcode' => $order->billing_postal_code,
+        'country' => uc_get_country_data(array('country_id' => $order->billing_country))[0]['country_iso_code_2'],
+        'city' => $order->billing_city,
+        'state' => $order->delivery_zone,
+        'phone' => array(
+          "number" => $order->billing_phone,
         ),
       );
 
       $config['shippingDetails'] = array(
-        'addressLine1'  => $order->delivery_street1,
-        'addressLine2'  => $order->delivery_street2,
-        'postcode'      => $order->delivery_postal_code,
-        'country'       => uc_get_country_data(array('country_id' => $order->delivery_country))[0]['country_iso_code_2'],
-        'city'          => $order->delivery_city,
-        'state'         => $order->delivery_zone,
-        'phone'         => array(
-          "number"        => $order->delivery_phone,
+        'addressLine1' => $order->delivery_street1,
+        'addressLine2' => $order->delivery_street2,
+        'postcode' => $order->delivery_postal_code,
+        'country' => uc_get_country_data(array('country_id' => $order->delivery_country))[0]['country_iso_code_2'],
+        'city' => $order->delivery_city,
+        'state' => $order->delivery_zone,
+        'phone' => array(
+          "number" => $order->delivery_phone,
         ),
       );
 
       foreach ($order->products as $product) {
         $config['products'][] = array(
-          'name'        => $product->title,
+          'name' => $product->title,
           'description' => $product->title,
-          'price'       => round($product->price, 2),
-          'quantity'    => (int) $product->qty,
-          'sku'         => $product->model,
+          'price' => round($product->price, 2),
+          'quantity' => (int) $product->qty,
+          'sku' => $product->model,
         );
       }
 
-      $array['script']       = $config;
+      $array['script'] = $config;
       $array['paymentToken'] = $payment_token;
     }
 
@@ -98,8 +98,8 @@ class MethodsCreditcard {
       $autoCapture = ($payment_method['settings']['payment_action'] == UC_CREDIT_AUTH_CAPTURE ? "y" : "n");
 
       $config['authorization'] = $payment_method['settings']['private_key'];
-      $config['mode']          = $payment_method['settings']['mode'];
-      $config['timeout']       = $payment_method['settings']['timeout'];
+      $config['mode'] = $payment_method['settings']['mode'];
+      $config['timeout'] = $payment_method['settings']['timeout'];
 
       if ($payment_method['settings']['payment_action'] == 'authorize') {
         $config = array_merge($config, $this->authorizeConfig());
@@ -113,9 +113,9 @@ class MethodsCreditcard {
         foreach ($product_items as $key => $item) {
           if (isset($item)) {
             $products[$key] = array(
-              'name'     => $item->title,
-              'sku'      => $item->qty,
-              'price'    => $item->price,
+              'name' => $item->title,
+              'sku' => $item->qty,
+              'price' => $item->price,
               'quantity' => $item->qty,
             );
           }
@@ -123,46 +123,46 @@ class MethodsCreditcard {
       }
 
       $billing_address_config = array(
-        'addressLine1'  => $order->billing_street1,
-        'addressLine2'  => $order->billing_street2,
-        'postcode'      => $order->billing_postal_code,
-        'country'       => uc_get_country_data(array('country_id' => $order->billing_country))[0]['country_iso_code_2'],
-        'city'          => $order->billing_city,
-        'state'         => $order->delivery_zone,
-        'phone'         => array(
-          "number"      => $order->billing_phone,
+        'addressLine1' => $order->billing_street1,
+        'addressLine2' => $order->billing_street2,
+        'postcode' => $order->billing_postal_code,
+        'country' => uc_get_country_data(array('country_id' => $order->billing_country))[0]['country_iso_code_2'],
+        'city' => $order->billing_city,
+        'state' => $order->delivery_zone,
+        'phone' => array(
+          "number" => $order->billing_phone,
         ),
       );
 
       $shipping_address_config = array(
-        'addressLine1'  => $order->delivery_street1,
-        'addressLine2'  => $order->delivery_street2,
-        'postcode'      => $order->delivery_postal_code,
-        'country'       => uc_get_country_data(array('country_id' => $order->delivery_country))[0]['country_iso_code_2'],
-        'city'          => $order->delivery_city,
-        'state'         => $order->delivery_zone,
-        'phone'         => array(
-          "number"      => $order->delivery_phone,
+        'addressLine1' => $order->delivery_street1,
+        'addressLine2' => $order->delivery_street2,
+        'postcode' => $order->delivery_postal_code,
+        'country' => uc_get_country_data(array('country_id' => $order->delivery_country))[0]['country_iso_code_2'],
+        'city' => $order->delivery_city,
+        'state' => $order->delivery_zone,
+        'phone' => array(
+          "number" => $order->delivery_phone,
         ),
       );
 
       $config['postedParam'] = array(
-        'chargeMode'      => "3",
-        'autoCapture'     => $autoCapture,
-        'autoCapTime'     => $payment_method['settings']['autocaptime'],
-        'email'           => $order->primary_email,
-        'value'           => $amount_cents,
-        'trackId'         => $order_id,
-        'currency'        => $default_currency,
-        'description'     => 'Order number::' . $order_id,
+        'chargeMode' => "3",
+        'autoCapture' => $autoCapture,
+        'autoCapTime' => $payment_method['settings']['autocaptime'],
+        'email' => $order->primary_email,
+        'value' => $amount_cents,
+        'trackId' => $order_id,
+        'currency' => $default_currency,
+        'description' => 'Order number::' . $order_id,
         'shippingDetails' => $shipping_address_config,
-        'products'        => $products,
-        'card'            => array(
+        'products' => $products,
+        'card' => array(
           'billingDetails' => $billing_address_config,
         ),
       );
 
-      $api = CheckoutApi_Api::getApi(array('mode' => $config['mode']));
+      $api = CheckoutapiApi::getApi(array('mode' => $config['mode']));
 
       $payment_token_charge = $api->getPaymentToken($config);
 
@@ -178,7 +178,7 @@ class MethodsCreditcard {
         $payment_token_array['success'] = TRUE;
       }
       else {
-        $payment_token_array['message'] = $payment_token_charge->getExceptionState()->getErrorMessage();
+        $payment_token_array['message'] = $payment_token_charge->getExceptionstate()->getErrorMessage();
         $payment_token_array['success'] = FALSE;
         $payment_token_array['eventId'] = $payment_token_charge->getEventId();
       }
@@ -211,7 +211,7 @@ class MethodsCreditcard {
     $config['timeout'] = $timeout;
     $config['paymentToken'] = $_POST['cko-cc-paymenToken'];
 
-    $api = CheckoutApi_Api::getApi(array('mode' => $mode));
+    $api = CheckoutapiApi::getApi(array('mode' => $mode));
     return $api->verifyChargePaymentToken($config);
   }
 
@@ -224,9 +224,9 @@ class MethodsCreditcard {
    * @return array
    *   An array.
    */
-  protected function captureConfig($action) {
+  protected function captureConfig(array $action) {
     $to_return['postedParam'] = array(
-      'autoCapture' => CheckoutApi_Client_Constant::AUTOCAPUTURE_CAPTURE,
+      'autoCapture' => CheckoutapiClientConstant::AUTOCAPUTURE_CAPTURE,
       'autoCapTime' => $action['settings']['autocaptime'],
     );
     return $to_return;
@@ -240,7 +240,7 @@ class MethodsCreditcard {
    */
   protected function authorizeConfig() {
     $to_return['postedParam'] = array(
-      'autoCapture' => CheckoutApi_Client_Constant::AUTOCAPUTURE_AUTH,
+      'autoCapture' => CheckoutapiClientConstant::AUTOCAPUTURE_AUTH,
       'autoCapTime' => 0,
     );
     return $to_return;
@@ -263,7 +263,7 @@ class MethodsCreditcard {
     $config = array();
 
     $secret_key = $payment_method['settings']['private_key'];
-    $mode       = $payment_method['settings']['mode'];
+    $mode = $payment_method['settings']['mode'];
 
     $result = db_select('uc_checkoutpayment_charge_details', 'c')
       ->fields('c')
@@ -273,12 +273,12 @@ class MethodsCreditcard {
       ->fetchObject();
 
     $config['authorization'] = $secret_key;
-    $config['chargeId']      = $result->charge_id;
-    $config['postedParam']   = array(
+    $config['chargeId'] = $result->charge_id;
+    $config['postedParam'] = array(
       'value' => $value,
     );
 
-    $api = CheckoutApi_Api::getApi(array('mode' => $mode));
+    $api = CheckoutapiApi::getApi(array('mode' => $mode));
     return $api->captureCharge($config);
   }
 
@@ -303,7 +303,7 @@ class MethodsCreditcard {
       $config = array();
 
       $secret_key = $payment_method['settings']['private_key'];
-      $mode       = $payment_method['settings']['mode'];
+      $mode = $payment_method['settings']['mode'];
 
       $result = db_select('uc_checkoutpayment_charge_details', 'c')
         ->fields('c')
@@ -313,15 +313,14 @@ class MethodsCreditcard {
         ->fetchObject();
 
       $config['authorization'] = $secret_key;
-      $config['chargeId']      = $result->charge_id;
-      $config['postedParam']   = array(
+      $config['chargeId'] = $result->charge_id;
+      $config['postedParam'] = array(
         'value' => $value,
       );
 
-      $api = CheckoutApi_Api::getApi(array('mode' => $mode));
+      $api = CheckoutapiApi::getApi(array('mode' => $mode));
       return $api->refundCharge($config);
     }
-
   }
 
 }

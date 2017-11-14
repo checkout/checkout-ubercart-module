@@ -6,33 +6,37 @@
 (function ($) {
   'use strict';
 
-  $(function () {
+  $(
+    function () {
 
-    var head = document.getElementsByTagName("head")[0];
-    var s = document.createElement('script');
-    s.type = 'text/javascript';
-    s.async = true;
-    if (Drupal.settings.commerce_checkoutpayment.mode === 'live') {
-      s.src = "https://cdn.checkout.com/js/checkout.js";
-    }
-    else {
-      s.src = "https://sandbox.checkout.com/js/v1/checkout.js";
-    }
-    head.appendChild(s);
-    $('#commerce-checkoutpayment-redirect-form #edit-submit').click(function (event) {
-        event.preventDefault();
-        if (typeof CheckoutIntegration != 'undefined') {
-          if (!CheckoutIntegration.isMobile()) {
-            CheckoutIntegration.open();
-            $('#commerce-checkoutpayment-redirect-form #edit-submit').attr("disabled", "disabled");
-          }
-          else {
-            $('#cko-cc-redirectUrl').val(CheckoutIntegration.getRedirectionUrl());
-            $('#commerce-checkoutpayment-redirect-form').trigger('submit');
+      var head = document.getElementsByTagName('head')[0];
+      var s = document.createElement('script');
+      s.type = 'text/javascript';
+      s.async = true;
+      if (Drupal.settings.commerce_checkoutpayment.mode === 'live') {
+        s.src = 'https://cdn.checkout.com/js/checkout.js';
+      }
+      else {
+        s.src = 'https://sandbox.checkout.com/js/v1/checkout.js';
+      }
+      head.appendChild(s);
+      $('#commerce-checkoutpayment-redirect-form #edit-submit').click(
+        function (event) {
+          event.preventDefault();
+          if (typeof CheckoutIntegration != 'undefined') {
+            if (!CheckoutIntegration.isMobile()) {
+              CheckoutIntegration.open();
+              $('#commerce-checkoutpayment-redirect-form #edit-submit').attr('disabled', 'disabled');
+            }
+            else {
+              $('#cko-cc-redirectUrl').val(CheckoutIntegration.getRedirectionUrl());
+              $('#commerce-checkoutpayment-redirect-form').trigger('submit');
+            }
           }
         }
-      });
-  });
+      );
+    }
+  );
 
   Drupal.behaviors.commerce_checkoutpayment = {
     attach: function (context, settings) {
@@ -54,15 +58,15 @@
         widgetContainerSelector: '.widget-container', // The .class of the element hosting the Checkout.js widget card icons.
         styling: {
           themeColor: Drupal.settings.commerce_checkoutpayment.themecolor,
-          logoUrl: Drupal.settings.commerce_checkoutpayment.logourl,
+          logoUrl: Drupal.settings.commerce_checkoutpayment.logourl
         },
         cardCharged: function (event) {
           $('#cko-cc-paymenToken').val(event.data.paymentToken);
           $('#commerce-checkoutpayment-redirect-form').trigger('submit');
-          $('#commerce-checkoutpayment-redirect-form #edit-submit').attr("disabled", "disabled");
+          $('#commerce-checkoutpayment-redirect-form #edit-submit').attr('disabled', 'disabled');
         },
         lightboxDeactivated: function () {
-          $('#commerce-checkoutpayment-redirect-form #edit-submit').removeAttr("disabled");
+          $('#commerce-checkoutpayment-redirect-form #edit-submit').removeAttr('disabled');
           if (reload) {
             window.location.reload();
           }
@@ -73,24 +77,28 @@
         invalidLightboxConfig: function () {
           reload = true;
         },
-        ready: function (){
-           if (CheckoutIntegration.isMobile()) {
+        ready: function () {
+          if (CheckoutIntegration.isMobile()) {
             $('#cko-cc-redirectUrl').val(CheckoutIntegration.getRedirectionUrl());
-            
-           }
+
+          }
         }
       };
 
-      $('#edit-commerce-payment-payment-method-commerce-checkoutpaymentcommerce-payment-commerce-checkoutpayment').once('checkoutapi').change(function () {
-        var interVal2 = setInterval(function () {
-          if ($('.widget-container').length) {
-            if (typeof CheckoutIntegration != 'undefined') {
-              CheckoutIntegration.render(window.CKOConfig);
-              clearInterval(interVal2);
-            }
-          }
-        }, 500);
-      });
+      $('#edit-commerce-payment-payment-method-commerce-checkoutpaymentcommerce-payment-commerce-checkoutpayment').once('checkoutapi').change(
+        function () {
+          var interVal2 = setInterval(
+            function () {
+              if ($('.widget-container').length) {
+                if (typeof CheckoutIntegration != 'undefined') {
+                  CheckoutIntegration.render(window.CKOConfig);
+                  clearInterval(interVal2);
+                }
+              }
+            }, 500
+          );
+        }
+      );
     }
   };
 })(jQuery);
