@@ -5,7 +5,7 @@
  */
 class UcCheckoutpaymentApiAutoloader {
 
-  private static $_instance;
+  private static $instance;
 
   /**
    * Get an instance of a method.
@@ -14,11 +14,11 @@ class UcCheckoutpaymentApiAutoloader {
    *   Instance of the requested class.
    */
   public static function instance() {
-    if (!self::$_instance) {
+    if (!self::$instance) {
       $class = __CLASS__;
-      self::$_instance = new $class();
+      self::$instance = new $class();
     }
-    return self::$_instance;
+    return self::$instance;
   }
 
   /**
@@ -28,22 +28,17 @@ class UcCheckoutpaymentApiAutoloader {
    *   The name of the class.
    */
   public function autoload($class) {
-    if (strpos($class, "_")) {
-      $classNameArray = explode('_', $class);
-    }
-    else {
-      $classNameArray = preg_split('/(?=[A-Z])/', $class);
-    }
+    $classNameArray = preg_split('/(?=[A-Z])/', $class);
 
     $includePath = get_include_path();
     set_include_path($includePath);
     $path = '';
 
     if (!empty($classNameArray)) {
-      $path = __DIR__ . DIRECTORY_SEPARATOR . implode(DIRECTORY_SEPARATOR, $classNameArray) . '.php';
+      $path = __DIR__ . implode(DIRECTORY_SEPARATOR, $classNameArray) . '.php';
       error_log($path, 0);
       if (file_exists($path)) {
-        require_once $path;
+        include_once $path;
       }
     }
     else {
