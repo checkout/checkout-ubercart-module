@@ -418,10 +418,8 @@ function admin_order_payment_action_form($form, &$form_state, $order) {
  * Implements hook_form_sumbit().
  */
 function admin_order_payment_action_form_submit($form, &$form_state) {
-  $order_id = $form_state['values']['order_id'];
-  $values   = $form_state['input'];
-
-  error_log(print_r($form_state, true), 0);
+  $values   = $form_state['values'];
+  $order_id = $values['order_id'];
 
   $payment_method = cko_store_settings();
   $instance       = uc_checkoutpayment_get_instance();
