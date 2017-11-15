@@ -334,9 +334,16 @@ function uc_payment_method_checkoutpayment($op, &$order) {
       return drupal_get_form('admin_order_payment_action_form', $order);
 
     case 'order-details':
-      $page['SomeStrings']['SomeStrings'] = array(
+      $action = $base_url . REDIRECT_URL;
+      $test = get_payment_frames();
+      $page['payment-method']['SomeStrings'] = array(
         '#type' => 'markup',
-        '#markup' => checkout_payment_widget($order, true0)
+        '#markup' => '
+        <form id="payment-form" method="POST" action="' . $action . '">
+          <div class="frames-container"></div>
+          <button id="pay-now-button" type="submit" disabled> Mijn knop </button>
+          ' . $test . '
+        </form>',
       );
       return $page;
 
