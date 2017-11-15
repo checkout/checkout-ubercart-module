@@ -73,7 +73,6 @@ final class CheckoutapiLibFactory extends CheckoutapiLibObject {
         self::$registry[$registerKey] = new $className($arguments);
       }
       else {
-        error_log($className, 0);
         throw new Exception(
           'Invalid class name:: ' . $className . "(" . print_r(
             $arguments,

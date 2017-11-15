@@ -36,7 +36,6 @@ class UcCheckoutpaymentApiAutoloader {
 
     if (!empty($classNameArray)) {
       $path = __DIR__ . implode(DIRECTORY_SEPARATOR, $classNameArray) . '.php';
-      error_log($path, 0);
       if (file_exists($path)) {
         include_once $path;
       }

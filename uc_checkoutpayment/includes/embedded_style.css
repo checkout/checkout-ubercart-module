@@ -9,3 +9,9 @@ iframe.cko-iframe.cko-embedded {
 input.cko-disabled {
   background: grey !important;
 }
+
+#pay-now-button:disabled {
+  background: #aaa;
+  text-shadow: 0 1px 1px #888;
+  cursor: auto;
+}

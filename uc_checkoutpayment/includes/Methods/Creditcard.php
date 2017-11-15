@@ -188,6 +188,121 @@ class MethodsCreditcard {
   }
 
   /**
+   * Get the JS config script.
+   *
+   * Unused piece of code. The API code is to limited to use for this purpose.
+   * This will be used when The API is update to give more flexibility.
+   *
+   * @param object $order
+   *   A Ubercart order object.
+   * @param array $payment_method
+   *   An array with the CKO settings.
+   *
+   * @return string
+   *   JS Script with the lightbox.
+   */
+  public function getWidgetElement($order, array $payment_method) {
+    global $base_url;
+    
+    $data = $this->getExtraInit($order, $payment_method);
+    $settings = $payment_method['settings'];
+
+    $config = array(
+      'publicKey' => $settings['public_key'],
+      'paymentToken' => $data['script']['paymentToken'],
+      'customerEmail' => $data['script']['email'],
+      'value' => $data['script']['amount'],
+      'currency' => $data['script']['currency'],
+      'renderMode' => $settings['cko_render_mode'],
+      'formButtonLabel' => $settings['button_label'],
+      'title' => $settings['title'],
+      'themeColor' => $settings['themecolor'],
+      'logoUrl' => $settings['logourl'],
+      'subtitle' => $settings['subtitle'],
+      'localisation' => $settings['cko_language'],
+      'useCurrencyCode' => $settings['currencycode'],
+
+    );
+
+    $redirectUrl = $base_url . REDIRECT_URL;
+
+      return "
+        <form class=\"payment-form\" method=\"POST\" action=\"" . $redirectUrl . "\">
+          <script>
+            window.CKOConfig = {
+              publicKey: '" . $config['publicKey'] . "',
+              paymentToken: '" . $config['paymentToken'] . "',
+              customerEmail: '" . $config['customerEmail'] . "',
+              value: " . $config['value'] . ",
+              currency: '" . $config['currency'] . "',
+              renderMode: " . $config['renderMode'] . ",
+              formButtonLabel: '" . $config['formButtonLabel'] . "',
+              title: '" . $config['title'] . "',
+              themeColor: '" . $config['themeColor'] . "',
+              formButtonColor: '" . $config['themeColor'] . "',
+              logoUrl: '" . $config['logoUrl'] . "',
+              subtitle: '" . $config['subtitle'] . "',
+              localisation: '" . $config['localisation'] . "',
+              useCurrencyCode: '" . $config['useCurrencyCode'] . "',
+              redirectUrl: '" . $redirectUrl . "',
+              cardFormMode: 'cardTokenisation',
+            };
+          </script>
+          <script async src=\"https://cdn.checkout.com/sandbox/js/checkout.js\"></script>
+        </form>
+      ";
+
+    $api = CheckoutapiApi::getApi(array('mode' => $mode));
+    return $api->getJsConfig($config);
+  }
+
+  public function getFramesElement(array $payment_method) {
+    $settings = $payment_method['settings'];
+
+    $config = array(
+      'publicKey' => $settings['public_key'],
+    );
+
+    $frame = "
+      <script src=\"https://cdn.checkout.com/js/frames.js\"></script>
+      <script>
+        var paymentForm = document.getElementById(\"payment-form\");
+        var payNowButton = document.getElementById(\"pay-now-button\");
+
+        Frames.init({
+          publicKey: \"" . $config["publicKey"] . "\",
+          containerSelector: \".frames-container\",
+          cardValidationChanged: function() {
+            payNowButton.disabled = !Frames.isCardValid();
+          },
+          cardSubmitted: function() {
+            payNowButton.disabled = true;
+          },
+          cardTokenised: function(event) {
+            var cardToken = event.data.cardToken;
+            Frames.addCardToken(paymentForm, cardToken)
+            paymentForm.submit()
+          },
+          cardTokenisationFailed: function(event) {
+          }
+        });
+        paymentForm.addEventListener(\"submit\", function(event) {
+          event.preventDefault();
+          Frames.submitCard()
+          .then(function(data) {
+            payNowButton = document.getElementById(\"pay-now-button\");
+            Frames.addCardToken(paymentForm, data.cardToken);
+            paymentForm.submit();
+          })
+          .catch(function(err) {
+          });
+        });
+      </script>";
+
+    return $frame;
+  }
+
+  /**
    * Create a cko charge request.
    *
    * This request contains a payment- or card-token and all other necessary
@@ -322,5 +437,4 @@ class MethodsCreditcard {
       return $api->refundCharge($config);
     }
   }
-
 }
