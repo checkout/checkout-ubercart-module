@@ -444,6 +444,31 @@ function admin_order_payment_action_form_submit($form, &$form_state) {
 }
 
 /**
+ * AJAX call to check if the order status has been changed.
+ *
+ * @param string $action
+ *   The action we are waiting for.
+ * @param int $contextId
+ *   The id of the order.
+ */
+function uc_checkoutpayment_admin_call($action, $contextId = 0) {
+  switch ($action) {
+    case 'capture':
+      $response = is_captured($contextId);
+      break;
+
+    case 'refund':
+      $response = is_refunded($contextId);
+      break;
+
+    default:
+      $response = FALSE;
+  }
+
+  drupal_json_output($response);
+}
+
+/**
  * Implements hook_form_alter() for uc_cart_checkout_review_form().
  */
 function uc_checkoutpayment_form_uc_cart_checkout_review_form_alter(&$form, &$form_state) {
@@ -1155,31 +1180,6 @@ function cko_store_settings() {
   );
 
   return $payment_method;
-}
-
-/**
- * AJAX call to check if the order status has been changed.
- *
- * @param string $action
- *   The action we are waiting for.
- * @param int $contextId
- *   The id of the order.
- */
-function uc_checkoutpayment_admin_call($action, $contextId = 0) {
-  switch ($action) {
-    case 'capture':
-      $response = is_captured($contextId);
-      break;
-
-    case 'refund':
-      $response = is_refunded($contextId);
-      break;
-
-    default:
-      $response = FALSE;
-  }
-
-  drupal_json_output($response);
 }
 
 /**
