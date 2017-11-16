@@ -30,6 +30,64 @@ function uc_checkoutpayment_init() {
   global $conf;
   $conf['i18n_variables'][] = 'uc_checkoutpayment_method_title';
   $conf['i18n_variables'][] = 'uc_checkoutpayment_checkout_button';
+
+  global $base_url;
+  $path = $base_url;
+  $path = drupal_get_path('module', 'uc_checkoutpayment');
+  drupal_add_js(
+    "https://cdn.checkout.com/js/frames.js",
+    array(
+      'type' => 'file',
+      'scope' => 'header',
+    )
+  );
+  drupal_add_js(
+    $path . "/includes/Methods/js/orderDetails.js",
+    array(
+      'type' => 'file',
+      'scope' => 'footer',
+    )
+  );
+}
+
+function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id){
+  if ($form['#form_id'] == 'uc_order_edit_form') {
+    // echo "<pre>";
+    // print_r($form);
+    // echo "</pre>";
+
+    if (key($form['payment']['payment_method']['#options']) == 'cko'){
+      $form['payment']['payment_method']['#options'] = array_reverse($form['payment']['payment_method']['#options']);
+    }
+
+    global $base_url;
+    $action = $base_url . REDIRECT_URL;
+    $form['#suffix'] = '
+      <div id="cko-paymentpopup" class="order-pane  hidden">
+        <div class="modal">
+        <p class="order-pane-title">Add card details:</p>
+        <form id="payment-form" method="POST" action="' . $action . '">
+          <table style="border: none;">
+            <tr>
+              <td colspan="2" style="border: none;">
+                <div class="frames-container">
+                </div>
+              </td>
+            </tr>
+            <tr class="button-row" style="border: none;">
+              <td style="border: none;">
+                <a id="cancel" class="form-submit" onclick="hideCKOEmbedModal()">hide</a> 
+                <input id="pay-now-button" class="form-submit" type="submit" disabled value="Save card" />
+              </td>
+            </tr>
+          </table>
+        ' . get_payment_frames() . '
+      </form>
+      </div>
+     </div>';
+  }
+
+  return $form;
 }
 
 /**
@@ -334,22 +392,18 @@ function uc_payment_method_checkoutpayment($op, &$order) {
       return drupal_get_form('admin_order_payment_action_form', $order);
 
     case 'order-details':
-      $action = $base_url . REDIRECT_URL;
-      $test = get_payment_frames();
-      $page['payment-method']['SomeStrings'] = array(
-        '#type' => 'markup',
-        '#markup' => '
-        <form id="payment-form" method="POST" action="' . $action . '">
-          <div class="frames-container"></div>
-          <button id="pay-now-button" type="submit" disabled> Mijn knop </button>
-          ' . $test . '
-        </form>',
+      $form['cko-link'] = array(
+        '#type'  => 'markup',
+        '#markup' => '<a href="javascript:void(0)" onclick="showCKOEmbedModal()" id="cko-link">Add card details</a>',
       );
-      return $page;
+      return $form;
 
     default:
       return NULL;
   }
+}
+
+function ajax_example_autocheckboxes_callback(){
 }
 
 /**

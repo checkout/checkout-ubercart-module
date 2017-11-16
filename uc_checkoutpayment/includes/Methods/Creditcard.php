@@ -266,6 +266,7 @@ class MethodsCreditcard {
     $frame = "
       <script src=\"https://cdn.checkout.com/js/frames.js\"></script>
       <script>
+      (function () {
         var paymentForm = document.getElementById(\"payment-form\");
         var payNowButton = document.getElementById(\"pay-now-button\");
 
@@ -297,6 +298,7 @@ class MethodsCreditcard {
           .catch(function(err) {
           });
         });
+      }());
       </script>";
 
     return $frame;
