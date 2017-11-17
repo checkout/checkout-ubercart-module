@@ -256,12 +256,17 @@ class MethodsCreditcard {
     return $api->getJsConfig($config);
   }
 
-  public function getFramesElement(array $payment_method) {
-    $settings = $payment_method['settings'];
+  public function getFramesElement(array $config) {
 
-    $config = array(
-      'publicKey' => $settings['public_key'],
-    );
+    $submit_action = "paymentForm.submit();";
+
+    if (array_key_exists('submit_form', $config) && $config['submit_form'] == FALSE) {
+      $submit_action = "";
+
+      if (array_key_exists('js_function', $config)) {
+        $submit_action .= "window." . $config['js_function'] . "(cardToken);";
+      }
+    }
 
     $frame = "
       <script src=\"https://cdn.checkout.com/js/frames.js\"></script>
@@ -271,7 +276,7 @@ class MethodsCreditcard {
         var payNowButton = document.getElementById(\"pay-now-button\");
 
         Frames.init({
-          publicKey: \"" . $config["publicKey"] . "\",
+          publicKey: \"" . $config['settings']["public_key"] . "\",
           containerSelector: \".frames-container\",
           cardValidationChanged: function() {
             payNowButton.disabled = !Frames.isCardValid();
@@ -282,7 +287,7 @@ class MethodsCreditcard {
           cardTokenised: function(event) {
             var cardToken = event.data.cardToken;
             Frames.addCardToken(paymentForm, cardToken)
-            paymentForm.submit()
+            " . $submit_action . "
           },
           cardTokenisationFailed: function(event) {
           }
@@ -292,8 +297,9 @@ class MethodsCreditcard {
           Frames.submitCard()
           .then(function(data) {
             payNowButton = document.getElementById(\"pay-now-button\");
-            Frames.addCardToken(paymentForm, data.cardToken);
-            paymentForm.submit();
+            var cardToken = data.cardToken;
+            Frames.addCardToken(paymentForm, cardToken);
+            " . $submit_action . "
           })
           .catch(function(err) {
           });

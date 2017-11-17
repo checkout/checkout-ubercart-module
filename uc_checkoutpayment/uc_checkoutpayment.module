@@ -52,21 +52,28 @@ function uc_checkoutpayment_init() {
 
 function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id){
   if ($form['#form_id'] == 'uc_order_edit_form') {
-    // echo "<pre>";
-    // print_r($form);
-    // echo "</pre>";
+    global $base_url;
+
+    array_unshift($form['#submit'], 'process_moto_submit');
+    array_unshift($form['#validate'], 'process_moto_validate');
 
     if (key($form['payment']['payment_method']['#options']) == 'cko'){
       $form['payment']['payment_method']['#options'] = array_reverse($form['payment']['payment_method']['#options']);
     }
 
-    global $base_url;
-    $action = $base_url . REDIRECT_URL;
+    $form['payment']['payment_card_token'] = array(
+      '#type' => 'hidden',
+      '#value' => 'test',
+      '#attributes' => array(
+        'name' => array('payment_card_token'),
+        'id' => array('payment_card_token'),
+      ),
+    );
+
     $form['#suffix'] = '
       <div id="cko-paymentpopup" class="order-pane  hidden">
-        <div class="modal">
         <p class="order-pane-title">Add card details:</p>
-        <form id="payment-form" method="POST" action="' . $action . '">
+        <form id="payment-form" method="POST" action="' . $base_url . REDIRECT_URL . '">
           <table style="border: none;">
             <tr>
               <td colspan="2" style="border: none;">
@@ -76,18 +83,48 @@ function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id){
             </tr>
             <tr class="button-row" style="border: none;">
               <td style="border: none;">
-                <a id="cancel" class="form-submit" onclick="hideCKOEmbedModal()">hide</a> 
-                <input id="pay-now-button" class="form-submit" type="submit" disabled value="Save card" />
+                <a id="cancel" class="form-submit" onclick="ckoHidePane()">hide</a> 
+                <input id="pay-now-button" type="submit" class="form-submit" disabled value="Save card" />
+                <p id="cko-success" class="hidden"> The card is validated and saved. </p>
               </td>
             </tr>
           </table>
-        ' . get_payment_frames() . '
+        ' . get_payment_frames(array('submit_form' => FALSE, 'js_function' => 'ckoAddCardTokenToForm')) . '
       </form>
-      </div>
      </div>';
   }
 
   return $form;
+}
+
+function process_moto_validate(&$elements, &$form_state, $form_id = NULL) {
+
+  error_log(print_r($form_state['input'], true), 0);
+  // if (
+  //   (isset($form_state['values']['payment_card_token']) && is_string($card_token = $form_state['values']['payment_card_token']) && $card_token = "") &&
+  //   (isset($form_state['values']['order_id']) && is_string($order_id = $form_state['values']['order_id']))
+  // ){
+  //   $config = array(
+  //     'order_id' => $order_id,
+  //     'card_token' => $card_token
+  //   );
+  //   uc_checkoutpayment_process_charge($config);
+  // }
+}
+
+function process_moto_submit($form, &$form_state) {
+  error_log(print_r($form_state['values'], true), 0);
+  if (
+    (isset($form_state['values']['payment_card_token']) && is_string($card_token = $form_state['values']['payment_card_token']) && $card_token = "") &&
+    (isset($form_state['values']['order_id']) && is_string($order_id = $form_state['values']['order_id']))
+  ){
+    error_log("VALID", 0);
+    $config = array(
+      'order_id' => $order_id,
+      'card_token' => $card_token
+    );
+    uc_checkoutpayment_process_charge($config);
+  }
 }
 
 /**
@@ -394,7 +431,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
     case 'order-details':
       $form['cko-link'] = array(
         '#type'  => 'markup',
-        '#markup' => '<a href="javascript:void(0)" onclick="showCKOEmbedModal()" id="cko-link">Add card details</a>',
+        '#markup' => '<a href="javascript:void(0)" onclick="ckoShowPane()" id="cko-link">Add card details</a>',
       );
       return $form;
 
@@ -700,10 +737,31 @@ function checkout_payment_widget($order) {
   return $instance->getWidgetElement($order, $payment_method);
 }
 
-function get_payment_frames(){
-  $payment_method = cko_store_settings();
+/**
+ * Createn of JS widget for the form.
+ *
+ * The simplest usage would be:
+ *   get_payment_frames();
+ *
+ * More advaced usage could be:
+ *   $config = array(
+ *     'submit_form' => FALSE,
+ *     'js_function' => 'myCustomJavascriptAction'
+ *   );
+ *   get_payment_frames($config);
+ *
+ *   This will call the function myCustomJavascriptAction(cardToken).
+ *
+ * @param array $config
+ *   Configuration settings for the frames element.
+ *
+ * @return string
+ *   returns the html form element.
+ */
+function get_payment_frames(array $config = array()){
+  $config = array_merge($config, cko_store_settings());
   $instance = uc_checkoutpayment_get_instance();
-  return $instance->getFramesElement($payment_method);
+  return $instance->getFramesElement($config);
 }
 
 /**
@@ -723,10 +781,19 @@ function uc_checkoutpayment_get_instance() {
  * This page is called after entering the card details in our system.
  * Checks the card details and will redirect accordingly.
  *
+ * Simple usage:
+ *   $config = array(
+ *   'order_id' => 1,
+ *   'card_token' => 'card_tok_86A6C264-8B87-45FA-AD91-4455A75B0361'
+ *   )
+ *   uc_checkoutpayment_process_charge($config);
+ *
  * @return array
  *   redirect to succes, fail, or 3D Secure page.
  */
-function uc_checkoutpayment_process_charge() {
+function uc_checkoutpayment_process_charge(array $config = array()) {
+  error_log("uc_checkoutpayment_process_charge", 0);
+  
   add_log(
     "Process charge page was opened.",
     array(
@@ -735,19 +802,23 @@ function uc_checkoutpayment_process_charge() {
     )
   );
 
-  // Check if information is valid.
-
-  if ($_SESSION['cko_contextid'] == NULL) {
+  if ($_SESSION['cko_contextid'] == NULL && $config == NULL) {
     drupal_goto();
   }
+  elseif ($config != NULL) {
+    $order_id = $config['order_id'];
+    $card_token = $config['card_token'];
+  }
+  else{
+    $order_id = $_SESSION['cko_contextid'];
+    $card_token = $_REQUEST['cko-card-token'];
+  }
 
-  $order = uc_order_load($_SESSION['cko_contextid']);
+  $order = uc_order_load($order_id);
 
   if ($order->order_status == 'processing') {
     return uc_checkoutpayment_success_order();
   }
-
-  $cardToken = $_REQUEST['cko-card-token'];
 
   $payment_method = cko_store_settings();
 
@@ -799,7 +870,7 @@ function uc_checkoutpayment_process_charge() {
       'time'              => date('Y-m-d H:i:s'),
       'instanceId'        => $order->order_id,
     ),
-    'cardToken'         => $cardToken,
+    'cardToken'         => $card_token,
   );
 
   $config['authorization'] = $payment_method['settings']['private_key'];
