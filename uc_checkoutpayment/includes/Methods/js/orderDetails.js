@@ -49,4 +49,3 @@ function ckoAddCardTokenToForm(token) {
     message.classList.remove('hidden');
   }
 }
-

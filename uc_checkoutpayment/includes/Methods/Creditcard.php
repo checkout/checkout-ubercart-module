@@ -269,7 +269,6 @@ class MethodsCreditcard {
     }
 
     $frame = "
-      <script src=\"https://cdn.checkout.com/js/frames.js\"></script>
       <script>
       (function () {
         var paymentForm = document.getElementById(\"payment-form\");
@@ -308,6 +307,16 @@ class MethodsCreditcard {
       </script>";
 
     return $frame;
+  }
+
+  public function getCustomer($email, $mode, $secret_key) {
+    $param['customerId'] = "?email=" . $email;
+    $param['authorization'] = $secret_key;
+
+    $api = CheckoutapiApi::getApi(array('mode' => $mode));
+    $getCustomer = $api->getCustomer($param);
+
+    return $getCustomer;
   }
 
   /**

@@ -50,12 +50,15 @@ function uc_checkoutpayment_init() {
   );
 }
 
+/**
+ * Implements hook_form_alter().
+ */
 function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id){
-  if ($form['#form_id'] == 'uc_order_edit_form') {
+  if ($form['#form_id'] == 'uc_order_edit_form' && $form_state['order']->order_status == 'pending') {
     global $base_url;
 
-    array_unshift($form['#submit'], 'process_moto_submit');
-    array_unshift($form['#validate'], 'process_moto_validate');
+    $form['#submit'][] = 'process_moto_submit';
+    $form['#validate'][] = 'process_moto_validate';
 
     if (key($form['payment']['payment_method']['#options']) == 'cko'){
       $form['payment']['payment_method']['#options'] = array_reverse($form['payment']['payment_method']['#options']);
@@ -63,7 +66,7 @@ function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id){
 
     $form['payment']['payment_card_token'] = array(
       '#type' => 'hidden',
-      '#value' => 'test',
+      '#default_value' => 'test',
       '#attributes' => array(
         'name' => array('payment_card_token'),
         'id' => array('payment_card_token'),
@@ -94,35 +97,60 @@ function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id){
      </div>';
   }
 
+  // echo "<pre>";
+  // print_r($form);
+  // echo "</pre>";
+
   return $form;
 }
 
+/**
+ * Implements hook_form_validate() for the admin edit order form.
+ */
 function process_moto_validate(&$elements, &$form_state, $form_id = NULL) {
+  if ($form_state['values']['payment_method'] == "cko" && $form_state['triggering_element']["#value"] == "Submit changes") {
 
-  error_log(print_r($form_state['input'], true), 0);
-  // if (
-  //   (isset($form_state['values']['payment_card_token']) && is_string($card_token = $form_state['values']['payment_card_token']) && $card_token = "") &&
-  //   (isset($form_state['values']['order_id']) && is_string($order_id = $form_state['values']['order_id']))
-  // ){
-  //   $config = array(
-  //     'order_id' => $order_id,
-  //     'card_token' => $card_token
-  //   );
-  //   uc_checkoutpayment_process_charge($config);
-  // }
+    if (!valid_email_address($form_state['values']['primary_email'])) {
+      form_set_error("primary_email", t("A valid e-mail address is nessesary for payments through Checkout.com."));
+    }
+    else {
+      $instance = uc_checkoutpayment_get_instance();
+      $settings = cko_store_settings()['settings'];
+      $customer = $instance->getCustomer($form_state['values']['primary_email'], $settings['mode'], $settings['private_key']);
+
+      $isCustomer  = !$customer->getExceptionstate()->hasError();
+      $isCardToken = substr($form_state['values']['payment_card_token'], 0, 9) == "card_tok_";
+
+      if (!$isCardToken && !$isCustomer) {
+        form_set_error("payment_card_token", t("The payment token is not valid."));
+      }
+    }
+  }
 }
 
+/**
+ * Implements hook_form_submit() for the admin edit order form.
+ */
 function process_moto_submit($form, &$form_state) {
-  error_log(print_r($form_state['values'], true), 0);
-  if (
-    (isset($form_state['values']['payment_card_token']) && is_string($card_token = $form_state['values']['payment_card_token']) && $card_token = "") &&
-    (isset($form_state['values']['order_id']) && is_string($order_id = $form_state['values']['order_id']))
-  ){
-    error_log("VALID", 0);
+  if ($form_state['values']['payment_method'] == "cko" && $form_state['triggering_element']["#value"] == "Submit changes") {
+    error_log(var_dump($form_state['values']['payment_card_token'], true), 0);
+
+    $instance = uc_checkoutpayment_get_instance();
+    $settings = cko_store_settings()['settings'];
+    $customer = $instance->getCustomer($form_state['values']['primary_email'], $settings['mode'], $settings['private_key']);
+
+    $isCustomer  = !$customer->getExceptionstate()->hasError();
+    $isCardToken = substr($form_state['values']['payment_card_token'], 0, 9) == "card_tok_";
+
     $config = array(
-      'order_id' => $order_id,
-      'card_token' => $card_token
+      'order_id' => $form_state['values']['order_id'],
+      'card_token' => $form_state['values']['payment_card_token']
     );
+
+    if (!$isCardToken && $isCustomer) {
+      $config['card_token'] = "?email=" . $form_state['values']['primary_email'];
+    }
+    
     uc_checkoutpayment_process_charge($config);
   }
 }
@@ -215,6 +243,7 @@ function uc_checkoutpayment_uc_payment_method() {
  */
 function uc_payment_method_checkoutpayment($op, &$order) {
   module_load_include('module', 'uc_credit', 'uc_credit');
+  $settings = cko_store_settings()['settings'];
 
   switch ($op) {
     case 'settings':
@@ -222,8 +251,6 @@ function uc_payment_method_checkoutpayment($op, &$order) {
       $form['checkoutpayment_help_text'] = array(
         '#markup' => '<div class="help">' . t('<h4><strong>Checkout.com Payment Settings</strong></h4><p>Go to https://sandbox.checkout.com to properly install this module.</p>', array('%base_url' => $base_url)) . '</div>',
       );
-
-      $settings = cko_store_settings()['settings'];
 
       $form['checkoutpayment_account'] = array(
         '#type' => 'fieldset',
@@ -429,18 +456,23 @@ function uc_payment_method_checkoutpayment($op, &$order) {
       return drupal_get_form('admin_order_payment_action_form', $order);
 
     case 'order-details':
-      $form['cko-link'] = array(
-        '#type'  => 'markup',
-        '#markup' => '<a href="javascript:void(0)" onclick="ckoShowPane()" id="cko-link">Add card details</a>',
-      );
-      return $form;
-
+      if ($settings['public_key'] == "") {
+        $form['cko-error'] = array(
+          '#type'  => 'markup',
+          '#markup' => '<p class="error">The payment settings aren\'t setup propperly.</p>',
+        );
+        return $form;
+      }
+      elseif ($order->order_status == 'pending') {
+        $form['cko-link'] = array(
+          '#type'  => 'markup',
+          '#markup' => '<a href="javascript:void(0)" onclick="ckoShowPane()" id="cko-link">Add card details</a>',
+        );
+        return $form;
+      }
     default:
       return NULL;
   }
-}
-
-function ajax_example_autocheckboxes_callback(){
 }
 
 /**
@@ -792,16 +824,6 @@ function uc_checkoutpayment_get_instance() {
  *   redirect to succes, fail, or 3D Secure page.
  */
 function uc_checkoutpayment_process_charge(array $config = array()) {
-  error_log("uc_checkoutpayment_process_charge", 0);
-  
-  add_log(
-    "Process charge page was opened.",
-    array(
-      'request' => $_REQUEST,
-      'session' => $_SESSION,
-    )
-  );
-
   if ($_SESSION['cko_contextid'] == NULL && $config == NULL) {
     drupal_goto();
   }
@@ -870,8 +892,11 @@ function uc_checkoutpayment_process_charge(array $config = array()) {
       'time'              => date('Y-m-d H:i:s'),
       'instanceId'        => $order->order_id,
     ),
-    'cardToken'         => $card_token,
   );
+
+  if (substr($card_token, 0, 9) == "card_tok_") {
+    $config['postedParam']['cardToken'] = $card_token;
+  }
 
   $config['authorization'] = $payment_method['settings']['private_key'];
   $config['mode']          = $payment_method['settings']['mode'];
@@ -880,36 +905,34 @@ function uc_checkoutpayment_process_charge(array $config = array()) {
     $config['postedParam']['products'] = $data['script']['products'];
   }
 
-  add_log(
-    "Data to create a charge was collected.",
-    array('config' => $config)
-  );
+  // Create a charge request.
 
   $result = $api->createCharge($config);
 
-  if ($api->getExceptionstate()->hasError()) {
-    $message = t('An error has occurred while processing a transaction. The api returned an error.');
-    watchdog('uc_checkoutpayment', $message, $api, WATCHDOG_ERROR, NULL);
-    uc_checkoutpayment_fail_order();
+  // Handle Api response.
+
+  if ($api->getExceptionstate()->hasError() || !$result->isValid() || !response_validation($result)) {
+
+    error_log("The exeption state is: " . var_dump($result, true), 0);
+
+    watchdog(
+      'uc_checkoutpayments', 
+      'An error has occurred while processing a transaction. The api returned: %errorMessage', 
+      array(
+        '%errorMessage' => $api->getExceptionstate()->getErrorMessage(),
+      ), 
+      WATCHDOG_ERROR
+    );
+
+    return uc_checkoutpayment_fail_order();
   }
 
-  if ($result->isValid() && response_validation($result)) {
-    if (!empty($result->getRedirectUrl())) {
-      uc_order_update_status($order->order_id, 'processing');
-      drupal_goto($result->getRedirectUrl());
-    }
-    return uc_checkoutpayment_success_order();
+  if (!empty($result->getRedirectUrl())) {
+    uc_order_update_status($order->order_id, 'processing');
+    drupal_goto($result->getRedirectUrl());
   }
 
-  add_log(
-    'Response code: @responsecode | Message: @message',
-    array(
-      '@responsecode' => (int) $result->getResponseCode(),
-      '@message' => $result->getResponseMessage(),
-    )
-  );
-
-  uc_checkoutpayment_fail_order();
+  return uc_checkoutpayment_success_order();
 }
 
 /**
@@ -1329,6 +1352,6 @@ function add_log($string, array $variables = array()) {
   $settings = cko_store_settings()['settings'];
 
   if ($settings['debugMode']) {
-    watchdog('uc_checkoutpayment', $string, $variables, WATCHDOG_DEBUG);
+    //watchdog('uc_checkoutpayment', $string, $variables, WATCHDOG_DEBUG);
   }
 }
