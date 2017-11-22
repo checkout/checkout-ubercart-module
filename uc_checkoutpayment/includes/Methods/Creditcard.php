@@ -397,15 +397,15 @@ class MethodsCreditcard {
     $secret_key = $payment_method['settings']['private_key'];
     $mode = $payment_method['settings']['mode'];
 
-    $result = db_select('uc_checkoutpayment_charge_details', 'c')
+    $result = db_select('uc_checkoutpayment_hub_communication', 'c')
       ->fields('c')
-      ->condition('order_id', $order->order_id, '=')
-      ->condition('transaction_type', "succeeded", '=')
+      ->condition('track_id', $order->order_id, '=')
+      ->condition('status', "Authorised", '=')
       ->execute()
       ->fetchObject();
 
     $config['authorization'] = $secret_key;
-    $config['chargeId'] = $result->charge_id;
+    $config['chargeId'] = $result->id;
     $config['postedParam'] = array(
       'value' => $value,
     );
@@ -437,15 +437,15 @@ class MethodsCreditcard {
       $secret_key = $payment_method['settings']['private_key'];
       $mode = $payment_method['settings']['mode'];
 
-      $result = db_select('uc_checkoutpayment_charge_details', 'c')
+      $result = db_select('uc_checkoutpayment_hub_communication', 'c')
         ->fields('c')
-        ->condition('order_id', $order->order_id, '=')
-        ->condition('transaction_type', "captured", '=')
+        ->condition('track_id', $order->order_id, '=')
+        ->condition('status', "Captured", '=')
         ->execute()
         ->fetchObject();
 
       $config['authorization'] = $secret_key;
-      $config['chargeId'] = $result->charge_id;
+      $config['chargeId'] = $result->id;
       $config['postedParam'] = array(
         'value' => $value,
       );

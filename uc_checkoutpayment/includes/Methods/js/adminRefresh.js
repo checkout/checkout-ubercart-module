@@ -1,8 +1,8 @@
 (function () {
   'use strict';
 
-  var interval = 1000;
-  var action = document.getElementById('cko-action').value;
+  var interval = 3000;
+  var action = document.getElementById('cko-payment-action').getAttribute("name");
   var contextid = document.getElementById('order_id').value;
 
   function loadDoc() {
@@ -19,7 +19,7 @@
     xhttp.send();
   }
 
-  if (action === 'capture' || action === 'refund') {
-    setTimeout(loadDoc, interval);
+  if (action === 'capture' || action === 'refund' || action === 'cancel') {
+    timeout = setTimeout(loadDoc, interval);
   }
 }());
