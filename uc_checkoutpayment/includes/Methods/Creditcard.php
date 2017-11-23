@@ -203,7 +203,7 @@ class MethodsCreditcard {
    */
   public function getWidgetElement($order, array $payment_method) {
     global $base_url;
-    
+
     $data = $this->getExtraInit($order, $payment_method);
     $settings = $payment_method['settings'];
 
@@ -226,36 +226,54 @@ class MethodsCreditcard {
 
     $redirectUrl = $base_url . REDIRECT_URL;
 
-      return "
-        <form class=\"payment-form\" method=\"POST\" action=\"" . $redirectUrl . "\">
-          <script>
-            window.CKOConfig = {
-              publicKey: '" . $config['publicKey'] . "',
-              paymentToken: '" . $config['paymentToken'] . "',
-              customerEmail: '" . $config['customerEmail'] . "',
-              value: " . $config['value'] . ",
-              currency: '" . $config['currency'] . "',
-              renderMode: " . $config['renderMode'] . ",
-              formButtonLabel: '" . $config['formButtonLabel'] . "',
-              title: '" . $config['title'] . "',
-              themeColor: '" . $config['themeColor'] . "',
-              formButtonColor: '" . $config['themeColor'] . "',
-              logoUrl: '" . $config['logoUrl'] . "',
-              subtitle: '" . $config['subtitle'] . "',
-              localisation: '" . $config['localisation'] . "',
-              useCurrencyCode: '" . $config['useCurrencyCode'] . "',
-              redirectUrl: '" . $redirectUrl . "',
-              cardFormMode: 'cardTokenisation',
-            };
-          </script>
-          <script async src=\"https://cdn.checkout.com/sandbox/js/checkout.js\"></script>
-        </form>
-      ";
-
-    $api = CheckoutapiApi::getApi(array('mode' => $mode));
-    return $api->getJsConfig($config);
+    return "
+      <form class=\"payment-form\" method=\"POST\" action=\"" . $redirectUrl . "\">
+        <script>
+          window.CKOConfig = {
+            publicKey: '" . $config['publicKey'] . "',
+            paymentToken: '" . $config['paymentToken'] . "',
+            customerEmail: '" . $config['customerEmail'] . "',
+            value: " . $config['value'] . ",
+            currency: '" . $config['currency'] . "',
+            renderMode: " . $config['renderMode'] . ",
+            formButtonLabel: '" . $config['formButtonLabel'] . "',
+            title: '" . $config['title'] . "',
+            themeColor: '" . $config['themeColor'] . "',
+            formButtonColor: '" . $config['themeColor'] . "',
+            logoUrl: '" . $config['logoUrl'] . "',
+            subtitle: '" . $config['subtitle'] . "',
+            localisation: '" . $config['localisation'] . "',
+            useCurrencyCode: '" . $config['useCurrencyCode'] . "',
+            redirectUrl: '" . $redirectUrl . "',
+            cardFormMode: 'cardTokenisation',
+          };
+        </script>
+        <script async src=\"https://cdn.checkout.com/sandbox/js/checkout.js\"></script>
+      </form>
+    ";
   }
 
+  /**
+   * Get the frames script.
+   *
+   * The simplest usage would be:
+   *   get_payment_frames();
+   *
+   * More advaced usage could be:
+   *   $config = array(
+   *     'submit_form' => FALSE,
+   *     'js_function' => 'myCustomJavascriptAction'
+   *   );
+   *   get_payment_frames($config);
+   *
+   *   This will call the function myCustomJavascriptAction(cardToken).
+   *
+   * @param array $config
+   *   Configuration settings for the frames element.
+   *
+   * @return string
+   *   returns the html form element.
+   */
   public function getFramesElement(array $config) {
 
     $submit_action = "paymentForm.submit();";
@@ -307,16 +325,6 @@ class MethodsCreditcard {
       </script>";
 
     return $frame;
-  }
-
-  public function getCustomer($email, $mode, $secret_key) {
-    $param['customerId'] = "?email=" . $email;
-    $param['authorization'] = $secret_key;
-
-    $api = CheckoutapiApi::getApi(array('mode' => $mode));
-    $getCustomer = $api->getCustomer($param);
-
-    return $getCustomer;
   }
 
   /**
@@ -454,4 +462,5 @@ class MethodsCreditcard {
       return $api->refundCharge($config);
     }
   }
+
 }

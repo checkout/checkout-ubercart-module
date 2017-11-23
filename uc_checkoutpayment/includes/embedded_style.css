@@ -21,25 +21,25 @@ input.cko-disabled {
 }
 
 #cko-paymentpopup {
-  position:fixed;
+  position: fixed;
   width: 250px;
   margin: 0;
   background: white;
 }
 
-#cko-paymentpopup .button-row{
+#cko-paymentpopup .button-row {
   padding-top: 12px;
   float: right;
 }
 
-#cko-paymentpopup>a{
+#cko-paymentpopup>a {
   float: right;
 }
 
-#cko-paymentpopup>p{
+#cko-paymentpopup>p {
   float: left;
 }
 
-#cko-paymentpopup td{
+#cko-paymentpopup td {
   padding: 0;
 }

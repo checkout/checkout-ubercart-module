@@ -2,7 +2,7 @@
   'use strict';
 
   var interval = 3000;
-  var action = document.getElementById('cko-payment-action').getAttribute("name");
+  var action = document.getElementById('cko-payment-action').getAttribute('name');
   var contextid = document.getElementById('order_id').value;
 
   function loadDoc() {

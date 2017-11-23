@@ -23,15 +23,19 @@ const EVENT_TYPE_INVOICE_CANCELLED             = 'invoice.cancelled';
 
 /**
  * Implements hook_init().
- *
- * @var array $conf
  */
 function uc_checkoutpayment_init() {
   global $conf;
   $conf['i18n_variables'][] = 'uc_checkoutpayment_method_title';
   $conf['i18n_variables'][] = 'uc_checkoutpayment_checkout_button';
+}
 
+/**
+ * Implements hook_page_build().
+ */
+function uc_checkoutpayment_page_alter(&$page) {
   $pathElements = explode('/', current_path());
+
   if (count($pathElements) == 5 && $pathElements[0] == 'admin' && $pathElements[1] == 'store' && $pathElements[2] == 'orders' && $pathElements[4] == 'edit') {
     global $base_url;
     $path = $base_url . '/' . drupal_get_path('module', 'uc_checkoutpayment');
@@ -50,21 +54,19 @@ function uc_checkoutpayment_init() {
       )
     );
   }
-
-  
 }
 
 /**
  * Implements hook_form_alter().
  */
-function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id){
+function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id) {
   if ($form['#form_id'] == 'uc_order_edit_form' && $form_state['order']->order_status == 'pending') {
     global $base_url;
 
     $form['#submit'][] = 'process_moto_submit';
     $form['#validate'][] = 'process_moto_validate';
 
-    if (key($form['payment']['payment_method']['#options']) == 'cko'){
+    if (key($form['payment']['payment_method']['#options']) == 'cko') {
       $form['payment']['payment_method']['#options'] = array_reverse($form['payment']['payment_method']['#options']);
     }
 
@@ -113,7 +115,7 @@ function process_moto_validate(&$elements, &$form_state, $form_id = NULL) {
     if (!valid_email_address($form_state['values']['primary_email'])) {
       form_set_error("primary_email", t("A valid e-mail address is nessesary for payments through Checkout.com."));
     }
-    
+
     if (substr($form_state['values']['payment_card_token'], 0, 9) != "card_tok_") {
       form_set_error("payment_card_token", t("The card token is not valid."));
     }
@@ -128,9 +130,8 @@ function process_moto_submit($form, &$form_state) {
     $config = array(
       'order_id' => $form_state['values']['order_id'],
       'card_token' => $form_state['values']['payment_card_token'],
-      'transaction_indicator' => 3
+      'transaction_indicator' => 3,
     );
-    
     uc_checkoutpayment_process_charge($config);
   }
 }
@@ -436,11 +437,11 @@ function uc_payment_method_checkoutpayment($op, &$order) {
       return drupal_get_form('admin_order_payment_action_form', $order);
 
     case 'order-details':
-      $charge = uc_checkoutpayment_get_from_database_by_track_id($order->order_id);      
+      $charge = uc_checkoutpayment_get_from_database_by_track_id($order->order_id);
       if ($settings['public_key'] == "") {
         $form['cko-error'] = array(
           '#type'  => 'markup',
-          '#markup' => '<p class="error">The payment settings aren\'t setup propperly.</p>',
+          '#markup' => '<p class="error">The payment settings aren\'t setup properly.</p>',
         );
         return $form;
       }
@@ -454,7 +455,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
       else {
         $form['cko-error'] = array(
           '#type'  => 'markup',
-          '#markup' => '<p class="error">The payment settings aren\'t setup propperly.</p>',
+          '#markup' => '<p class="error">The payment settings aren\'t setup properly.</p>',
         );
       }
     default:
@@ -480,7 +481,7 @@ function admin_order_payment_action_form($form, &$form_state, $order) {
 
     // Last payment action failed.
     if (strpos($charge->status, "failed")) {
-      drupal_set_message(t('The ') . t($charge->status) . '. ' . t('Please try again later.'), 'error');
+      drupal_set_message(t('The @status. Please try again later.', array('@status' => $charge->status)), 'error');
     }
 
     // Find possible actions fot the payment.
@@ -494,17 +495,17 @@ function admin_order_payment_action_form($form, &$form_state, $order) {
 
       $actions[] = array(
         'action' => 'refund',
-        'label'  => t('Fully refund this order.')
+        'label'  => t('Fully refund this order.'),
       );
     }
     elseif ($charge->status == "Authorised" || $charge->status == "Capture failed" || $charge->status == "Void failed" || $charge->status == "Flagged") {
       $actions[] = array(
         'action' => 'capture',
-        'label'  => t('Capture this payment.')
+        'label'  => t('Capture this payment.'),
       );
       $actions[] = array(
         'action' => 'cancel',
-        'label'  => t('Cancel this payment.')
+        'label'  => t('Cancel this payment.'),
       );
     }
 
@@ -525,7 +526,7 @@ function admin_order_payment_action_form($form, &$form_state, $order) {
         '#name'  => $action['action'],
         '#attributes' => array(
           'id' => 'cko-payment-action',
-        )
+        ),
       );
     }
   }
@@ -555,7 +556,7 @@ function admin_order_payment_action_form_submit($form, &$form_state) {
   $payment_method = cko_store_settings();
   $instance       = uc_checkoutpayment_get_instance();
   $order          = uc_order_load($order_id);
-  $charge = uc_checkoutpayment_get_from_database_by_track_id($order_id);
+  $charge         = uc_checkoutpayment_get_from_database_by_track_id($order_id);
 
   $response = NULL;
 
@@ -578,7 +579,7 @@ function admin_order_payment_action_form_submit($form, &$form_state) {
   if ($response == NULL) {
     return FALSE;
   }
-  
+
   drupal_json_output(TRUE);
 }
 
@@ -645,7 +646,7 @@ function uc_checkoutpayment_form_uc_cart_checkout_review_form_alter(&$form, &$fo
           </td></tr>
           <tr class="review-button-row-inner" style="border: none;"><td style="border: none;">';
           $form['#suffix'] = '
-            <input id="pay-now-button" class="form-submit" type="submit" disabled value="' . cko_store_settings()['settings']['button_label']. '"
+            <input id="pay-now-button" class="form-submit" type="submit" disabled value="' . cko_store_settings()['settings']['button_label'] . '"
             </input></td></tr></table>' . get_payment_frames() . '</form>';
           break;
 
@@ -775,7 +776,7 @@ function uc_checkoutpayment_form(array $form, array &$form_state, $order) {
 function checkout_payment_widget($order) {
   $payment_method = cko_store_settings();
   $instance = uc_checkoutpayment_get_instance();
-  
+
   return $instance->getWidgetElement($order, $payment_method);
 }
 
@@ -800,7 +801,7 @@ function checkout_payment_widget($order) {
  * @return string
  *   returns the html form element.
  */
-function get_payment_frames(array $config = array()){
+function get_payment_frames(array $config = array()) {
   $config = array_merge($config, cko_store_settings());
   $instance = uc_checkoutpayment_get_instance();
   return $instance->getFramesElement($config);
@@ -843,7 +844,7 @@ function uc_checkoutpayment_process_charge(array $config = array()) {
     $card_token = $config['card_token'];
     $transactionIndicator = $config['transaction_indicator'];
   }
-  else{
+  else {
     $order_id = $_SESSION['cko_contextid'];
     $card_token = $_REQUEST['cko-card-token'];
     $transactionIndicator = 1;
@@ -925,11 +926,11 @@ function uc_checkoutpayment_process_charge(array $config = array()) {
   // Handle Api response.
   if ($api->getExceptionstate()->hasError() || !$result->isValid() || !response_validation($result)) {
     watchdog(
-      'uc_checkoutpayments', 
-      'An error has occurred while processing a transaction. The api returned: %errorMessage', 
+      'uc_checkoutpayments',
+      'An error has occurred while processing a transaction. The api returned: %errorMessage',
       array(
         '%errorMessage' => $api->getExceptionstate()->getErrorMessage(),
-      ), 
+      ),
       WATCHDOG_ERROR
     );
 
@@ -1105,20 +1106,20 @@ function uc_checkoutpayment_process_order() {
  */
 function uc_checkoutpayment_add_to_database($cko_charge) {
   db_insert('uc_checkoutpayment_hub_communication')
-  ->fields(array(
-    'id'                    => $cko_charge->getId(),
-    'created'               => $cko_charge->getCreated(),
-    'track_id'              => $cko_charge->getTrackId(),
-    'transaction_indicator' => $cko_charge->getTransactionIndicator(),
-    'email'                 => $cko_charge->getEmail(),
-    'value'                 => $cko_charge->getValue(),
-    'currency'              => $cko_charge->getCurrency(),
-    'responseMessage'       => $cko_charge->getResponseMessage(),
-    'responseCode'          => $cko_charge->getResponseCode(),
-    'status'                => $cko_charge->getStatus(),
-    'authCode'              => $cko_charge->getAuthCode(),
-  ))
-  ->execute();
+    ->fields(array(
+      'id'                    => $cko_charge->getId(),
+      'created'               => $cko_charge->getCreated(),
+      'track_id'              => $cko_charge->getTrackId(),
+      'transaction_indicator' => $cko_charge->getTransactionIndicator(),
+      'email'                 => $cko_charge->getEmail(),
+      'value'                 => $cko_charge->getValue(),
+      'currency'              => $cko_charge->getCurrency(),
+      'responseMessage'       => $cko_charge->getResponseMessage(),
+      'responseCode'          => $cko_charge->getResponseCode(),
+      'status'                => $cko_charge->getStatus(),
+      'authCode'              => $cko_charge->getAuthCode(),
+    ))
+    ->execute();
 }
 
 /**
@@ -1132,7 +1133,7 @@ function uc_checkoutpayment_add_to_database($cko_charge) {
  * @param int $order_id
  *   The id of the order being checked.
  *
- * @param object
+ * @return object
  *   A Checkout.com charge response object.
  */
 function uc_checkoutpayment_get_from_database_by_track_id($order_id) {
@@ -1152,8 +1153,8 @@ function uc_checkoutpayment_get_from_database_by_track_id($order_id) {
   $default = end($sqlRepsonse);
 
   $data->transaction_indicator = $default->transaction_indicator;
-  $data->email    = $default->email;
-  $data->authCode = $default->authCode;
+  $data->email                 = $default->email;
+  $data->authCode              = $default->authCode;
 
   $complete_value = 0;
   foreach ($sqlRepsonse as $charge) {

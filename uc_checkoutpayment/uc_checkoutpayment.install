@@ -79,7 +79,7 @@ function uc_checkoutpayment_schema() {
         'description' => 'Authentication code of the charge returned by the acquiring platform.',
         'type' => 'varchar',
         'length' => '255',
-      )
+      ),
     ),
     'primary key' => array('id'),
   );
