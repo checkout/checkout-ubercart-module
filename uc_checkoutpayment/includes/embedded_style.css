@@ -9,3 +9,37 @@ iframe.cko-iframe.cko-embedded {
 input.cko-disabled {
   background: grey !important;
 }
+
+#pay-now-button:disabled {
+  background: #aaa;
+  text-shadow: 0 1px 1px #888;
+  cursor: auto;
+}
+
+.hidden {
+  display: none;
+}
+
+#cko-paymentpopup {
+  position: fixed;
+  width: 250px;
+  margin: 0;
+  background: white;
+}
+
+#cko-paymentpopup .button-row {
+  padding-top: 12px;
+  float: right;
+}
+
+#cko-paymentpopup>a {
+  float: right;
+}
+
+#cko-paymentpopup>p {
+  float: left;
+}
+
+#cko-paymentpopup td {
+  padding: 0;
+}

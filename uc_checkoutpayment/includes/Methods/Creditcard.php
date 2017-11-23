@@ -188,6 +188,146 @@ class MethodsCreditcard {
   }
 
   /**
+   * Get the JS config script.
+   *
+   * Unused piece of code. The API code is to limited to use for this purpose.
+   * This will be used when The API is update to give more flexibility.
+   *
+   * @param object $order
+   *   A Ubercart order object.
+   * @param array $payment_method
+   *   An array with the CKO settings.
+   *
+   * @return string
+   *   JS Script with the lightbox.
+   */
+  public function getWidgetElement($order, array $payment_method) {
+    global $base_url;
+
+    $data = $this->getExtraInit($order, $payment_method);
+    $settings = $payment_method['settings'];
+
+    $config = array(
+      'publicKey' => $settings['public_key'],
+      'paymentToken' => $data['script']['paymentToken'],
+      'customerEmail' => $data['script']['email'],
+      'value' => $data['script']['amount'],
+      'currency' => $data['script']['currency'],
+      'renderMode' => $settings['cko_render_mode'],
+      'formButtonLabel' => $settings['button_label'],
+      'title' => $settings['title'],
+      'themeColor' => $settings['themecolor'],
+      'logoUrl' => $settings['logourl'],
+      'subtitle' => $settings['subtitle'],
+      'localisation' => $settings['cko_language'],
+      'useCurrencyCode' => $settings['currencycode'],
+
+    );
+
+    $redirectUrl = $base_url . REDIRECT_URL;
+
+    return "
+      <form class=\"payment-form\" method=\"POST\" action=\"" . $redirectUrl . "\">
+        <script>
+          window.CKOConfig = {
+            publicKey: '" . $config['publicKey'] . "',
+            paymentToken: '" . $config['paymentToken'] . "',
+            customerEmail: '" . $config['customerEmail'] . "',
+            value: " . $config['value'] . ",
+            currency: '" . $config['currency'] . "',
+            renderMode: " . $config['renderMode'] . ",
+            formButtonLabel: '" . $config['formButtonLabel'] . "',
+            title: '" . $config['title'] . "',
+            themeColor: '" . $config['themeColor'] . "',
+            formButtonColor: '" . $config['themeColor'] . "',
+            logoUrl: '" . $config['logoUrl'] . "',
+            subtitle: '" . $config['subtitle'] . "',
+            localisation: '" . $config['localisation'] . "',
+            useCurrencyCode: '" . $config['useCurrencyCode'] . "',
+            redirectUrl: '" . $redirectUrl . "',
+            cardFormMode: 'cardTokenisation',
+          };
+        </script>
+        <script async src=\"https://cdn.checkout.com/sandbox/js/checkout.js\"></script>
+      </form>
+    ";
+  }
+
+  /**
+   * Get the frames script.
+   *
+   * The simplest usage would be:
+   *   get_payment_frames();
+   *
+   * More advaced usage could be:
+   *   $config = array(
+   *     'submit_form' => FALSE,
+   *     'js_function' => 'myCustomJavascriptAction'
+   *   );
+   *   get_payment_frames($config);
+   *
+   *   This will call the function myCustomJavascriptAction(cardToken).
+   *
+   * @param array $config
+   *   Configuration settings for the frames element.
+   *
+   * @return string
+   *   returns the html form element.
+   */
+  public function getFramesElement(array $config) {
+
+    $submit_action = "paymentForm.submit();";
+
+    if (array_key_exists('submit_form', $config) && $config['submit_form'] == FALSE) {
+      $submit_action = "";
+
+      if (array_key_exists('js_function', $config)) {
+        $submit_action .= "window." . $config['js_function'] . "(cardToken);";
+      }
+    }
+
+    $frame = "
+      <script>
+      (function () {
+        var paymentForm = document.getElementById(\"payment-form\");
+        var payNowButton = document.getElementById(\"pay-now-button\");
+
+        Frames.init({
+          publicKey: \"" . $config['settings']["public_key"] . "\",
+          containerSelector: \".frames-container\",
+          cardValidationChanged: function() {
+            payNowButton.disabled = !Frames.isCardValid();
+          },
+          cardSubmitted: function() {
+            payNowButton.disabled = true;
+          },
+          cardTokenised: function(event) {
+            var cardToken = event.data.cardToken;
+            Frames.addCardToken(paymentForm, cardToken)
+            " . $submit_action . "
+          },
+          cardTokenisationFailed: function(event) {
+          }
+        });
+        paymentForm.addEventListener(\"submit\", function(event) {
+          event.preventDefault();
+          Frames.submitCard()
+          .then(function(data) {
+            payNowButton = document.getElementById(\"pay-now-button\");
+            var cardToken = data.cardToken;
+            Frames.addCardToken(paymentForm, cardToken);
+            " . $submit_action . "
+          })
+          .catch(function(err) {
+          });
+        });
+      }());
+      </script>";
+
+    return $frame;
+  }
+
+  /**
    * Create a cko charge request.
    *
    * This request contains a payment- or card-token and all other necessary
@@ -265,15 +405,15 @@ class MethodsCreditcard {
     $secret_key = $payment_method['settings']['private_key'];
     $mode = $payment_method['settings']['mode'];
 
-    $result = db_select('uc_checkoutpayment_charge_details', 'c')
+    $result = db_select('uc_checkoutpayment_hub_communication', 'c')
       ->fields('c')
-      ->condition('order_id', $order->order_id, '=')
-      ->condition('transaction_type', "succeeded", '=')
+      ->condition('track_id', $order->order_id, '=')
+      ->condition('status', "Authorised", '=')
       ->execute()
       ->fetchObject();
 
     $config['authorization'] = $secret_key;
-    $config['chargeId'] = $result->charge_id;
+    $config['chargeId'] = $result->id;
     $config['postedParam'] = array(
       'value' => $value,
     );
@@ -305,15 +445,15 @@ class MethodsCreditcard {
       $secret_key = $payment_method['settings']['private_key'];
       $mode = $payment_method['settings']['mode'];
 
-      $result = db_select('uc_checkoutpayment_charge_details', 'c')
+      $result = db_select('uc_checkoutpayment_hub_communication', 'c')
         ->fields('c')
-        ->condition('order_id', $order->order_id, '=')
-        ->condition('transaction_type', "captured", '=')
+        ->condition('track_id', $order->order_id, '=')
+        ->condition('status', "Captured", '=')
         ->execute()
         ->fetchObject();
 
       $config['authorization'] = $secret_key;
-      $config['chargeId'] = $result->charge_id;
+      $config['chargeId'] = $result->id;
       $config['postedParam'] = array(
         'value' => $value,
       );
