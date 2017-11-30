@@ -22,6 +22,20 @@ const EVENT_TYPE_CHARGE_VOIDED                 = 'charge.voided';
 const EVENT_TYPE_INVOICE_CANCELLED             = 'invoice.cancelled';
 
 /**
+ * Retrieves new instance of the creditcard class.
+ *
+ * @return object
+ *   creditcard
+ */
+function uc_checkoutpayment_get_instance() {
+  module_load_include('php', 'uc_checkoutpayment', 'includes/checkout-php-lib/autoload');
+  return CheckoutapiLibFactory::getInstance('MethodsCreditcard');
+
+  //module_load_include('php', 'uc_checkoutpayment', 'includes/autoload');
+  //return CheckoutapiLibFactory::getInstance('MethodsCreditcard');
+}
+
+/**
  * Implements hook_init().
  */
 function uc_checkoutpayment_init() {
@@ -805,17 +819,6 @@ function get_payment_frames(array $config = array()) {
   $config = array_merge($config, cko_store_settings());
   $instance = uc_checkoutpayment_get_instance();
   return $instance->getFramesElement($config);
-}
-
-/**
- * Retrieves new instance of the creditcard class.
- *
- * @return object
- *   creditcard
- */
-function uc_checkoutpayment_get_instance() {
-  module_load_include('php', 'uc_checkoutpayment', 'includes/autoload');
-  return CheckoutapiLibFactory::getInstance('MethodsCreditcard');
 }
 
 /**
