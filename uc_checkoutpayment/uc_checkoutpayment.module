@@ -29,7 +29,8 @@ const EVENT_TYPE_INVOICE_CANCELLED             = 'invoice.cancelled';
  */
 function uc_checkoutpayment_get_instance() {
   module_load_include('php', 'uc_checkoutpayment', 'includes/checkout-php-lib/autoload');
-  return CheckoutapiLibFactory::getInstance('MethodsCreditcard');
+  require 'includes/Methods/Creditcard.php';
+  return new Creditcard;
 
   //module_load_include('php', 'uc_checkoutpayment', 'includes/autoload');
   //return CheckoutapiLibFactory::getInstance('MethodsCreditcard');
@@ -989,12 +990,26 @@ function uc_checkoutpayment_success_order() {
  * Redirect back to cart page with error message.
  */
 function uc_checkoutpayment_fail_order() {
-  if (!$_SESSION['cko_contextid']) {
-    drupal_goto();
-  }
 
-  drupal_set_message(t("An error has occurred while processing your transaction. Please verify your information again or try a different card."), 'error');
-  drupal_goto('cart/checkout/review');
+  $payment_method = cko_store_settings();
+
+  $instance = uc_checkoutpayment_get_instance();
+
+  $config = array(
+    'FromDate' => '2017-10-01T20:00:00.000Z',
+    'ToDate' => '2017-11-01T20:00:00.000Z',
+    'mode' => $payment_method['settings']['mode'],
+  );
+
+  return $instance->sycroniseWithCheckoutServer($config);
+
+
+  // if (!$_SESSION['cko_contextid']) {
+  //   drupal_goto();
+  // }
+
+  // drupal_set_message(t("An error has occurred while processing your transaction. Please verify your information again or try a different card."), 'error');
+  // drupal_goto('cart/checkout/review');
 }
 
 /**

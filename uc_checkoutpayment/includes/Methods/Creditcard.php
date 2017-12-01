@@ -3,7 +3,7 @@
 /**
  * Handle all payment request to the cko server.
  */
-class MethodsCreditcard {
+class Creditcard {
 
   /**
    * Get and format all data for posting to the server.
@@ -463,4 +463,44 @@ class MethodsCreditcard {
     }
   }
 
+  /**
+   * Syncronise db with the checkout.com servers.
+   *
+   * Correct usage:
+   *   $config = array(
+   *     'FromDate' => '2016-01-01T20:00:00.000Z',
+   *     'ToDate' => '2016-01-01T20:00:00.000Z',
+   *     'mode' => 'sandbox',
+   *   );
+   *   sycroniseWithCheckoutServer($config);
+   *
+   * @param array|null $config
+   *   An array with the function settings.
+   *
+   * @return int
+   *   The number added & changed database rows.
+   */
+  public function sycroniseWithCheckoutServer(array $config) {
+
+    $mode = $payment_method['settings']['mode'];
+
+    $api = CheckoutapiApi::getApi($config);
+    $reportingService = $api->reportingService();
+
+    try {
+      $reportingModel = new com\checkout\Apiservices\Reporting\Requestmodels\Transactionfilter();
+      $reportingModel->setFromDate('2016-01-01T20:00:00.000Z');
+      $reportingModel->setToDate('2017-01-01T20:00:00.000Z');
+      $reportingModel->setPageSize('10');
+      $reportingModel->setSortColumn('Email');
+  
+      $reportingResponse = $reportingService->queryTransaction($reportingModel);
+    } catch (Exception $e) {
+      echo 'Caught exception: ',  $e->getErrorMessage(), "\n";
+      echo 'Caught exception Error Code: ',  $e->getErrorCode(), "\n";
+      echo 'Caught exception Event id: ',  $e->getEventId(), "\n";
+    }
+
+    return $reportingResponse;
+  }
 }
