@@ -484,25 +484,74 @@ class Creditcard {
    */
   public function sycroniseWithCheckoutServer(array $config) {
 
-    $mode = $payment_method['settings']['mode'];
+    $class = 'includes/checkout-php-library/com/checkout/Apiservices/Reporting/Requestmodels/Transactionfilter';
+    module_load_include('php', 'uc_checkoutpayment', $class);
 
-    $api = CheckoutapiApi::getApi($config);
-    $reportingService = $api->reportingService();
+    $class = 'includes/checkout-php-library/com/checkout/Apiservices/Reporting/Reportingservice';
+    module_load_include('php', 'uc_checkoutpayment', $class);
 
-    try {
-      $reportingModel = new com\checkout\Apiservices\Reporting\Requestmodels\Transactionfilter();
-      $reportingModel->setFromDate('2016-01-01T20:00:00.000Z');
-      $reportingModel->setToDate('2017-01-01T20:00:00.000Z');
-      $reportingModel->setPageSize('10');
-      $reportingModel->setSortColumn('Email');
-  
-      $reportingResponse = $reportingService->queryTransaction($reportingModel);
-    } catch (Exception $e) {
-      echo 'Caught exception: ',  $e->getErrorMessage(), "\n";
-      echo 'Caught exception Error Code: ',  $e->getErrorCode(), "\n";
-      echo 'Caught exception Event id: ',  $e->getEventId(), "\n";
+    $class = 'includes/checkout-php-library/com/checkout/Apiclient';
+    module_load_include('php', 'uc_checkoutpayment', $class);
+
+    $apiClient = new com\checkout\Apiclient('sk_test_f574d9f5-225b-4d04-bb83-58f5a34e2a97');
+    $reportingService = $apiClient->Reportingservice();
+
+    $totalNumberOfPages = 1;
+    for ($i=0; $i < $totalNumberOfPages; $i++) { 
+      try {
+        $reportingModel = new com\checkout\Apiservices\Reporting\Requestmodels\Transactionfilter();
+        $reportingModel->setFromDate('2017-10-01T20:00:00.000Z');
+        $reportingModel->setPageSize('100');
+        $reportingModel->setSortColumn('Email');
+        $reportingModel->setPageNumber((string) $i);
+    
+        $reportingResponse = $reportingService->queryTransaction($reportingModel);
+        $totalNumberOfPages = ceil($reportingResponse->getCount()/100) + 1;
+
+        foreach ($reportingResponse->getData() as $cko_charge) {
+          var_dump($cko_charge->getDate());
+
+          if ($cko_charge->getResponseCode() == '10000') {
+            $responseMessage = 'Approved';
+          }
+          else {
+            $responseMessage = 'Not Approved';
+          }
+
+          try {
+            db_insert('uc_checkoutpayment_hub_communication')
+            ->fields(array(
+              'id'                    => $cko_charge->getId(),
+              'created'               => $cko_charge->getDate(),
+              'track_id'              => $cko_charge->getTrackId(),
+              'transaction_indicator' => '1',
+              'email'                 => $cko_charge->getCustomerEmail(),
+              'value'                 => $cko_charge->getAmount(),
+              'currency'              => $cko_charge->getCurrency(),
+              'responseMessage'       => $responseMessage,
+              'responseCode'          => $cko_charge->getResponseCode(),
+              'status'                => $cko_charge->getStatus(),
+            ))
+            ->execute();
+          }
+          catch (Exception $e) {
+            var_dump($e);
+          }
+        }
+
+      }
+      catch (Exception $e) {
+        echo 'Caught exception: ',  $e->getErrorMessage(), "\n";
+        echo 'Caught exception Error Code: ',  $e->getErrorCode(), "\n";
+        echo 'Caught exception Event id: ',  $e->getEventId(), "\n";
+      }
     }
 
-    return $reportingResponse;
+
+    echo '<pre>';
+    var_dump($reportingResponse);
+    echo '</pre>';
+
+    return null;
   }
 }
