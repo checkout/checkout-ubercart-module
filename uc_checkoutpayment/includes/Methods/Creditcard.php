@@ -365,6 +365,7 @@ class Creditcard {
    *   An array.
    */
   protected function captureConfig(array $action) {
+    error_log("F*cking capture config!", 0);
     $to_return['postedParam'] = array(
       'autoCapture' => CheckoutapiClientConstant::AUTOCAPUTURE_CAPTURE,
       'autoCapTime' => $action['settings']['autocaptime'],
@@ -379,6 +380,7 @@ class Creditcard {
    *   An array.
    */
   protected function authorizeConfig() {
+    error_log("F*cking authorise config!", 0);
     $to_return['postedParam'] = array(
       'autoCapture' => CheckoutapiClientConstant::AUTOCAPUTURE_AUTH,
       'autoCapTime' => 0,

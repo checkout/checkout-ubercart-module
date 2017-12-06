@@ -28,6 +28,7 @@ class UcCheckoutpaymentApiAutoloader {
    *   The name of the class.
    */
   public function autoload($class) {
+    error_log("B class: " . $class);
     $classNameArray = preg_split('/(?=[A-Z])/', $class);
 
     $includePath = get_include_path();

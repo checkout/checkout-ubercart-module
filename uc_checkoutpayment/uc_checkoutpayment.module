@@ -28,12 +28,13 @@ const EVENT_TYPE_INVOICE_CANCELLED             = 'invoice.cancelled';
  *   creditcard
  */
 function uc_checkoutpayment_get_instance() {
-  module_load_include('php', 'uc_checkoutpayment', 'includes/checkout-php-lib/autoload');
-  require 'includes/Methods/Creditcard.php';
-  return new Creditcard;
+  module_load_include('php', 'uc_checkoutpayment', 'includes/checkout-php-library/autoload');
 
-  //module_load_include('php', 'uc_checkoutpayment', 'includes/autoload');
-  //return CheckoutapiLibFactory::getInstance('MethodsCreditcard');
+  if (!in_array('Creditcard', get_declared_classes())) {
+    require 'includes/Methods/Creditcard.php';
+  }
+
+  return new Creditcard;
 }
 
 /**
