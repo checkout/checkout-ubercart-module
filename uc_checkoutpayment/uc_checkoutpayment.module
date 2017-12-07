@@ -472,6 +472,16 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#type' => 'button',
         '#action' => 'syncronise',
         '#value'  => t('Syncronise'),
+        '#ajax' => array(
+          'callback' => 'reloadHubCommunicationTableWithTimeRange',
+          'wrapper' => 'replace_synconisation_respons',
+         ),
+      );
+
+      $form['checkoutpayment_sync']['cko_syncronise_repsons'] = array(
+        '#markup' => '',
+        '#prefix' => '<div id="replace_synconisation_respons">',
+        '#suffix' => '</div>',
       );
 
       return $form;
@@ -504,6 +514,32 @@ function uc_payment_method_checkoutpayment($op, &$order) {
     default:
       return NULL;
   }
+}
+
+/**
+ * AJAX call to synronise the database with the hub.
+ *
+ * @param form $form
+ *   The settings form.
+ * @param form_state $form_state
+ *   The settings form state.
+ */
+function reloadHubCommunicationTableWithTimeRange($form, $form_state) {
+  $payment_method = cko_store_settings();
+  $instance = uc_checkoutpayment_get_instance();
+
+  $config = array(
+    'privateKey' => $payment_method['settings']['private_key'],
+  );
+
+  if (isset($form_state['values']['cko_from_date']) && isset($form_state['values']["cko_to_date"])) {
+    $config['FromDate'] = $form_state['values']['cko_from_date'];
+    $config['ToDate'] = $form_state['values']['cko_to_date'];
+  }
+
+  $instance->reloadHubCommunicationTable($config);
+
+  return $form['checkoutpayment_sync']['cko_syncronise_repsons']['#markup'] = 'All the charges have been syncronised.';
 }
 
 /**
@@ -617,22 +653,19 @@ function admin_order_payment_action_form_submit($form, &$form_state) {
   $payment_method = cko_store_settings();
   $instance = uc_checkoutpayment_get_instance();
 
-  if ($form_state['triggering_element']["#name"] == "syncronise") {
-    
+  $order  = uc_order_load($order_id);
+  $charge = uc_checkoutpayment_get_from_database_by_track_id($order_id);
+  $response = NULL;
 
+  if ($form_state['triggering_element']["#name"] == "syncronise") {
     $config = array(
       'privateKey' => $payment_method['settings']['private_key'],
       'trackId' => (string) $order_id,
     );
 
     $instance->reloadHubCommunicationTable($config);
+    drupal_set_message(t("The payment was syncronized with Checkout.com"), 'status');
   }
-
-  $order          = uc_order_load($order_id);
-  $charge         = uc_checkoutpayment_get_from_database_by_track_id($order_id);
-
-  $response = NULL;
-
   if ($charge->status == "Authorised" || $charge->status == "Capture failed" || $charge->status == "Flagged") {
     if ($form_state['triggering_element']["#name"] == "capture") {
       $response = $instance->captureCharge($order, $payment_method, ($order->order_total * 100));
@@ -643,7 +676,7 @@ function admin_order_payment_action_form_submit($form, &$form_state) {
       drupal_set_message(t("The payment was voided."), 'status');
     }
   }
-  elseif ($charge->status == 'Captured' && isset($values['refund'])) {
+  elseif ($charge->status == 'Captured' && $form_state['triggering_element']["#name"] == "refund") {
     $amount = $order->order_total - uc_payment_balance($order);
     $response = $instance->refundCharge($order, $payment_method, ($amount * 100));
     drupal_set_message(t("The payment was refunded."), 'status');
@@ -1048,16 +1081,12 @@ function uc_checkoutpayment_success_order() {
  * Redirect back to cart page with error message.
  */
 function uc_checkoutpayment_fail_order() {
+  if (!$_SESSION['cko_contextid']) {
+    drupal_goto();
+  }
 
-  return gmdate('Y-m-d\TH:i:s\Z');
-
-
-  // if (!$_SESSION['cko_contextid']) {
-  //   drupal_goto();
-  // }
-
-  // drupal_set_message(t("An error has occurred while processing your transaction. Please verify your information again or try a different card."), 'error');
-  // drupal_goto('cart/checkout/review');
+  drupal_set_message(t("An error has occurred while processing your transaction. Please verify your information again or try a different card."), 'error');
+  drupal_goto('cart/checkout/review');
 }
 
 /**

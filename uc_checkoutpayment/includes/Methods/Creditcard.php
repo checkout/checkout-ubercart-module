@@ -519,8 +519,7 @@ class Creditcard {
         )
       );
     }
-    
-    
+
     $totalNumberOfPages = 1;
     for ($i=0; $i < $totalNumberOfPages; $i++) { 
       try {
@@ -530,8 +529,6 @@ class Creditcard {
         $totalNumberOfPages = ceil($reportingResponse->getCount()/100) + 1;
 
         foreach ($reportingResponse->getData() as $cko_charge) {
-          //var_dump($cko_charge->getDate());
-
           if ($cko_charge->getResponseCode() == '10000') {
             $responseMessage = 'Approved';
           }
@@ -554,6 +551,101 @@ class Creditcard {
               'status'                => $cko_charge->getStatus(),
             ))
             ->execute();
+
+            if ($cko_charge->getResponseCode() == '10000' || $cko_charge->getResponseCode() == '10100') {
+              $comments = serialize(uc_order_comments_load($cko_charge->getTrackId(), TRUE));
+
+              if (strpos($comments, $cko_charge->getId()) === false) {
+                $order = uc_order_load($cko_charge->getTrackId());
+
+                $order_total   = $order->order_total;
+                $order_balance = uc_payment_balance($order);
+                $order_value   = $cko_charge->getAmount() / 100;
+
+                switch ($cko_charge->getStatus()) {
+                  case 'Authorised':
+                    $commentary = t(
+                      'Payment authorised. (Id: @chargeId)',
+                      array(
+                        '@chargeId' => $cko_charge->getId(),
+                      )
+                    );
+                    break;
+              
+                  case 'Flagged':
+                    $commentary = t(
+                      'Payment authorised and flagged. (Id: @chargeId)',
+                      array(
+                        '@chargeId' => $cko_charge->getId(),
+                      )
+                    );
+                    break;
+              
+                  case 'Captured':
+                    if ($order_value == $order_total) {
+                      $commentary = t('Payment received. (Id: @chargeId)',
+                        array(
+                          '@chargeId' => $cko_charge->getId(),
+                        )
+                      );
+                    }
+                    else {
+                      $commentary = t(
+                        'Partial payment received @captured received instead of @order_total. (Id: @chargeId)',
+                        array(
+                          '@chargeId' => $cko_charge->getId(),
+                          '@captured' => uc_currency_format($order_value), 
+                          '@order_total' => uc_currency_format($order_total),
+                        )
+                      );
+                    }
+    
+                    uc_payment_enter($order->order_id, 'cko', $order_value, 0, NULL, $commentary);
+                    break;
+              
+                  case 'Refunded':
+                    $commentary = t('Payment fully refunded. (Id: @chargeId)',
+                      array(
+                        '@chargeId' => $cko_charge->getId(),
+                      )
+                    );
+                    $commentary = t(
+                      'Partial refunded made: @refunded of @order_total.  (Id: @chargeId)', 
+                      array(
+                        '@refunded' => uc_currency_format($order_value), 
+                        '@order_total' => uc_currency_format($order_total),
+                        )
+                      );
+                    uc_payment_enter($order->order_id, 'cko', -$refunded, 0, NULL, $comment);
+                    break;
+              
+                  case 'Voided':
+                    $commentary = t('Payment authorised and flagged. (Id: @chargeId)',
+                      array(
+                        '@chargeId' => $cko_charge->getId(),
+                      )
+                    );
+                    break;
+              
+                  case 'Declined':
+                    $commentary = t('Payment voided. (Id: @chargeId)',
+                      array(
+                        '@chargeId' => $cko_charge->getId(),
+                      )
+                    );
+                    break;
+                  case 'Pending':
+                    $commentary = t('Payment pending. (Id: @chargeId)',
+                      array(
+                        '@chargeId' => $cko_charge->getId(),
+                      )
+                    );
+                    break;
+                }
+              
+                uc_order_comment_save($cko_charge->getTrackId(), 0, $commentary, 'admin');
+              }
+            }
           }
           catch (Exception $e) {
             //var_dump($e);
@@ -568,11 +660,7 @@ class Creditcard {
       }
     }
 
-
-    // echo '<pre>';
-    // var_dump($reportingResponse);
-    // echo '</pre>';
-
     return null;
   }
 }
+
