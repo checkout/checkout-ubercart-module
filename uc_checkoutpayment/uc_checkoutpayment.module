@@ -253,7 +253,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#type' => 'fieldset',
         '#title' => t('Account settings'),
         '#collapsible' => TRUE,
-        '#collapsed' => FALSE,
+        '#collapsed' => TRUE,
       );
 
       $form['checkoutpayment_account']['cko_private_key'] = array(
@@ -305,7 +305,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#type' => 'fieldset',
         '#title' => t('Payment settings'),
         '#collapsible' => TRUE,
-        '#collapsed' => FALSE,
+        '#collapsed' => TRUE,
       );
 
       $form['checkoutpayment_transaction']['cko_payment_action'] = array(
@@ -359,7 +359,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#type' => 'fieldset',
         '#title' => t('Personalisation'),
         '#collapsible' => TRUE,
-        '#collapsed' => FALSE,
+        '#collapsed' => TRUE,
       );
 
       $form['checkoutpayment_ui']['cko_integration'] = array(
@@ -447,6 +447,33 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#default_value' => $settings['currencycode'],
       );
 
+      $form['checkoutpayment_sync'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Syncronisation'),
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+      );
+
+      $form['checkoutpayment_sync']['cko_from_date'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Start of the time range.'),
+        '#description' => t('Beginning of required date range in UTC format. If omitted, the default value will be set to 2 days prior to today’s date.'),
+        '#default_value' => gmdate('Y-m-d\TH:i:s\Z', strtotime("-2 day")),
+      );
+
+      $form['checkoutpayment_sync']['cko_to_date'] = array(
+        '#type' => 'textfield',
+        '#title' => t('End of the time range.'),
+        '#description' => t('End of required date range in UTC format. If omitted, the default value will be set to today’s date.'),
+        '#default_value' => gmdate('Y-m-d\TH:i:s\Z'),
+      );
+
+      $form['checkoutpayment_sync']['cko_syncronise'] = array(
+        '#type' => 'button',
+        '#action' => 'syncronise',
+        '#value'  => t('Syncronise'),
+      );
+
       return $form;
 
     case 'order-view':
@@ -487,8 +514,26 @@ function admin_order_payment_action_form($form, &$form_state, $order) {
 
   $charge = uc_checkoutpayment_get_from_database_by_track_id($order->order_id);
 
+  if ($charge == NULL) {
+    $payment_method = cko_store_settings();
+    $instance = uc_checkoutpayment_get_instance();
+
+    $config = array(
+      'privateKey' => $payment_method['settings']['private_key'],
+      'trackId' => (string) $order->order_id,
+    );
+
+    $instance->reloadHubCommunicationTable($config);
+    $charge = uc_checkoutpayment_get_from_database_by_track_id($order->order_id);
+  }
+
   if ($charge != NULL) {
     $actions = array();
+
+    $actions[] = array(
+      'action' => 'syncronise',
+      'label'  => t('Refresh'),
+    );
 
     // Payment was flagged.
     if ($charge->responseCode == "10100") {
@@ -570,7 +615,19 @@ function admin_order_payment_action_form_submit($form, &$form_state) {
   $order_id = $values['order_id'];
 
   $payment_method = cko_store_settings();
-  $instance       = uc_checkoutpayment_get_instance();
+  $instance = uc_checkoutpayment_get_instance();
+
+  if ($form_state['triggering_element']["#name"] == "syncronise") {
+    
+
+    $config = array(
+      'privateKey' => $payment_method['settings']['private_key'],
+      'trackId' => (string) $order_id,
+    );
+
+    $instance->reloadHubCommunicationTable($config);
+  }
+
   $order          = uc_order_load($order_id);
   $charge         = uc_checkoutpayment_get_from_database_by_track_id($order_id);
 
@@ -992,17 +1049,7 @@ function uc_checkoutpayment_success_order() {
  */
 function uc_checkoutpayment_fail_order() {
 
-  $payment_method = cko_store_settings();
-
-  $instance = uc_checkoutpayment_get_instance();
-
-  $config = array(
-    'FromDate' => '2017-10-01T20:00:00.000Z',
-    'ToDate' => '2017-11-01T20:00:00.000Z',
-    'mode' => $payment_method['settings']['mode'],
-  );
-
-  return $instance->sycroniseWithCheckoutServer($config);
+  return gmdate('Y-m-d\TH:i:s\Z');
 
 
   // if (!$_SESSION['cko_contextid']) {

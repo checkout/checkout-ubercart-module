@@ -470,9 +470,10 @@ class Creditcard {
    *
    * Correct usage:
    *   $config = array(
+   *     'privateKey' => 'sk_0000000-0000-0000-0000-000000000',
    *     'FromDate' => '2016-01-01T20:00:00.000Z',
    *     'ToDate' => '2016-01-01T20:00:00.000Z',
-   *     'mode' => 'sandbox',
+   *     'trackId' => '4',
    *   );
    *   sycroniseWithCheckoutServer($config);
    *
@@ -482,7 +483,7 @@ class Creditcard {
    * @return int
    *   The number added & changed database rows.
    */
-  public function sycroniseWithCheckoutServer(array $config) {
+  public function reloadHubCommunicationTable(array $config) {
 
     $class = 'includes/checkout-php-library/com/checkout/Apiservices/Reporting/Requestmodels/Transactionfilter';
     module_load_include('php', 'uc_checkoutpayment', $class);
@@ -493,23 +494,43 @@ class Creditcard {
     $class = 'includes/checkout-php-library/com/checkout/Apiclient';
     module_load_include('php', 'uc_checkoutpayment', $class);
 
-    $apiClient = new com\checkout\Apiclient('sk_test_f574d9f5-225b-4d04-bb83-58f5a34e2a97');
+    $apiClient = new com\checkout\Apiclient($config['privateKey']);
     $reportingService = $apiClient->Reportingservice();
 
+    $reportingModel = new com\checkout\Apiservices\Reporting\Requestmodels\Transactionfilter();
+    $reportingModel->setPageSize('100');
+    $reportingModel->setSortColumn('date');
+
+    if (array_key_exists('ToDate', $config)) {
+      $reportingModel->setToDate($config['ToDate']);
+    }
+
+    if (array_key_exists('FromDate', $config)) {
+      $reportingModel->setFromDate($config['FromDate']);
+    }
+
+    if (array_key_exists('trackId', $config)) {
+      $reportingModel->setFilters(
+        array(
+          "action"    => "include",
+          "field"     => "TrackID",
+          "operator"  => "EQUALS",
+          "value"     => $config['trackId']
+        )
+      );
+    }
+    
+    
     $totalNumberOfPages = 1;
     for ($i=0; $i < $totalNumberOfPages; $i++) { 
       try {
-        $reportingModel = new com\checkout\Apiservices\Reporting\Requestmodels\Transactionfilter();
-        $reportingModel->setFromDate('2017-10-01T20:00:00.000Z');
-        $reportingModel->setPageSize('100');
-        $reportingModel->setSortColumn('Email');
         $reportingModel->setPageNumber((string) $i);
     
         $reportingResponse = $reportingService->queryTransaction($reportingModel);
         $totalNumberOfPages = ceil($reportingResponse->getCount()/100) + 1;
 
         foreach ($reportingResponse->getData() as $cko_charge) {
-          var_dump($cko_charge->getDate());
+          //var_dump($cko_charge->getDate());
 
           if ($cko_charge->getResponseCode() == '10000') {
             $responseMessage = 'Approved';
@@ -535,7 +556,7 @@ class Creditcard {
             ->execute();
           }
           catch (Exception $e) {
-            var_dump($e);
+            //var_dump($e);
           }
         }
 
@@ -548,9 +569,9 @@ class Creditcard {
     }
 
 
-    echo '<pre>';
-    var_dump($reportingResponse);
-    echo '</pre>';
+    // echo '<pre>';
+    // var_dump($reportingResponse);
+    // echo '</pre>';
 
     return null;
   }
