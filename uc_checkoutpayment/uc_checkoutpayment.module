@@ -22,12 +22,76 @@ const EVENT_TYPE_CHARGE_VOIDED                 = 'charge.voided';
 const EVENT_TYPE_INVOICE_CANCELLED             = 'invoice.cancelled';
 
 /**
+ * Implements hook_menu().
+ */
+function uc_checkoutpayment_menu() {
+  $items = array();
+  $items['checkoutapi/process'] = array(
+    'title' => 'Ipn checkout',
+    'page callback' => 'uc_checkoutpayment_process_order',
+    /* Access neccecary for webhooks */
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['uc_checkoutpayment/admin'] = array(
+    'title' => 'Admin ajex call',
+    'page callback' => 'uc_checkoutpayment_admin_call',
+    /* Access neccecary for AJAX request */
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['uc_checkoutpayment/success'] = array(
+    'title' => 'Success page',
+    'page callback' => 'uc_checkoutpayment_success_order',
+    /* Redirect costumers to this address when the charge request has been succesfull */
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['uc_checkoutpayment/process_charge'] = array(
+    'title' => 'Create Order page',
+    'page callback' => 'uc_checkoutpayment_process_charge',
+    /* Redirect costumers to this address when processing the card entry */
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['uc_checkoutpayment/fail'] = array(
+    'title' => 'Fail Order page',
+    'page callback' => 'uc_checkoutpayment_fail_order',
+    /* Redirect costumers to this address when the charge request has failed */
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
  * Implements hook_init().
  */
 function uc_checkoutpayment_init() {
   global $conf;
   $conf['i18n_variables'][] = 'uc_checkoutpayment_method_title';
   $conf['i18n_variables'][] = 'uc_checkoutpayment_checkout_button';
+}
+
+/**
+ * Implements hook_variable_info().
+ */
+function uc_checkoutpayment_variable_info() {
+  $variable['uc_checkoutpayment_method_title'] = array(
+    'title' => t('Checkout.com - method title'),
+    'description' => t('Name for Checkout.com payment method presented to the customer.'),
+  );
+  $variable['uc_checkoutpayment_checkout_button'] = array(
+    'title' => t('Checkout.com - checkout button'),
+    'description' => t('Text on checkout button when paying via Checkout.com.'),
+  );
+
+  return $variable;
 }
 
 /**
@@ -107,100 +171,6 @@ function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id) {
 }
 
 /**
- * Implements hook_form_validate() for the admin edit order form.
- */
-function process_moto_validate(&$elements, &$form_state, $form_id = NULL) {
-  if ($form_state['values']['payment_method'] == "cko" && $form_state['triggering_element']["#value"] == "Submit changes") {
-
-    if (!valid_email_address($form_state['values']['primary_email'])) {
-      form_set_error("primary_email", t("A valid e-mail address is nessesary for payments through Checkout.com."));
-    }
-
-    if (substr($form_state['values']['payment_card_token'], 0, 9) != "card_tok_") {
-      form_set_error("payment_card_token", t("The card token is not valid."));
-    }
-  }
-}
-
-/**
- * Implements hook_form_submit() for the admin edit order form.
- */
-function process_moto_submit($form, &$form_state) {
-  if ($form_state['values']['payment_method'] == "cko" && $form_state['triggering_element']["#value"] == "Submit changes") {
-    $config = array(
-      'order_id' => $form_state['values']['order_id'],
-      'card_token' => $form_state['values']['payment_card_token'],
-      'transaction_indicator' => 3,
-    );
-    uc_checkoutpayment_process_charge($config);
-  }
-}
-
-/**
- * Implements hook_variable_info().
- */
-function uc_checkoutpayment_variable_info() {
-  $variable['uc_checkoutpayment_method_title'] = array(
-    'title' => t('Checkout.com - method title'),
-    'description' => t('Name for Checkout.com payment method presented to the customer.'),
-  );
-  $variable['uc_checkoutpayment_checkout_button'] = array(
-    'title' => t('Checkout.com - checkout button'),
-    'description' => t('Text on checkout button when paying via Checkout.com.'),
-  );
-
-  return $variable;
-}
-
-/**
- * Implements hook_menu().
- */
-function uc_checkoutpayment_menu() {
-  $items = array();
-  $items['checkoutapi/process'] = array(
-    'title' => 'Ipn checkout',
-    'page callback' => 'uc_checkoutpayment_process_order',
-    /* Access neccecary for webhooks */
-    'access callback' => TRUE,
-    'type' => MENU_CALLBACK,
-  );
-
-  $items['uc_checkoutpayment/admin'] = array(
-    'title' => 'Admin ajex call',
-    'page callback' => 'uc_checkoutpayment_admin_call',
-    /* Access neccecary for AJAX request */
-    'access callback' => TRUE,
-    'type' => MENU_CALLBACK,
-  );
-
-  $items['uc_checkoutpayment/success'] = array(
-    'title' => 'Success page',
-    'page callback' => 'uc_checkoutpayment_success_order',
-    /* Redirect costumers to this address when the charge request has been succesfull */
-    'access callback' => TRUE,
-    'type' => MENU_CALLBACK,
-  );
-
-  $items['uc_checkoutpayment/process_charge'] = array(
-    'title' => 'Create Order page',
-    'page callback' => 'uc_checkoutpayment_process_charge',
-    /* Redirect costumers to this address when processing the card entry */
-    'access callback' => TRUE,
-    'type' => MENU_CALLBACK,
-  );
-
-  $items['uc_checkoutpayment/fail'] = array(
-    'title' => 'Fail Order page',
-    'page callback' => 'uc_checkoutpayment_fail_order',
-    /* Redirect costumers to this address when the charge request has failed */
-    'access callback' => TRUE,
-    'type' => MENU_CALLBACK,
-  );
-
-  return $items;
-}
-
-/**
  * Implements hook_uc_payment_method().
  */
 function uc_checkoutpayment_uc_payment_method() {
@@ -237,7 +207,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#type' => 'fieldset',
         '#title' => t('Account settings'),
         '#collapsible' => TRUE,
-        '#collapsed' => FALSE,
+        '#collapsed' => TRUE,
       );
 
       $form['checkoutpayment_account']['cko_private_key'] = array(
@@ -289,7 +259,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#type' => 'fieldset',
         '#title' => t('Payment settings'),
         '#collapsible' => TRUE,
-        '#collapsed' => FALSE,
+        '#collapsed' => TRUE,
       );
 
       $form['checkoutpayment_transaction']['cko_payment_action'] = array(
@@ -343,7 +313,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#type' => 'fieldset',
         '#title' => t('Personalisation'),
         '#collapsible' => TRUE,
-        '#collapsed' => FALSE,
+        '#collapsed' => TRUE,
       );
 
       $form['checkoutpayment_ui']['cko_integration'] = array(
@@ -431,6 +401,43 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         '#default_value' => $settings['currencycode'],
       );
 
+      $form['checkoutpayment_sync'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Syncronisation'),
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+      );
+
+      $form['checkoutpayment_sync']['cko_from_date'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Start of the time range.'),
+        '#description' => t('Beginning of required date range in UTC format. If omitted, the default value will be set to 2 days prior to today’s date.'),
+        '#default_value' => gmdate('Y-m-d\TH:i:s\Z', strtotime("-2 day")),
+      );
+
+      $form['checkoutpayment_sync']['cko_to_date'] = array(
+        '#type' => 'textfield',
+        '#title' => t('End of the time range.'),
+        '#description' => t('End of required date range in UTC format. If omitted, the default value will be set to today’s date.'),
+        '#default_value' => gmdate('Y-m-d\TH:i:s\Z'),
+      );
+
+      $form['checkoutpayment_sync']['cko_syncronise'] = array(
+        '#type' => 'button',
+        '#action' => 'syncronise',
+        '#value'  => t('Syncronise'),
+        '#ajax' => array(
+          'callback' => 'reloadHubCommunicationTableWithTimeRange',
+          'wrapper' => 'replace_synconisation_respons',
+         ),
+      );
+
+      $form['checkoutpayment_sync']['cko_syncronise_repsons'] = array(
+        '#markup' => '',
+        '#prefix' => '<div id="replace_synconisation_respons">',
+        '#suffix' => '</div>',
+      );
+
       return $form;
 
     case 'order-view':
@@ -464,6 +471,70 @@ function uc_payment_method_checkoutpayment($op, &$order) {
 }
 
 /**
+ * @todo change name to cko_admin_moto_validate
+ *
+ * Implements hook_form_validate() for the admin edit order form.
+ */
+function process_moto_validate(&$elements, &$form_state, $form_id = NULL) {
+  if ($form_state['values']['payment_method'] == "cko" && $form_state['triggering_element']["#value"] == "Submit changes") {
+
+    if (!valid_email_address($form_state['values']['primary_email'])) {
+      form_set_error("primary_email", t("A valid e-mail address is nessesary for payments through Checkout.com."));
+    }
+
+    if (substr($form_state['values']['payment_card_token'], 0, 9) != "card_tok_") {
+      form_set_error("payment_card_token", t("The card token is not valid."));
+    }
+  }
+}
+
+/**
+ * @todo change name to cko_admin_moto_submit
+ *
+ * Implements hook_form_submit() for the admin edit order form.
+ */
+function process_moto_submit($form, &$form_state) {
+  if ($form_state['values']['payment_method'] == "cko" && $form_state['triggering_element']["#value"] == "Submit changes") {
+    $config = array(
+      'order_id' => $form_state['values']['order_id'],
+      'card_token' => $form_state['values']['payment_card_token'],
+      'transaction_indicator' => 3,
+    );
+    uc_checkoutpayment_process_charge($config);
+  }
+}
+
+/**
+ * AJAX call to synronise the database with the hub.
+ *
+ * @todo change name to cko_admin_syncronise_databases
+ *
+ * @param form $form
+ *   The settings form.
+ * @param form_state $form_state
+ *   The settings form state.
+ */
+function reloadHubCommunicationTableWithTimeRange($form, $form_state) {
+  $payment_method = cko_store_settings();
+  $instance = uc_checkoutpayment_get_instance();
+
+  $config = array(
+    'privateKey' => $payment_method['settings']['private_key'],
+  );
+
+  if (isset($form_state['values']['cko_from_date']) && isset($form_state['values']["cko_to_date"])) {
+    $config['FromDate'] = $form_state['values']['cko_from_date'];
+    $config['ToDate'] = $form_state['values']['cko_to_date'];
+  }
+
+  $instance->reloadHubCommunicationTable($config);
+
+  return $form['checkoutpayment_sync']['cko_syncronise_repsons']['#markup'] = 'All the charges have been syncronised.';
+}
+
+/**
+ * @todo rename to cko_admin_payment_action_form
+ * 
  * Implements hook_form().
  */
 function admin_order_payment_action_form($form, &$form_state, $order) {
@@ -473,6 +544,11 @@ function admin_order_payment_action_form($form, &$form_state, $order) {
 
   if ($charge != NULL) {
     $actions = array();
+
+    $actions[] = array(
+      'action' => 'syncronise',
+      'label'  => t('Refresh'),
+    );
 
     // Payment was flagged.
     if ($charge->responseCode == "10100") {
@@ -547,6 +623,8 @@ function admin_order_payment_action_form($form, &$form_state, $order) {
 }
 
 /**
+ * @todo rename to cko_admin_payment_action_form_submit
+ *
  * Implements hook_form_sumbit().
  */
 function admin_order_payment_action_form_submit($form, &$form_state) {
@@ -554,12 +632,21 @@ function admin_order_payment_action_form_submit($form, &$form_state) {
   $order_id = $values['order_id'];
 
   $payment_method = cko_store_settings();
-  $instance       = uc_checkoutpayment_get_instance();
-  $order          = uc_order_load($order_id);
-  $charge         = uc_checkoutpayment_get_from_database_by_track_id($order_id);
+  $instance = uc_checkoutpayment_get_instance();
 
+  $order  = uc_order_load($order_id);
+  $charge = uc_checkoutpayment_get_from_database_by_track_id($order_id);
   $response = NULL;
 
+  if ($form_state['triggering_element']["#name"] == "syncronise") {
+    $config = array(
+      'privateKey' => $payment_method['settings']['private_key'],
+      'trackId' => (string) $order_id,
+    );
+
+    $instance->reloadHubCommunicationTable($config);
+    drupal_set_message(t("The payment was syncronized with Checkout.com"), 'status');
+  }
   if ($charge->status == "Authorised" || $charge->status == "Capture failed" || $charge->status == "Flagged") {
     if ($form_state['triggering_element']["#name"] == "capture") {
       $response = $instance->captureCharge($order, $payment_method, ($order->order_total * 100));
@@ -570,7 +657,7 @@ function admin_order_payment_action_form_submit($form, &$form_state) {
       drupal_set_message(t("The payment was voided."), 'status');
     }
   }
-  elseif ($charge->status == 'Captured' && isset($values['refund'])) {
+  elseif ($charge->status == 'Captured' && $form_state['triggering_element']["#name"] == "refund") {
     $amount = $order->order_total - uc_payment_balance($order);
     $response = $instance->refundCharge($order, $payment_method, ($amount * 100));
     drupal_set_message(t("The payment was refunded."), 'status');
@@ -808,17 +895,6 @@ function get_payment_frames(array $config = array()) {
 }
 
 /**
- * Retrieves new instance of the creditcard class.
- *
- * @return object
- *   creditcard
- */
-function uc_checkoutpayment_get_instance() {
-  module_load_include('php', 'uc_checkoutpayment', 'includes/autoload');
-  return CheckoutapiLibFactory::getInstance('MethodsCreditcard');
-}
-
-/**
  * Processes card payment after validation by CKO.
  *
  * This page is called after entering the card details in our system.
@@ -1037,10 +1113,22 @@ function uc_checkoutpayment_process_order() {
           uc_order_update_status($order->order_id, 'cko_authorised');
 
           if ($object_charge->getResponseCode() == 10100) {
-            uc_order_comment_save($order->order_id, 0, t('Payment authorised and flagged.'), 'admin');
+            $commentary = t(
+              'Payment authorised and flagged. (Id: @chargeId)',
+              array(
+                '@chargeId' => $object_charge->getId(),
+              )
+            );
+            uc_order_comment_save($order->order_id, 0, $commentary, 'admin');
           }
           else {
-            uc_order_comment_save($order->order_id, 0, t('Payment authorised.'), 'admin');
+            $commentary = t(
+              'Payment authorised. (Id: @chargeId)',
+              array(
+                '@chargeId' => $object_charge->getId(),
+              )
+            );
+            uc_order_comment_save($order->order_id, 0, $commentary, 'admin');
           }
 
           return http_response_code(200);
@@ -1050,15 +1138,26 @@ function uc_checkoutpayment_process_order() {
 
           if ($captured == $order_balance) {
             uc_order_update_status($order->order_id, 'payment_received');
-            $comment = t('Payment received.');
+            $commentary = t('Payment received. (Id: @chargeId)',
+              array(
+                '@chargeId' => $object_charge->getId(),
+              )
+            );
           }
           elseif ($captured < $order_balance) {
+            $commentary = t(
+              'Partial payment received @captured received instead of @order_total. (Id: @chargeId)',
+              array(
+                '@chargeId' => $object_charge->getId(),
+                '@captured' => uc_currency_format($captured), 
+                '@order_total' => uc_currency_format($order_total),
+              )
+            );
             uc_order_update_status($order->order_id, 'cko_part_captured');
-            $comment = t('Partial payment received @captured received instead of @order_total.', array('@captured' => uc_currency_format($captured), '@order_total' => uc_currency_format($order_total)));
           }
 
-          uc_order_comment_save($order->order_id, 0, $comment, 'admin');
-          uc_payment_enter($order->order_id, 'cko', $captured, 0, NULL, $comment);
+          uc_order_comment_save($order->order_id, 0, $commentary, 'admin');
+          uc_payment_enter($order->order_id, 'cko', $captured, 0, NULL, $commentary);
 
           return http_response_code(200);
 
@@ -1066,27 +1165,48 @@ function uc_checkoutpayment_process_order() {
           $refunded = $object_charge->getValue() / 100;
 
           if ($refunded + $order_balance == $order_total) {
+            $commentary = t('Payment fully refunded. (Id: @chargeId)',
+              array(
+                '@chargeId' => $object_charge->getId(),
+              )
+            );
             uc_order_update_status($order->order_id, 'cko_refunded');
-            $comment = t('Payment fully refunded.');
           }
           elseif ($refunded + $order_balance < $order_total) {
+            $commentary = t(
+              'Partial refunded made: @refunded of @order_total. (Id: @chargeId)', 
+              array(
+                '@chargeId' => $object_charge->getId(),
+                '@refunded' => uc_currency_format($refunded), 
+                '@order_total' => uc_currency_format($order_total - $order_balance),
+              )
+            );
             uc_order_update_status($order->order_id, 'cko_part_refunded');
-            $comment = t('Partial refunded made: @refunded of @order_total.', array('@refunded' => uc_currency_format($refunded), '@order_total' => uc_currency_format($order_total - $order_balance)));
           }
 
-          uc_order_comment_save($order->order_id, 0, $comment, 'admin');
-          uc_payment_enter($order->order_id, 'cko', -$refunded, 0, NULL, $comment);
+          uc_order_comment_save($order->order_id, 0, $commentary, 'admin');
+          uc_payment_enter($order->order_id, 'cko', -$refunded, 0, NULL, $commentary);
 
           return http_response_code(200);
 
         case EVENT_TYPE_CHARGE_VOIDED:
-          uc_order_update_status($order->order_id, 'canceled');
-          uc_order_comment_save($order->order_id, 0, t('Payment voided.'), 'admin');
+          $commentary = t('Payment voided. (Id: @chargeId)',
+            array(
+              '@chargeId' => $object_charge->getId(),
+            )
+          );
+          uc_order_update_status($order->order_id, $commentary);
+          uc_order_comment_save($order->order_id, 0, $commentary, 'admin');
           return http_response_code(200);
 
         case EVENT_TYPE_INVOICE_CANCELLED:
-          uc_order_update_status($order->order_id, 'canceled');
-          uc_order_comment_save($order->order_id, 0, t('Payment cancelled.'), 'admin');
+          $commentary = t('Payment cancelled. (Id: @chargeId)',
+            array(
+              '@chargeId' => $object_charge->getId(),
+            )
+          );
+          uc_order_update_status($order->order_id, $commentary);
+          uc_order_comment_save($order->order_id, 0, $commentary, 'admin');
           return http_response_code(200);
 
         default:
@@ -1138,12 +1258,32 @@ function uc_checkoutpayment_add_to_database($cko_charge) {
  */
 function uc_checkoutpayment_get_from_database_by_track_id($order_id) {
   $sqlRepsonse = array();
-  $sqlRepsonse = db_select('uc_checkoutpayment_hub_communication', 'c')
+
+  $i = 0;
+  do {
+    error_log($i, 0);
+    $i++;
+
+    $sqlRepsonse = db_select('uc_checkoutpayment_hub_communication', 'c')
     ->fields('c')
     ->condition('track_id', (string) $order_id, '=')
     ->orderBy('created', 'DESC')
     ->execute()
     ->fetchAll();
+
+    if ($sqlRepsonse == NULL) {
+      $payment_method = cko_store_settings();
+      $instance = uc_checkoutpayment_get_instance();
+
+      $config = array(
+        'privateKey' => $payment_method['settings']['private_key'],
+        'trackId' => (string) $order_id,
+      );
+
+      $instance->reloadHubCommunicationTable($config);
+    }
+  }
+  while (empty($sqlRepsonse) && $i < 2);
 
   if ($sqlRepsonse == NULL) {
     return NULL;
@@ -1247,4 +1387,20 @@ function cko_store_settings() {
   );
 
   return $payment_method;
+}
+
+/**
+ * Retrieves new instance of the creditcard class.
+ *
+ * @return object
+ *   creditcard
+ */
+function uc_checkoutpayment_get_instance() {
+  module_load_include('php', 'uc_checkoutpayment', 'includes/checkout-php-library/autoload');
+
+  if (!in_array('Creditcard', get_declared_classes())) {
+    require 'includes/Methods/Creditcard.php';
+  }
+
+  return new Creditcard;
 }

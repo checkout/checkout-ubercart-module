@@ -75,11 +75,6 @@ function uc_checkoutpayment_schema() {
         'length' => '50',
         'not null' => TRUE,
       ),
-      'authCode' => array(
-        'description' => 'Authentication code of the charge returned by the acquiring platform.',
-        'type' => 'varchar',
-        'length' => '255',
-      ),
     ),
     'primary key' => array('id'),
   );
