@@ -504,6 +504,9 @@ class Creditcard {
     if (array_key_exists('ToDate', $config)) {
       $reportingModel->setToDate($config['ToDate']);
     }
+    else {
+      $reportingModel->setToDate(gmdate('Y-m-d\TH:i:s\Z'));
+    }
 
     if (array_key_exists('FromDate', $config)) {
       $reportingModel->setFromDate($config['FromDate']);
@@ -524,7 +527,7 @@ class Creditcard {
     for ($i=0; $i < $totalNumberOfPages; $i++) { 
       try {
         $reportingModel->setPageNumber((string) $i);
-    
+        
         $reportingResponse = $reportingService->queryTransaction($reportingModel);
         $totalNumberOfPages = ceil($reportingResponse->getCount()/100) + 1;
 
@@ -537,7 +540,10 @@ class Creditcard {
           }
 
           try {
-            db_insert('uc_checkoutpayment_hub_communication')
+ 
+                $order = uc_order_load($cko_charge->getTrackId());
+
+                $order_total   = $order->order_total;           db_insert('uc_checkoutpayment_hub_communication')
             ->fields(array(
               'id'                    => $cko_charge->getId(),
               'created'               => $cko_charge->getDate(),
@@ -556,9 +562,6 @@ class Creditcard {
               $comments = serialize(uc_order_comments_load($cko_charge->getTrackId(), TRUE));
 
               if (strpos($comments, $cko_charge->getId()) === false) {
-                $order = uc_order_load($cko_charge->getTrackId());
-
-                $order_total   = $order->order_total;
                 $order_balance = uc_payment_balance($order);
                 $order_value   = $cko_charge->getAmount() / 100;
 
@@ -604,19 +607,25 @@ class Creditcard {
                     break;
               
                   case 'Refunded':
-                    $commentary = t('Payment fully refunded. (Id: @chargeId)',
-                      array(
-                        '@chargeId' => $cko_charge->getId(),
-                      )
-                    );
-                    $commentary = t(
-                      'Partial refunded made: @refunded of @order_total.  (Id: @chargeId)', 
-                      array(
-                        '@refunded' => uc_currency_format($order_value), 
-                        '@order_total' => uc_currency_format($order_total),
+                    if ($order_value + $order_balance == $order_total) {
+                      $commentary = t('Payment fully refunded. (Id: @chargeId)',
+                        array(
+                          '@chargeId' => $cko_charge->getId(),
                         )
                       );
-                    uc_payment_enter($order->order_id, 'cko', -$refunded, 0, NULL, $comment);
+                    }
+                    else {
+                      $commentary = t(
+                        'Partial refunded made: @refunded of @order_total.  (Id: @chargeId)', 
+                        array(
+                          '@chargeId' => $cko_charge->getId(),
+                          '@refunded' => uc_currency_format($order_value), 
+                          '@order_total' => uc_currency_format($order_total),
+                        )
+                      );
+                    }
+
+                    uc_payment_enter($order->order_id, 'cko', -$order_value, 0, NULL, $commentary);
                     break;
               
                   case 'Voided':

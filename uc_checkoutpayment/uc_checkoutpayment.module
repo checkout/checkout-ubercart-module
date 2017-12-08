@@ -1132,10 +1132,22 @@ function uc_checkoutpayment_process_order() {
           uc_order_update_status($order->order_id, 'cko_authorised');
 
           if ($object_charge->getResponseCode() == 10100) {
-            uc_order_comment_save($order->order_id, 0, t('Payment authorised and flagged.'), 'admin');
+            $commentary = t(
+              'Payment authorised and flagged. (Id: @chargeId)',
+              array(
+                '@chargeId' => $object_charge->getId(),
+              )
+            );
+            uc_order_comment_save($order->order_id, 0, $commentary, 'admin');
           }
           else {
-            uc_order_comment_save($order->order_id, 0, t('Payment authorised.'), 'admin');
+            $commentary = t(
+              'Payment authorised. (Id: @chargeId)',
+              array(
+                '@chargeId' => $object_charge->getId(),
+              )
+            );
+            uc_order_comment_save($order->order_id, 0, $commentary, 'admin');
           }
 
           return http_response_code(200);
@@ -1145,15 +1157,26 @@ function uc_checkoutpayment_process_order() {
 
           if ($captured == $order_balance) {
             uc_order_update_status($order->order_id, 'payment_received');
-            $comment = t('Payment received.');
+            $commentary = t('Payment received. (Id: @chargeId)',
+              array(
+                '@chargeId' => $object_charge->getId(),
+              )
+            );
           }
           elseif ($captured < $order_balance) {
+            $commentary = t(
+              'Partial payment received @captured received instead of @order_total. (Id: @chargeId)',
+              array(
+                '@chargeId' => $object_charge->getId(),
+                '@captured' => uc_currency_format($captured), 
+                '@order_total' => uc_currency_format($order_total),
+              )
+            );
             uc_order_update_status($order->order_id, 'cko_part_captured');
-            $comment = t('Partial payment received @captured received instead of @order_total.', array('@captured' => uc_currency_format($captured), '@order_total' => uc_currency_format($order_total)));
           }
 
-          uc_order_comment_save($order->order_id, 0, $comment, 'admin');
-          uc_payment_enter($order->order_id, 'cko', $captured, 0, NULL, $comment);
+          uc_order_comment_save($order->order_id, 0, $commentary, 'admin');
+          uc_payment_enter($order->order_id, 'cko', $captured, 0, NULL, $commentary);
 
           return http_response_code(200);
 
@@ -1161,27 +1184,48 @@ function uc_checkoutpayment_process_order() {
           $refunded = $object_charge->getValue() / 100;
 
           if ($refunded + $order_balance == $order_total) {
+            $commentary = t('Payment fully refunded. (Id: @chargeId)',
+              array(
+                '@chargeId' => $object_charge->getId(),
+              )
+            );
             uc_order_update_status($order->order_id, 'cko_refunded');
-            $comment = t('Payment fully refunded.');
           }
           elseif ($refunded + $order_balance < $order_total) {
+            $commentary = t(
+              'Partial refunded made: @refunded of @order_total. (Id: @chargeId)', 
+              array(
+                '@chargeId' => $object_charge->getId(),
+                '@refunded' => uc_currency_format($refunded), 
+                '@order_total' => uc_currency_format($order_total - $order_balance),
+              )
+            );
             uc_order_update_status($order->order_id, 'cko_part_refunded');
-            $comment = t('Partial refunded made: @refunded of @order_total.', array('@refunded' => uc_currency_format($refunded), '@order_total' => uc_currency_format($order_total - $order_balance)));
           }
 
-          uc_order_comment_save($order->order_id, 0, $comment, 'admin');
-          uc_payment_enter($order->order_id, 'cko', -$refunded, 0, NULL, $comment);
+          uc_order_comment_save($order->order_id, 0, $commentary, 'admin');
+          uc_payment_enter($order->order_id, 'cko', -$refunded, 0, NULL, $commentary);
 
           return http_response_code(200);
 
         case EVENT_TYPE_CHARGE_VOIDED:
-          uc_order_update_status($order->order_id, 'canceled');
-          uc_order_comment_save($order->order_id, 0, t('Payment voided.'), 'admin');
+          $commentary = t('Payment voided. (Id: @chargeId)',
+            array(
+              '@chargeId' => $object_charge->getId(),
+            )
+          );
+          uc_order_update_status($order->order_id, $commentary);
+          uc_order_comment_save($order->order_id, 0, $commentary, 'admin');
           return http_response_code(200);
 
         case EVENT_TYPE_INVOICE_CANCELLED:
-          uc_order_update_status($order->order_id, 'canceled');
-          uc_order_comment_save($order->order_id, 0, t('Payment cancelled.'), 'admin');
+          $commentary = t('Payment cancelled. (Id: @chargeId)',
+            array(
+              '@chargeId' => $object_charge->getId(),
+            )
+          );
+          uc_order_update_status($order->order_id, $commentary);
+          uc_order_comment_save($order->order_id, 0, $commentary, 'admin');
           return http_response_code(200);
 
         default:
