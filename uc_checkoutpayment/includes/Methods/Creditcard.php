@@ -491,7 +491,6 @@ class Creditcard
    */
   public function reloadHubCommunicationTable(array $config)
   {
-
     $class = 'includes/checkout-php-library/com/checkout/Apiservices/Reporting/Requestmodels/Transactionfilter';
     module_load_include('php', 'uc_checkoutpayment', $class);
 
@@ -531,6 +530,8 @@ class Creditcard
 
     $totalNumberOfPages = 1;
     for ($i = 0; $i < $totalNumberOfPages; $i++) {
+      set_time_limit(30);
+      
       $reportingModel->setPageNumber((string) $i);
 
       $reportingResponse = $reportingService->queryTransaction($reportingModel);
@@ -574,126 +575,132 @@ class Creditcard
         }
 
         $order = uc_order_load($cko_charge->getTrackId());
-        $order_total = $order->order_total;
 
-        try {
-          db_insert('uc_checkoutpayment_hub_communication')
-          ->fields(array(
-            'id' => $cko_charge->getId(),
-            'created' => $cko_charge->getDate(),
-            'track_id' => $cko_charge->getTrackId(),
-            'transaction_indicator' => '1',
-            'email' => $cko_charge->getCustomerEmail(),
-            'value' => $cko_charge->getAmount(),
-            'currency' => $cko_charge->getCurrency(),
-            'responseMessage' => $responseMessage,
-            'responseCode' => $cko_charge->getResponseCode(),
-            'status' => $cko_charge->getStatus(),
-          ))
-          ->execute();
-        }
-        catch (Exception $e) {
-          //If this fails the key is already in the database.
-        }
+        if ($order != NULL) {
+          $order_total = $order->order_total;
 
-        // If the admin comment does not exist, add the comment.
-        $comments = serialize(uc_order_comments_load($cko_charge->getTrackId(), true));
-        if (strpos($comments, $cko_charge->getId()) === false && substr($cko_charge->getResponseCode(), 0, 2) == '10') {
-          $order_balance = uc_payment_balance($order);
-          $order_value = $cko_charge->getAmount() / 100;
-
-          switch ($cko_charge->getStatus()) {
-            case 'Authorised':
-              $commentary = t(
-                'Payment authorised. (Id: @chargeId)',
-                array(
-                  '@chargeId' => $cko_charge->getId(),
-                )
-              );
-              break;
-
-            case 'Flagged':
-              $commentary = t(
-                'Payment authorised and flagged. (Id: @chargeId)',
-                array(
-                  '@chargeId' => $cko_charge->getId(),
-                )
-              );
-              break;
-
-            case 'Captured':
-              if ($order_value == $order_total) {
-                $commentary = t('Payment received. (Id: @chargeId)',
-                  array(
-                    '@chargeId' => $cko_charge->getId(),
-                  )
-                );
-              }
-              else {
-                $commentary = t(
-                  'Partial payment received @captured received instead of @order_total. (Id: @chargeId)',
-                  array(
-                    '@chargeId' => $cko_charge->getId(),
-                    '@captured' => uc_currency_format($order_value),
-                    '@order_total' => uc_currency_format($order_total),
-                  )
-                );
-              }
-
-              uc_payment_enter($order->order_id, 'cko', $order_value, 0, null, $commentary);
-              break;
-
-            case 'Refunded':
-              if ($order_value + $order_balance == $order_total) {
-                $commentary = t('Payment fully refunded. (Id: @chargeId)',
-                  array(
-                    '@chargeId' => $cko_charge->getId(),
-                  )
-                );
-              }
-              else {
-                $commentary = t(
-                  'Partial refunded made: @refunded of @order_total.  (Id: @chargeId)',
-                  array(
-                    '@chargeId' => $cko_charge->getId(),
-                    '@refunded' => uc_currency_format($order_value),
-                    '@order_total' => uc_currency_format($order_total),
-                  )
-                );
-              }
-
-              uc_payment_enter($order->order_id, 'cko', -$order_value, 0, null, $commentary);
-              break;
-
-            case 'Voided':
-              $commentary = t('Payment authorised and flagged. (Id: @chargeId)',
-                array(
-                  '@chargeId' => $cko_charge->getId(),
-                )
-              );
-              break;
-
-            case 'Declined':
-              $commentary = t('Payment voided. (Id: @chargeId)',
-                array(
-                  '@chargeId' => $cko_charge->getId(),
-                )
-              );
-              break;
-
-            case 'Pending':
-              $commentary = t('Payment pending. (Id: @chargeId)',
-                array(
-                  '@chargeId' => $cko_charge->getId(),
-                )
-              );
-              break;
+          try {
+            db_insert('uc_checkoutpayment_hub_communication')
+              ->fields(array(
+                'id' => $cko_charge->getId(),
+                'created' => $cko_charge->getDate(),
+                'track_id' => $cko_charge->getTrackId(),
+                'transaction_indicator' => '1',
+                'email' => $cko_charge->getCustomerEmail(),
+                'value' => $cko_charge->getAmount(),
+                'currency' => $cko_charge->getCurrency(),
+                'responseMessage' => $responseMessage,
+                'responseCode' => $cko_charge->getResponseCode(),
+                'status' => $cko_charge->getStatus(),
+              ))
+              ->execute();
+          }
+          catch (Exception $e) {
+            //If this fails the key is already in the database.
           }
 
-          uc_order_comment_save($cko_charge->getTrackId(), 0, $commentary, 'admin');
+          // If the admin comment does not exist, add the comment.
+          $comments = serialize(uc_order_comments_load($cko_charge->getTrackId(), true));
+          if (strpos($comments, $cko_charge->getId()) === false && substr($cko_charge->getResponseCode(), 0, 2) == '10') {
+            $order_balance = uc_payment_balance($order);
+            $order_value = $cko_charge->getAmount() / 100;
+  
+            switch ($cko_charge->getStatus()) {
+              case 'Authorised':
+                $commentary = t(
+                  'Payment authorised. (Id: @chargeId)',
+                  array(
+                    '@chargeId' => $cko_charge->getId(),
+                  )
+                );
+                break;
+  
+              case 'Flagged':
+                $commentary = t(
+                  'Payment authorised and flagged. (Id: @chargeId)',
+                  array(
+                    '@chargeId' => $cko_charge->getId(),
+                  )
+                );
+                break;
+  
+              case 'Captured':
+                if ($order_value == $order_total) {
+                  $commentary = t('Payment received. (Id: @chargeId)',
+                    array(
+                      '@chargeId' => $cko_charge->getId(),
+                    )
+                  );
+                }
+                else {
+                  $commentary = t(
+                    'Partial payment received @captured received instead of @order_total. (Id: @chargeId)',
+                    array(
+                      '@chargeId' => $cko_charge->getId(),
+                      '@captured' => uc_currency_format($order_value),
+                      '@order_total' => uc_currency_format($order_total),
+                    )
+                  );
+                }
+  
+                uc_payment_enter($order->order_id, 'cko', $order_value, 0, null, $commentary);
+                break;
+  
+              case 'Refunded':
+                if ($order_value + $order_balance == $order_total) {
+                  $commentary = t('Payment fully refunded. (Id: @chargeId)',
+                    array(
+                      '@chargeId' => $cko_charge->getId(),
+                    )
+                  );
+                }
+                else {
+                  $commentary = t(
+                    'Partial refunded made: @refunded of @order_total.  (Id: @chargeId)',
+                    array(
+                      '@chargeId' => $cko_charge->getId(),
+                      '@refunded' => uc_currency_format($order_value),
+                      '@order_total' => uc_currency_format($order_total),
+                    )
+                  );
+                }
+  
+                uc_payment_enter($order->order_id, 'cko', -$order_value, 0, null, $commentary);
+                break;
+  
+              case 'Voided':
+                $commentary = t('Payment authorised and flagged. (Id: @chargeId)',
+                  array(
+                    '@chargeId' => $cko_charge->getId(),
+                  )
+                );
+                break;
+  
+              case 'Declined':
+                $commentary = t('Payment voided. (Id: @chargeId)',
+                  array(
+                    '@chargeId' => $cko_charge->getId(),
+                  )
+                );
+                break;
+  
+              case 'Pending':
+                $commentary = t('Payment pending. (Id: @chargeId)',
+                  array(
+                    '@chargeId' => $cko_charge->getId(),
+                  )
+                );
+                break;
+            }
+  
+            uc_order_comment_save($cko_charge->getTrackId(), 0, $commentary, 'admin');
+          }
         }
+
       }
     }
+
+    drupal_set_message(t("The syncronisation has been completed."), 'status');
 
     return null;
   }
