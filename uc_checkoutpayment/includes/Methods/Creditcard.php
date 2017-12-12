@@ -444,31 +444,48 @@ class Creditcard
    */
   public function refundCharge($order, array $payment_method, $value)
   {
+    
     $payedAmount = ($order->order_total - uc_payment_balance($order)) * 100;
 
-    if ($value <= $payedAmount) {
+    $result = db_select('uc_checkoutpayment_hub_communication', 'c')
+      ->fields('c')
+      ->condition('track_id', $order->order_id, '=')
+      ->condition('status', "Captured", '=')
+      ->execute()
+      ->fetchObject();
 
-      $config = array();
+    // if ($value > $result->value) {
+    //   $refundObjects = db_select('uc_checkoutpayment_hub_communication', 'c')
+    //     ->fields('c')
+    //     ->condition('track_id', $order->order_id, '=')
+    //     ->condition('status', "Refunded", '=')
+    //     ->execute()
+    //     ->fetchObject();
 
-      $secret_key = $payment_method['settings']['private_key'];
-      $mode = $payment_method['settings']['mode'];
+    //   $value = $result->value;
 
-      $result = db_select('uc_checkoutpayment_hub_communication', 'c')
-        ->fields('c')
-        ->condition('track_id', $order->order_id, '=')
-        ->condition('status', "Captured", '=')
-        ->execute()
-        ->fetchObject();
+    //   if ($refundObjects != NULL) {
+    //     foreach ($refundObjects as $refund) {
+    //       $value -= $refund->value;
+    //       error_log("The refund value is " . $refund->value . " total remaining value " . $value, 0);
+    //     }
+    //   }
+    // }
 
-      $config['authorization'] = $secret_key;
-      $config['chargeId'] = $result->id;
-      $config['postedParam'] = array(
-        'value' => $value,
-      );
+    error_log("The order " . $order->order_id . " with captured value " . $result->value . " will be refunded with " . $value, 0);
 
-      $api = CheckoutapiApi::getApi(array('mode' => $mode));
-      return $api->refundCharge($config);
-    }
+    $secret_key = $payment_method['settings']['private_key'];
+    $mode = $payment_method['settings']['mode'];
+
+    $config = array();          
+    $config['authorization'] = $secret_key;
+    $config['chargeId'] = $result->id;
+    $config['postedParam'] = array(
+      'value' => $value,
+    );
+
+    $api = CheckoutapiApi::getApi(array('mode' => $mode));
+    return $api->refundCharge($config);
   }
 
   /**
@@ -585,7 +602,6 @@ class Creditcard
                 'id' => $cko_charge->getId(),
                 'created' => $cko_charge->getDate(),
                 'track_id' => $cko_charge->getTrackId(),
-                'transaction_indicator' => '1',
                 'email' => $cko_charge->getCustomerEmail(),
                 'value' => $cko_charge->getAmount(),
                 'currency' => $cko_charge->getCurrency(),
@@ -601,7 +617,7 @@ class Creditcard
 
           // If the admin comment does not exist, add the comment.
           $comments = serialize(uc_order_comments_load($cko_charge->getTrackId(), true));
-          if (strpos($comments, $cko_charge->getId()) === false && substr($cko_charge->getResponseCode(), 0, 2) == '10') {
+          if (strpos($comments, $cko_charge->getId()) === false) {
             $order_balance = uc_payment_balance($order);
             $order_value = $cko_charge->getAmount() / 100;
   
@@ -677,7 +693,8 @@ class Creditcard
                 break;
   
               case 'Declined':
-                $commentary = t('Payment voided. (Id: @chargeId)',
+                $help = '';
+                $commentary = t('<div class="tooltip">?<span class="tooltiptext"> This data cannot be syncronised. </span></div> Action declined, check the Hub for more information. (Id: @chargeId)',
                   array(
                     '@chargeId' => $cko_charge->getId(),
                   )
@@ -699,8 +716,6 @@ class Creditcard
 
       }
     }
-
-    drupal_set_message(t("The syncronisation has been completed."), 'status');
 
     return null;
   }

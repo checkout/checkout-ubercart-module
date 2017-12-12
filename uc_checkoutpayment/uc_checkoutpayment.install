@@ -34,11 +34,6 @@ function uc_checkoutpayment_schema() {
         'type' => 'varchar',
         'length' => '50',
       ),
-      'transaction_indicator' => array(
-        'description' => 'Transaction indicator 1 for regular, 2 for recurring, and 3 for MOTO.',
-        'type' => 'int',
-        'default' => 0,
-      ),
       'email' => array(
         'description' => 'The email address of the customer.',
         'type' => 'varchar',
