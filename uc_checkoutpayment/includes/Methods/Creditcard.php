@@ -444,7 +444,6 @@ class Creditcard
    */
   public function refundCharge($order, array $payment_method, $value)
   {
-    
     $payedAmount = ($order->order_total - uc_payment_balance($order)) * 100;
 
     $result = db_select('uc_checkoutpayment_hub_communication', 'c')
@@ -471,8 +470,6 @@ class Creditcard
     //     }
     //   }
     // }
-
-    error_log("The order " . $order->order_id . " with captured value " . $result->value . " will be refunded with " . $value, 0);
 
     $secret_key = $payment_method['settings']['private_key'];
     $mode = $payment_method['settings']['mode'];

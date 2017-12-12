@@ -1133,7 +1133,6 @@ function uc_checkoutpayment_process_order() {
   $post_data = file_get_contents('php://input');
 
   if ($post_data) {
-    error_log(var_dump_ret($post_data, TRUE), 0);
     $payment_method = cko_store_settings();
 
     // Check if the authentication is right.
@@ -1289,14 +1288,6 @@ function uc_checkoutpayment_process_order() {
   }
 
   return NULL;
-}
-
-function var_dump_ret($mixed = null) {
-  ob_start();
-  var_dump($mixed);
-  $content = ob_get_contents();
-  ob_end_clean();
-  return $content;
 }
 
 /**
