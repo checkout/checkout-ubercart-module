@@ -99,8 +99,12 @@ function uc_checkoutpayment_variable_info() {
  */
 function uc_checkoutpayment_page_alter(&$page) {
   $pathElements = explode('/', current_path());
+  $integration_type = cko_store_settings()['settings']['cko_integration'];
 
-  if (count($pathElements) == 5 && $pathElements[0] == 'admin' && $pathElements[1] == 'store' && $pathElements[2] == 'orders' && $pathElements[4] == 'edit') {
+  if (
+    (count($pathElements) == 5 && $pathElements[0] == 'admin' && $pathElements[1] == 'store' && $pathElements[2] == 'orders' && $pathElements[4] == 'edit') ||
+    (count($pathElements) == 3 && $pathElements[0] == 'cart' && $pathElements[1] == 'checkout' && $pathElements[2] == 'review' && $integration_type == 'embedded')
+  ) {
     global $base_url;
     $path = $base_url . '/' . drupal_get_path('module', 'uc_checkoutpayment');
     drupal_add_js(
