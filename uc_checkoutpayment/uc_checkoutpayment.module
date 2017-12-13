@@ -170,8 +170,10 @@ function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id) {
   return $form;
 }
 
+/**
+ * Implements hook_help().
+ */
 function uc_checkoutpayment_help($path, $arg) {
-
   switch ($path) {
     case 'admin/help#uc_checkoutpayment':
       $html = '

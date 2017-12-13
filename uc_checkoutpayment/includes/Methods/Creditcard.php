@@ -212,6 +212,7 @@ class Creditcard
     $config = array(
       'publicKey' => $settings['public_key'],
       'paymentToken' => $data['script']['paymentToken'],
+      'paymentMode' => $settings['paymentMode'],
       'customerEmail' => $data['script']['email'],
       'value' => $data['script']['amount'],
       'currency' => $data['script']['currency'],
@@ -234,6 +235,7 @@ class Creditcard
           window.CKOConfig = {
             publicKey: '" . $config['publicKey'] . "',
             paymentToken: '" . $config['paymentToken'] . "',
+            paymentMode: '" . $config['paymentMode'] . "',
             customerEmail: '" . $config['customerEmail'] . "',
             value: " . $config['value'] . ",
             currency: '" . $config['currency'] . "',
