@@ -212,6 +212,7 @@ class Creditcard
     $config = array(
       'publicKey' => $settings['public_key'],
       'paymentToken' => $data['script']['paymentToken'],
+      'paymentMode' => $settings['paymentMode'],
       'customerEmail' => $data['script']['email'],
       'value' => $data['script']['amount'],
       'currency' => $data['script']['currency'],
@@ -234,6 +235,7 @@ class Creditcard
           window.CKOConfig = {
             publicKey: '" . $config['publicKey'] . "',
             paymentToken: '" . $config['paymentToken'] . "',
+            paymentMode: '" . $config['paymentMode'] . "',
             customerEmail: '" . $config['customerEmail'] . "',
             value: " . $config['value'] . ",
             currency: '" . $config['currency'] . "',
@@ -444,7 +446,6 @@ class Creditcard
    */
   public function refundCharge($order, array $payment_method, $value)
   {
-    
     $payedAmount = ($order->order_total - uc_payment_balance($order)) * 100;
 
     $result = db_select('uc_checkoutpayment_hub_communication', 'c')
@@ -471,8 +472,6 @@ class Creditcard
     //     }
     //   }
     // }
-
-    error_log("The order " . $order->order_id . " with captured value " . $result->value . " will be refunded with " . $value, 0);
 
     $secret_key = $payment_method['settings']['private_key'];
     $mode = $payment_method['settings']['mode'];

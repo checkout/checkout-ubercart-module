@@ -1,0 +1,27 @@
+{
+    "name": "checkout/checkout-php-api",
+    "description": "Checkout PHP API Library",
+    "homepage": "https://github.com/checkout/checkout-php-library",
+    "version": "1.2.12",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["checkout.com","payment","gateway","online payment","checkoutcom","GW3","CKO"],
+    "authors": [
+        {
+            "name": "Dhiraj Gangoosirdar",
+            "email": "integration@checkout.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">5.3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "com\\checkout\\": "com/checkout"
+        },
+        "psr-0": {
+            "CheckoutApi_": "com/checkout/packages"
+        }
+    }
+}

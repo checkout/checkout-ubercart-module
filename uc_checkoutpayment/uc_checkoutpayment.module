@@ -99,8 +99,12 @@ function uc_checkoutpayment_variable_info() {
  */
 function uc_checkoutpayment_page_alter(&$page) {
   $pathElements = explode('/', current_path());
+  $integration_type = cko_store_settings()['settings']['cko_integration'];
 
-  if (count($pathElements) == 5 && $pathElements[0] == 'admin' && $pathElements[1] == 'store' && $pathElements[2] == 'orders' && $pathElements[4] == 'edit') {
+  if (
+    (count($pathElements) == 5 && $pathElements[0] == 'admin' && $pathElements[1] == 'store' && $pathElements[2] == 'orders' && $pathElements[4] == 'edit') ||
+    (count($pathElements) == 3 && $pathElements[0] == 'cart' && $pathElements[1] == 'checkout' && $pathElements[2] == 'review' && $integration_type == 'embedded')
+  ) {
     global $base_url;
     $path = $base_url . '/' . drupal_get_path('module', 'uc_checkoutpayment');
     drupal_add_js(
@@ -170,8 +174,10 @@ function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id) {
   return $form;
 }
 
+/**
+ * Implements hook_help().
+ */
 function uc_checkoutpayment_help($path, $arg) {
-
   switch ($path) {
     case 'admin/help#uc_checkoutpayment':
       $html = '
@@ -1133,7 +1139,6 @@ function uc_checkoutpayment_process_order() {
   $post_data = file_get_contents('php://input');
 
   if ($post_data) {
-    error_log(var_dump_ret($post_data, TRUE), 0);
     $payment_method = cko_store_settings();
 
     // Check if the authentication is right.
@@ -1289,14 +1294,6 @@ function uc_checkoutpayment_process_order() {
   }
 
   return NULL;
-}
-
-function var_dump_ret($mixed = null) {
-  ob_start();
-  var_dump($mixed);
-  $content = ob_get_contents();
-  ob_end_clean();
-  return $content;
 }
 
 /**

@@ -1,4 +1,0 @@
-[submodule "checkout-ubercart-module/includes/CheckoutApi"]
-	path = checkout-ubercart-module/includes/CheckoutApi
-	url = https://github.com/CKOTech/checkout-php-library.git
-	branch = CheckoutApi
