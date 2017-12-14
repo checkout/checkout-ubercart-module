@@ -129,6 +129,11 @@ function uc_checkoutpayment_install() {
       'locked' => 1,
     ))
     ->execute();
+
+  node_types_rebuild();
+  $types = node_type_get_types();
+  node_add_body_field($types['cko_payment_plan']); 
+  add_custom_fields();
 }
 
 /**
@@ -142,5 +147,88 @@ function uc_checkoutpayment_uninstall() {
   db_delete('variable')
     ->condition('name', 'cko_%', 'LIKE')
     ->execute();
-  cache_clear_all('variables', 'cache_bootstrap');
+
+  $result = db_query("SELECT nid FROM {node} n WHERE n.type = 'cko_payment_plan'");
+  $nodeids = array();
+  foreach ($result as $row) {
+      $nodeids[] = $row->nid;
+  }
+
+  node_delete_multiple($nodeids);
+  delete_custom_fields();  
+  node_type_delete('cko_payment_plan');
+
+  cache_clear_all('variables', 'cache_bootstrap');  
+}
+
+function add_custom_fields() {
+  foreach (_uc_checkoutpayment_installed_fields() as $field) {
+      field_create_field($field);
+  }
+  foreach (_uc_checkoutpayment_installed_instances() as $fieldinstance) {
+      $fieldinstance['entity_type'] = 'node';
+      $fieldinstance['bundle'] = 'cko_payment_plan';
+      print_r($fieldinstance);
+      field_create_instance($fieldinstance);
+  }
+}
+
+function delete_custom_fields() {
+  foreach (array_keys(_uc_checkoutpayment_installed_fields()) as $field) {
+    field_delete_field($field);
+  }
+  $instances = field_info_instances('node', 'cko_payment_plan');
+  foreach ($instances as $instance_name => $fieldinstance) {
+    field_delete_instance($fieldinstance);
+  }
+}
+
+function _uc_checkoutpayment_installed_fields() {
+  $t = get_t();
+  return array(
+    'cko_price' => array(
+      'field_name' => 'cko_price',
+      'label' => $t('Price of the product'),
+      'type' => 'text'
+    ),
+    'cko_quantity' => array(
+      'field_name' => 'cko_quantity',
+      'label' => $t('Quantity of the product'),
+      'type' => 'text'
+    )
+  );
+}
+
+function _uc_checkoutpayment_installed_instances() {
+  $t = get_t();
+  return array(
+    'cko_price' => array(
+      'field_name' => 'cko_price',
+      'type' => 'text',
+      'label' => $t('Price of the product'),
+      'widget' => array(
+        'type' => 'text_textfield'
+      ),
+      'display' => array(
+        'cko_node_list' => array(
+          'label' => $t('Price of the product'),
+          'type' => 'text'
+        )
+        )
+    ),
+    'cko_quantity' => array(
+      'field_name' => 'cko_quantity',
+      'type' => 'text',
+      'label' => $t('Quantity of the product'),
+      'widget' => array(
+        'type' => 'text_textfield'
+      ),
+      'display' => array(
+        'cko_node_list' => array(
+          'label' => $t('Quantity of the product'),
+          'type' => 'text'
+        )
+      )
+    )
+  );
 }

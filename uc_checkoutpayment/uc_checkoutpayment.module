@@ -21,11 +21,18 @@ const EVENT_TYPE_CHARGE_REFUNDED               = 'charge.refunded';
 const EVENT_TYPE_CHARGE_VOIDED                 = 'charge.voided';
 const EVENT_TYPE_INVOICE_CANCELLED             = 'invoice.cancelled';
 
+function var_dump_pre($var) {
+  print'<pre>';
+  var_dump( $var );
+  print'</pre>';
+}
+
 /**
  * Implements hook_menu().
  */
 function uc_checkoutpayment_menu() {
   $items = array();
+
   $items['checkoutapi/process'] = array(
     'title' => 'Ipn checkout',
     'page callback' => 'uc_checkoutpayment_process_order',
@@ -100,6 +107,13 @@ function uc_checkoutpayment_variable_info() {
 function uc_checkoutpayment_page_alter(&$page) {
   $pathElements = explode('/', current_path());
   $integration_type = cko_store_settings()['settings']['cko_integration'];
+
+  if (count($pathElements) == 2 && $pathElements[0] == 'admin' && $pathElements[1] == 'store') {
+    $page['sidebar_first']['user_login']['help'] = array(
+      '#weight' => -10,
+      '#markup' => t('To post cofezfzefzef in.'),
+    );
+  }
 
   if (
     (count($pathElements) == 5 && $pathElements[0] == 'admin' && $pathElements[1] == 'store' && $pathElements[2] == 'orders' && $pathElements[4] == 'edit') ||
@@ -208,6 +222,177 @@ function uc_checkoutpayment_help($path, $arg) {
       ';
       return $html;
   }
+}
+
+/**
+ * Implements hook_node_info().
+ *
+ * We use hook_node_info() to define our node content type.
+ */
+function uc_checkoutpayment_node_info() {
+  return array(
+    'cko_payment_plan' => array(
+      'name' => t('Payment Plan'),
+      'base' => 'cko_payment_plan',
+      'description' => t('Payment Plans store all the necessary information in support of implementing subscription services, membership services, and other popular recurring payment models.'),
+      'title_label' => t('Name of the paymentPlan:'),
+      'locked' => TRUE,
+    ),
+  );
+}
+
+/**
+ * Implements hook_node_type_insert().
+ */
+function cko_payment_plan_node_type_insert($content_type) {
+  if ($content_type->type == 'cko_payment_plan') {
+    $body_instance = node_add_body_field($content_type, t('Description'));
+    $body_instance['display']['cko_payment_plan_list'] = array(
+      'label' => 'hidden',
+      'type' => 'text_summary_or_trimmed',
+    );
+
+    // Save our changes to the body field instance.
+    field_update_instance($body_instance);
+
+    $nodeFields = array(
+      'cko_payment_plan_color' => array(
+        'field_name' => 'cko_payment_plan_color',
+        'cardinality' => 3,
+        'type'        => 'text',
+        'settings'    => array(
+          'max_length' => 60,
+        ),
+      ),
+      'cko_payment_plan_quantity' => array(
+        'field_name'  => 'cko_payment_plan_quantity',
+        'cardinality' => 1,
+        'type'        => 'text',
+      ),
+      'cko_payment_plan_image' => array(
+        'field_name' => 'cko_payment_plan_image',
+        'type'       => 'image',
+        'cardinality' => 1,
+      ),
+    );
+
+    // Create all the fields we are adding to our content type.
+    foreach ($nodeFields as $field) {
+      field_create_field($field);
+    }
+
+    $nodeInstances = array(
+      'cko_payment_plan_color' => array(
+        'field_name' => 'cko_payment_plan_color',
+        'label'       => t('The colors available for this object.'),
+        'widget'      => array(
+          'type'    => 'text_textfield',
+        ),
+        'display' => array(
+          'cko_payment_plan_list' => array(
+            'label' => 'hidden',
+            'type' => 'cko_payment_plan_colors',
+          ),
+        ),
+      ),
+      'cko_payment_plan_quantity' => array(
+        'field_name'  => 'cko_payment_plan_quantity',
+        'label' => t('Quantity required'),
+        'type'        => 'text',
+        'widget'      => array(
+          'type'    => 'text_textfield',
+        ),
+        'display' => array(
+          'example_node_list' => array(
+            'label' => 'hidden',
+            'type' => 'hidden',
+          ),
+        ),
+      ),
+      'cko_payment_plan_image' => array(
+        'field_name'  => 'cko_payment_plan_image',
+        'label'       => t('Upload an image:'),
+        'required'    => FALSE,
+        'widget' => array(
+          'type'    => 'image_image',
+          'weight'  => 2.10,
+        ),
+        'display' => array(
+          'cko_payment_plan_list' => array(
+            'label' => 'hidden',
+            'type' => 'image_link_content__thumbnail',
+          ),
+        ),
+      ),
+    );
+
+    foreach ($nodeInstances as $instance) {
+      $instance['entity_type'] = 'node';
+      $instance['bundle'] = 'cko_payment_plan';
+      field_create_instance($instance);
+    }
+  }
+}
+
+/**
+ * Implements hook_form().
+ *
+ * Drupal needs for us to provide a form that lets the user
+ * add content. This is the form that the user will see if
+ * they go to node/add/node-example.
+ *
+ * You can get fancy with this form, or you can just punt
+ * and return the default form that node_content will provide.
+ */
+function cko_payment_plan_form($node, $form_state) {
+  return node_content_form($node, $form_state);
+}
+
+/**
+ * Implements hook_entity_info_alter().
+ *
+ * We need to modify the default node entity info by adding a new view mode to
+ * be used in functions like node_view() or node_build_content().
+ */
+function uc_checkoutpayment_entity_info_alter(&$entity_info) {
+  // Add our new view mode to the list of view modes...
+  $entity_info['node']['view modes']['cko_payment_plan_list'] = array(
+    'label' => t('Example Node List'),
+    'custom settings' => TRUE,
+  );
+}
+
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function uc_checkoutpayment_field_formatter_info() {
+  return array(
+    'cko_payment_plan_colors' => array(
+      'label' => t('Node Example Color Handle'),
+      'field types' => array('text'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ *
+ * @todo: We need to provide a formatter for the colors that a user is allowed
+ * to enter during node creation.
+ */
+function uc_checkoutpayment_field_formatter_view($object_type, $object, $field, $instance, $langcode, $items, $display) {
+  $element = array();
+  switch ($display['type']) {
+    case 'cko_payment_plan_colors':
+      foreach ($items as $delta => $item) {
+        $element[$delta]['#type'] = 'markup';
+        $color = $item['safe_value'];
+      }
+      break;
+  }
+
+  return $element;
 }
 
 /**
