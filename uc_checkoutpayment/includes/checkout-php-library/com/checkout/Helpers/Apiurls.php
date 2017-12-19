@@ -54,7 +54,7 @@ class ApiUrls {
    *   The request model.
    */
   public function __construct() {
-    $this->setBaseApiUri(AppSetting::getSingletonInstance()->getBaseApiUri());
+    $this->setBaseApiUri(Appsetting::getSingletonInstance()->getBaseApiUri());
   }
 
   /**

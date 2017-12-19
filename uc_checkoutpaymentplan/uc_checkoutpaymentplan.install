@@ -1,0 +1,166 @@
+<?php
+/**
+ * @file
+ * Checkout.com integration module.
+ *
+ * This module provides Checkout.com payment plan integration to Ubercart,
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function uc_checkoutpaymentplan_schema() {
+  $schema = array();
+
+  $schema['uc_checkoutpaymentplan_payment_plans'] = array(
+    'description' => 'Local copy of all the payment plans',
+    'fields' => array(
+      'id' => array(
+        'description' => 'Payment plan id prefixed with rp_ for identical recurring plans.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'track_id' => array(
+        'description' => 'Unique identifier for the recurring plan set by the Merchant.',
+        'type' => 'varchar',
+        'length' => '50',
+      ),
+      'auto_cap_time' => array(
+        'description' => 'Delayed capture time in hours.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'recurring_count' => array(
+        'description' => 'Number of recurring transactions included in the Payment Plan.',
+        'type' => 'int',
+        'length' => '50',
+        'not null' => TRUE,
+      ),
+      'cycle' => array(
+        'description' => 'Elapsed time between the charge and the first transaction of the recurring plan.',
+        'type' => 'varchar',
+        'length' => '4',
+        'not null' => TRUE,
+      ),
+      'status' => array(
+        'description' => 'Defines the status of the recurring payment plan.',
+        'type' => 'int',
+        'length' => '6',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('id'),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function uc_checkoutpaymentplan_install() {
+  $sqlRepsonse = db_select('uc_product_classes', 'c')
+    ->fields('c')
+    ->condition('pcid', (string) TECHNICAL_NAME, '=')
+    ->execute()
+    ->rowCount();
+  
+  if ($sqlRepsonse == 0) {
+    db_insert('uc_product_classes')
+      ->fields(array(
+        'pcid' => TECHNICAL_NAME,
+        'name' => USER_FRIENDLY_NAME,
+        'description' => CREATE_CONTENT_DESCRIPTION,
+      ))
+      ->execute();
+  }
+
+
+  node_types_rebuild();
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function uc_checkoutpaymentplan_uninstall() {
+  db_delete('variable')
+  ->condition('name', 'ckopp_%', 'LIKE')
+  ->execute();
+
+  cache_clear_all('variables', 'cache_bootstrap');  
+}
+
+/**
+ * Implements hook_node_type_insert().
+ */
+function uc_checkoutpaymentplan_node_type_insert($content_type) {
+  if ($content_type->type == 'cko_payment_plan') {
+    $body_instance = node_add_body_field($content_type, t('Description'));
+    $body_instance['display']['cko_payment_plan_list'] = array(
+      'label' => 'hidden',
+      'type' => 'text_summary_or_trimmed',
+    );
+
+    field_update_instance($body_instance);
+
+    foreach (_cko_payment_plan_installed_fields() as $field) {
+      field_create_field($field);
+    }
+
+    foreach (_cko_payment_plan_installed_instances() as $instance) {
+      $instance['entity_type'] = 'node';
+      $instance['bundle'] = 'cko_payment_plan';
+      field_create_instance($instance);
+    }
+  }
+}
+
+/**
+ * Define the fields for our content type.
+ *
+ * This big array is factored into this function for readability.
+ *
+ * @return array
+ *   An associative array specifying the fields we wish to add to our
+ *   new node type.
+ */
+function _cko_payment_plan_installed_fields() {
+  return array(
+    'node_example_image' => array(
+      'field_name' => 'node_example_image',
+      'type'       => 'image',
+      'cardinality' => 1,
+    ),
+  );
+}
+
+/**
+ * Define the field instances for our content type.
+ *
+ * This big array is factored into this function for readability.
+ *
+ * @return array
+ *   An associative array specifying the instances we wish to add to our new
+ *   node type.
+ */
+function _cko_payment_plan_installed_instances() {
+  return array(
+    'node_example_image' => array(
+      'field_name'  => 'node_example_image',
+      'label'       => t('Upload an image:'),
+      'required'    => FALSE,
+      'widget' => array(
+        'type'    => 'image_image',
+        'weight'  => 2.10,
+      ),
+      'display' => array(
+        'example_node_list' => array(
+          'label' => 'hidden',
+          'type' => 'image_link_content__thumbnail',
+        ),
+      ),
+    ),
+  );
+}

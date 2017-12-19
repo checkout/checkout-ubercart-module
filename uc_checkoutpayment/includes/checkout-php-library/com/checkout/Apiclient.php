@@ -120,19 +120,19 @@ class Apiclient {
     $connectTimeout = 60,
     $readTimeout = 60
   ) {
-    $appSetting = Helpers\Appsetting::getSingletonInstance();
-    $appSetting->setSecretKey($secretKey);
-    $appSetting->setRequestTimeOut($connectTimeout);
-    $appSetting->setReadTimeout($readTimeout);
-    $appSetting->setDebugMode($debugMode);
-    $appSetting->setMode($env);
+    $Appsetting = Helpers\Appsetting::getSingletonInstance();
+    $Appsetting->setSecretKey($secretKey);
+    $Appsetting->setRequestTimeOut($connectTimeout);
+    $Appsetting->setReadTimeout($readTimeout);
+    $Appsetting->setDebugMode($debugMode);
+    $Appsetting->setMode($env);
 
-    $this->tokenService = new Apiservices\Tokens\Tokenservice($appSetting);
-    $this->chargeService = new Apiservices\Charges\Chargeservice($appSetting);
-    $this->cardService = new Apiservices\Cards\Cardservice($appSetting);
-    $this->customerService = new Apiservices\Customers\Customerservice($appSetting);
-    $this->reportingService = new Apiservices\Reporting\Reportingservice($appSetting);
-    $this->RecurringPaymentService = new Apiservices\Recurringpayments\Recurringpaymentservice($appSetting);
-    $this->visaCheckoutService = new Apiservices\Visacheckout\Visacheckoutservice($appSetting);
+    $this->tokenService = new Apiservices\Tokens\Tokenservice($Appsetting);
+    $this->chargeService = new Apiservices\Charges\Chargeservice($Appsetting);
+    $this->cardService = new Apiservices\Cards\Cardservice($Appsetting);
+    $this->customerService = new Apiservices\Customers\Customerservice($Appsetting);
+    $this->reportingService = new Apiservices\Reporting\Reportingservice($Appsetting);
+    $this->RecurringPaymentService = new Apiservices\Recurringpayments\Recurringpaymentservice($Appsetting);
+    $this->visaCheckoutService = new Apiservices\Visacheckout\Visacheckoutservice($Appsetting);
   }
 }

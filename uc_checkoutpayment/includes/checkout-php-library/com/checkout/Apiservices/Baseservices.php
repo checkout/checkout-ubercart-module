@@ -29,12 +29,12 @@ class Baseservices {
   /**
    * Class constructor.
    *
-   * @param AppSetting $apiSetting
+   * @param Appsetting $apiSetting
    *   The api Settings.
    * @param ApiUrls|null $apiUrl
    *   The api URLs.
    */
-  public function __construct(AppSetting $apiSetting, ApiUrls $apiUrl = null) {
+  public function __construct(Appsetting $apiSetting, ApiUrls $apiUrl = null) {
     $this->setApiSetting($apiSetting);
     if (!$this->getApiUrl() && !$apiUrl) {
       $apiUrl = new Apiurls();
@@ -46,7 +46,7 @@ class Baseservices {
   /**
    * Get the API settings.
    *
-   * @return \com\checkout\Helpers\AppSetting
+   * @return \com\checkout\Helpers\Appsetting
    *   The API Settings.
    */
   public function getApiSetting() {
@@ -56,7 +56,7 @@ class Baseservices {
   /**
    * Set the API settings.
    *
-   * @param \com\checkout\Helpers\AppSetting $apiSetting
+   * @param \com\checkout\Helpers\Appsetting $apiSetting
    *   The API Settings.
    */
   public function setApiSetting($apiSetting) {

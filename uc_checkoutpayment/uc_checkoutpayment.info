@@ -1,5 +1,6 @@
 name = Checkout.com
 description = Implements Checkout.Com payment services for use with Drupal Ubercart.
+configure = admin/store/settings/payment/method/cko
 package = Ubercart - payment
 dependencies[] = uc_payment
 core = 7.x

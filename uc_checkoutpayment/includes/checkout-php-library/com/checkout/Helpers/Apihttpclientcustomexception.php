@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Checkout.com Helpers\ApiHttpClientCustomException.
+ * Checkout.com Helpers\ApihttpclientCustomException.
  *
  * PHP Version 5.6
  *
@@ -31,7 +31,6 @@ final class Apihttpclientcustomexception extends \Exception {
    *   The request model.
    */
   public function __construct($errorMessage, $errorCode, $eventId) {
-
     $this->errorMessage = $errorMessage;
     $this->errorCode = $errorCode;
     $this->eventId = $eventId;

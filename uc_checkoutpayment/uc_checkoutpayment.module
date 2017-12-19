@@ -21,12 +21,6 @@ const EVENT_TYPE_CHARGE_REFUNDED               = 'charge.refunded';
 const EVENT_TYPE_CHARGE_VOIDED                 = 'charge.voided';
 const EVENT_TYPE_INVOICE_CANCELLED             = 'invoice.cancelled';
 
-function var_dump_pre($var) {
-  print'<pre>';
-  var_dump( $var );
-  print'</pre>';
-}
-
 /**
  * Implements hook_menu().
  */
@@ -194,205 +188,12 @@ function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id) {
 function uc_checkoutpayment_help($path, $arg) {
   switch ($path) {
     case 'admin/help#uc_checkoutpayment':
-      $html = '
-        <p>
-          Find the Checkout.com documentation on 
-            <a href="https://docs.checkout.com" target="_blank"> 
-              docs.checkout.com
-            </a>.
-        </p>
-        <p>
-          Specific documentation for the this Ubercart module can be found on 
-          <a href="https://github.com/checkout/checkout-ubercart-module/wiki" target="_blank"> 
-            GitHub wiki
-          </a>.
-        </p>
-        <p>
-          If you found an issue, bug, or have a feature request, then you can submit them on 
-          <a href="https://github.com/checkout/checkout-ubercart-module/issues" target="_blank"> 
-            GitHub issues
-          </a>.
-        </p>
-        <p>
-        If you need assistance, feel free to drop us an email on
-          <a href="mailto:integration@checkout.com" target="_blank"> 
-            integration@checkout.com
-          </a>.
-      </p>
-      ';
+      ob_start();
+      include 'includes/help.page.inc';
+      $html = ob_get_clean();
+      ob_end_flush();
       return $html;
   }
-}
-
-/**
- * Implements hook_node_info().
- *
- * We use hook_node_info() to define our node content type.
- */
-function uc_checkoutpayment_node_info() {
-  return array(
-    'cko_payment_plan' => array(
-      'name' => t('Payment Plan'),
-      'base' => 'cko_payment_plan',
-      'description' => t('Payment Plans store all the necessary information in support of implementing subscription services, membership services, and other popular recurring payment models.'),
-      'title_label' => t('Name of the paymentPlan:'),
-      'locked' => TRUE,
-    ),
-  );
-}
-
-/**
- * Implements hook_node_type_insert().
- */
-function cko_payment_plan_node_type_insert($content_type) {
-  if ($content_type->type == 'cko_payment_plan') {
-    $body_instance = node_add_body_field($content_type, t('Description'));
-    $body_instance['display']['cko_payment_plan_list'] = array(
-      'label' => 'hidden',
-      'type' => 'text_summary_or_trimmed',
-    );
-
-    // Save our changes to the body field instance.
-    field_update_instance($body_instance);
-
-    $nodeFields = array(
-      'cko_payment_plan_color' => array(
-        'field_name' => 'cko_payment_plan_color',
-        'cardinality' => 3,
-        'type'        => 'text',
-        'settings'    => array(
-          'max_length' => 60,
-        ),
-      ),
-      'cko_payment_plan_quantity' => array(
-        'field_name'  => 'cko_payment_plan_quantity',
-        'cardinality' => 1,
-        'type'        => 'text',
-      ),
-      'cko_payment_plan_image' => array(
-        'field_name' => 'cko_payment_plan_image',
-        'type'       => 'image',
-        'cardinality' => 1,
-      ),
-    );
-
-    // Create all the fields we are adding to our content type.
-    foreach ($nodeFields as $field) {
-      field_create_field($field);
-    }
-
-    $nodeInstances = array(
-      'cko_payment_plan_color' => array(
-        'field_name' => 'cko_payment_plan_color',
-        'label'       => t('The colors available for this object.'),
-        'widget'      => array(
-          'type'    => 'text_textfield',
-        ),
-        'display' => array(
-          'cko_payment_plan_list' => array(
-            'label' => 'hidden',
-            'type' => 'cko_payment_plan_colors',
-          ),
-        ),
-      ),
-      'cko_payment_plan_quantity' => array(
-        'field_name'  => 'cko_payment_plan_quantity',
-        'label' => t('Quantity required'),
-        'type'        => 'text',
-        'widget'      => array(
-          'type'    => 'text_textfield',
-        ),
-        'display' => array(
-          'example_node_list' => array(
-            'label' => 'hidden',
-            'type' => 'hidden',
-          ),
-        ),
-      ),
-      'cko_payment_plan_image' => array(
-        'field_name'  => 'cko_payment_plan_image',
-        'label'       => t('Upload an image:'),
-        'required'    => FALSE,
-        'widget' => array(
-          'type'    => 'image_image',
-          'weight'  => 2.10,
-        ),
-        'display' => array(
-          'cko_payment_plan_list' => array(
-            'label' => 'hidden',
-            'type' => 'image_link_content__thumbnail',
-          ),
-        ),
-      ),
-    );
-
-    foreach ($nodeInstances as $instance) {
-      $instance['entity_type'] = 'node';
-      $instance['bundle'] = 'cko_payment_plan';
-      field_create_instance($instance);
-    }
-  }
-}
-
-/**
- * Implements hook_form().
- *
- * Drupal needs for us to provide a form that lets the user
- * add content. This is the form that the user will see if
- * they go to node/add/node-example.
- *
- * You can get fancy with this form, or you can just punt
- * and return the default form that node_content will provide.
- */
-function cko_payment_plan_form($node, $form_state) {
-  return node_content_form($node, $form_state);
-}
-
-/**
- * Implements hook_entity_info_alter().
- *
- * We need to modify the default node entity info by adding a new view mode to
- * be used in functions like node_view() or node_build_content().
- */
-function uc_checkoutpayment_entity_info_alter(&$entity_info) {
-  // Add our new view mode to the list of view modes...
-  $entity_info['node']['view modes']['cko_payment_plan_list'] = array(
-    'label' => t('Example Node List'),
-    'custom settings' => TRUE,
-  );
-}
-
-
-/**
- * Implements hook_field_formatter_info().
- */
-function uc_checkoutpayment_field_formatter_info() {
-  return array(
-    'cko_payment_plan_colors' => array(
-      'label' => t('Node Example Color Handle'),
-      'field types' => array('text'),
-    ),
-  );
-}
-
-/**
- * Implements hook_field_formatter_view().
- *
- * @todo: We need to provide a formatter for the colors that a user is allowed
- * to enter during node creation.
- */
-function uc_checkoutpayment_field_formatter_view($object_type, $object, $field, $instance, $langcode, $items, $display) {
-  $element = array();
-  switch ($display['type']) {
-    case 'cko_payment_plan_colors':
-      foreach ($items as $delta => $item) {
-        $element[$delta]['#type'] = 'markup';
-        $color = $item['safe_value'];
-      }
-      break;
-  }
-
-  return $element;
 }
 
 /**
@@ -425,7 +226,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
     case 'settings':
       global $base_url;
       $form['checkoutpayment_help_text'] = array(
-        '#markup' => '<div class="help">' . t('<h4><strong>Checkout.com Payment Settings</strong></h4><p>Go to https://sandbox.checkout.com to properly install this module.</p>', array('%base_url' => $base_url)) . '</div>',
+        '#markup' => '<div class="help">' . t('<h4><i class="cko-logo"></i><b>Checkout</b>.com<strong> Payment Settings</strong></h4><p>Go to https://sandbox.checkout.com to properly install this module.</p>', array('%base_url' => $base_url)) . '</div>',
       );
 
       $form['checkoutpayment_account'] = array(
@@ -784,7 +585,7 @@ function admin_order_payment_action_form($form, &$form_state, $order) {
     $actions[] = array(
       'action' => 'syncronise',
       'label'  => t('Refresh'),
-      'help'   => t('Updates database via Checkout.com server'),
+      'help'   => t('Updates database via <i class="cko-logo"></i><b>Checkout</b>.com server'),
     );
 
     // Payment was flagged.
@@ -889,7 +690,7 @@ function admin_order_payment_action_form_submit($form, &$form_state) {
     );
 
     $instance->reloadHubCommunicationTable($config);
-    drupal_set_message(t("The payment was syncronized with Checkout.com"), 'status');
+    drupal_set_message(t("The payment was syncronized with <i class='cko-logo'></i><b>Checkout</b>.com"), 'status');
   }
   if ($charge->status == "Authorised" || $charge->status == "Capture failed" || $charge->status == "Flagged") {
     if ($form_state['triggering_element']["#name"] == "capture") {

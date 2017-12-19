@@ -34,7 +34,7 @@ class Paymentproviderservice extends \com\checkout\Apiservices\Baseservices {
 
     );
 
-    $processCharge = \com\checkout\Helpers\ApiHttpClient::getRequest(
+    $processCharge = \com\checkout\Helpers\Apihttpclient::getRequest(
       $this->apiUrl->getCardprovidersUri(),
       $this->apiSetting->getPublicKey(), $requestPayload
     );
@@ -57,7 +57,7 @@ class Paymentproviderservice extends \com\checkout\Apiservices\Baseservices {
 
     );
     $cardProviderByIdUri = $this->apiUrl->getCardprovidersUri() . "/$id";
-    $processCharge = \com\checkout\Helpers\ApiHttpClient::getRequest(
+    $processCharge = \com\checkout\Helpers\Apihttpclient::getRequest(
       $cardProviderByIdUri,
       $this->apiSetting->getPublicKey(), $requestPayload
     );

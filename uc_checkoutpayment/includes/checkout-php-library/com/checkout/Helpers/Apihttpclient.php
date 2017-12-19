@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Checkout.com Helpers\ApiHttpClient.
+ * Checkout.com Helpers\Apihttpclient.
  *
  * PHP Version 5.6
  *
