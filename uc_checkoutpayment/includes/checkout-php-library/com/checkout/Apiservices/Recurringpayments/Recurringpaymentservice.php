@@ -436,7 +436,6 @@ class Recurringpaymentservice extends \com\checkout\Apiservices\Baseservices {
       'authorization' => $secretKey,
       'mode' => $this->apiSetting->getMode(),
       'postedParam' => $queryMapper->requestQueryConverter(),
-
     );
 
     $processQuery = \com\checkout\Helpers\Apihttpclient::postRequest(
@@ -444,6 +443,7 @@ class Recurringpaymentservice extends \com\checkout\Apiservices\Baseservices {
       $secretKey,
       $requestQuery
     );
+
     $responseModel = new Responsemodels\Paymentplanlist($processQuery);
 
     return $responseModel;

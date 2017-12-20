@@ -15,6 +15,22 @@ const ADMIN_HELP_TEXT = "This module was created by <i class='cko-logo'></i><b>C
 
 module_load_include('php', 'uc_checkoutpaymentplan', 'includes/methods/objects');
 
+/**
+ * Implements hook_menu().
+ */
+function uc_checkoutpaymentplan_menu() {
+  $items = array();
+
+  $items['uc_checkoutpaymentplan/develop'] = array(
+    'title' => 'Developping page',
+    'page callback' => 'page_development',
+    /* Access neccecary for webhooks */
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
 
 /**
  * Implements hook_perm().
@@ -195,6 +211,31 @@ function pre_var_dump($var) {
   echo '<pre>';
   var_dump($var);
   echo '</pre>';
+}
+
+/**
+ * Developer function which gives access to a developper page.
+ *
+ * @return mixed
+ *   The output used for rendering the page.
+ */
+function page_development() {
+  $payment_plan = get_payment_plan();
+  $payment_plan->trackId = 'test';
+  $payment_plan->autoCapTime = 2;
+  $payment_plan->recurringCount = 50;
+  $payment_plan->status = 1;
+  $payment_plan->cycle = '30d';
+  $payment_plan->name = 'test';
+  $payment_plan->value = (int) 50;
+  $payment_plan->currency = 'EUR';
+
+  $error = $payment_plan->save();
+  pre_var_dump($error);
+
+  pre_var_dump($payment_plan);
+
+  return 'NULL';
 }
 
 /**
