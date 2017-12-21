@@ -105,35 +105,12 @@ function uc_checkoutpaymentplan_node_type_insert($content_type) {
 
     field_update_instance($body_instance);
 
-    foreach (_cko_payment_plan_installed_fields() as $field) {
-      field_create_field($field);
-    }
-
     foreach (_cko_payment_plan_installed_instances() as $instance) {
       $instance['entity_type'] = 'node';
       $instance['bundle'] = 'cko_payment_plan';
       field_create_instance($instance);
     }
   }
-}
-
-/**
- * Define the fields for our content type.
- *
- * This big array is factored into this function for readability.
- *
- * @return array
- *   An associative array specifying the fields we wish to add to our
- *   new node type.
- */
-function _cko_payment_plan_installed_fields() {
-  return array(
-    'node_example_image' => array(
-      'field_name' => 'node_example_image',
-      'type'       => 'image',
-      'cardinality' => 1,
-    ),
-  );
 }
 
 /**
@@ -146,21 +123,8 @@ function _cko_payment_plan_installed_fields() {
  *   node type.
  */
 function _cko_payment_plan_installed_instances() {
-  return array(
-    'node_example_image' => array(
-      'field_name'  => 'node_example_image',
-      'label'       => t('Upload an image:'),
-      'required'    => FALSE,
-      'widget' => array(
-        'type'    => 'image_image',
-        'weight'  => 2.10,
-      ),
-      'display' => array(
-        'example_node_list' => array(
-          'label' => 'hidden',
-          'type' => 'image_link_content__thumbnail',
-        ),
-      ),
-    ),
-  );
+  $instances['uc_product_image'] = field_info_instance('node', 'uc_product_image', 'product');
+  $instances['taxonomy_catalog'] = field_info_instance('node', 'taxonomy_catalog', 'product');
+
+  return $instances;
 }
