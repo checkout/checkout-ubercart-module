@@ -698,7 +698,251 @@ class PaymentPlan {
  * The Checkout.com Customer Payment Plan
  */
 class CustomerPaymentPlan {
-  // @todo.
+  public $id;
+  public $planId;
+  public $cardId;
+  public $customerId;
+  public $recurringCountLeft;
+  public $status;
+  public $totalCollectionCount;
+  public $totalCollectionValue;
+  public $startDate;
+  public $previousRecurringDate;
+  public $nextRecurringDate;
+
+  /**
+   * Get a customer paymentplan from the Checkout.com server.
+   *
+   * How to use this:
+   *   $customer_payment_plan = new PaymentPlan;
+   *   $customer_payment_plan->id = 'rp_000000000000000';
+   *   $customer_payment_plan->get();
+   *
+   * @return bool
+   *   Returns true if succeeded or false (with drupal message) when failed.
+   */
+  public function get() {
+    if ($this->api_get()) {
+      return TRUE;
+    }
+
+    return FALSE;
+  }
+
+  /**
+   * Update a paymentplan from the Checkout.com server.
+   *
+   * How to use this:
+   *   $payment_plan = new PaymentPlan;
+   *   $payment_plan->id = 'rp_000000000000000';
+   *   $payment_plan->status = 1;
+   *   $payment_plan->db_update();
+   * 
+   * The folling fields can be updated:
+   *   name.
+   *   autoCapTime.
+   *   value.
+   *   status.
+   *
+   * @return bool
+   *   Returns true if succeeded or false (with drupal message) when failed.
+   */
+  public function update() {
+    try {
+      $this->api_update();
+    }
+    catch (Exception $e) {
+      drupal_set_message(t(':message', array(':message' => $e->getMessage(),)), 'error');
+      return FALSE;
+    }
+
+    return TRUE;
+  }
+
+  /**
+   * Delete a paymentplan from the Checkout.com server.
+   *
+   * How to use this:
+   *   $payment_plan = new PaymentPlan;
+   *   $payment_plan->id = 'rp_000000000000000';
+   *   $payment_plan->delete();
+   *
+   *   $payment_plan = new PaymentPlan;
+   *   $payment_plan->trackId = 'example_tracker';
+   *   $payment_plan->delete();
+   *
+   * @return bool
+   *   Returns true if succeeded or false (with drupal message) when failed.
+   */
+  public function delete() {
+    if ($this->get()) {
+      try {
+        $this->api_cancel();
+      }
+      catch (Exception $e) {
+        drupal_set_message(t(':message', array(':message' => $e->getMessage(),)), 'error');
+        return FALSE;
+      }
+  
+      return TRUE;
+    }
+  
+    drupal_set_message(t('The payment plan was not found on the Checkout.com server.'), 'error');
+    return false;
+  }
+
+  /**
+   * Gets this customer paymentplan from the Checkout.com API.
+   *
+   * Minimal usage:
+   *   $this->id = 'cp_000000000000000';
+   *   $this->api_query();
+   *
+   * @return bool
+   *   TRUE if it was succesfull, FALSE if it doesn't.
+   */
+  private function api_get() {
+    if ($this->id == NULL) {
+      return FALSE;
+    }
+
+    $class[] = 'includes/checkout-php-library/autoload';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiclient';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiservices/Recurringpayments/Recurringpaymentsservice';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiservices/Recurringpayments/Responsemodels/Customerpaymentplan';
+
+    foreach ($class as $path) {
+      module_load_include('php', 'uc_checkoutpayment', $path);
+    }
+
+    $apiClient = new com\checkout\Apiclient('sk_test_f574d9f5-225b-4d04-bb83-58f5a34e2a97');
+    $service = $apiClient->Recurringpaymentservice();
+    $reponse = $service->getCustomerPlan($this->id);
+
+    if ($reponse != NULL) {
+      $this->id = $reponse->getCustomerPlanId();
+      $this->planId = $reponse->getPlanId();
+      $this->recurringCountLeft = $reponse->getRecurringCountLeft();
+      $this->status = $reponse->getStatus();
+      $this->totalCollectionCount = $reponse->getTotalCollectedCount();
+      $this->totalCollectionValue = $reponse->getTotalCollectedValue();
+      $this->startDate = $reponse->getStartDate();
+      $this->previousRecurringDate = $reponse->getPreviousRecurringDate();
+      $this->nextRecurringDate = $reponse->getNextRecurringDate();
+
+      return TRUE;
+    }
+
+    return FALSE;
+  }
+
+  /**
+   * Update this paymentplan from the Checkout.com API.
+   *
+   * Minimal usage:
+   *   $this->id = 'rp_000000000000000';
+   *   $this->trackId = 'example_tracker';
+   *   $this->api_update();
+   *
+   * @return mixed
+   *   TRUE if it was succesfull or the error message if it's not.
+   */
+  private function api_update() {
+    if ($this->id == NULL) {
+      throw new Exception("Cannot update a payment plan without an id.");
+    }
+
+    $class[] = 'includes/checkout-php-library/autoload';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiclient';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiservices/Recurringpayments/Recurringpaymentsservice';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiservices/Recurringpayments/Requestmodels/Planupdate';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiservices/Sharedmodels/Okresponse';
+
+    foreach ($class as $path) {
+      module_load_include('php', 'uc_checkoutpayment', $path);
+    }
+
+    try {
+      $apiClient = new com\checkout\Apiclient('sk_test_f574d9f5-225b-4d04-bb83-58f5a34e2a97');
+      $service = $apiClient->Recurringpaymentservice();
+
+      $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Planupdate();
+      $request->setPlanId($this->id);
+
+      if ($this->name != NULL) {
+        $request->setName($this->name);
+      }
+      if ($this->trackId != NULL) {
+        $request->setPlanTrackId($this->trackId);
+      }
+      if ($this->autoCapTime != NULL) {
+        $request->setAutoCapTime($this->autoCapTime);
+      }
+      if ($this->value != NULL) {
+        $request->setValue($this->value);
+      }
+      if ($this->status != NULL) {
+        $request->setStatus($this->status);
+      }
+
+      $reponse = $service->updatePlan($request);
+    }
+    catch (Exception $e) {
+      throw new Exception("API " . $e->getErrorCode() . " | " . $e->getErrorMessage());
+    }
+
+    if ($reponse->hasError()) {
+      throw new Exception("API " . $e->getHttpStatus() . " | " . $e->getMessage());
+    }
+
+    $this->db_update();
+
+    return TRUE;
+  }
+
+  /**
+   * Cancel this paymentplan from the Checkout.com API.
+   *
+   * Note: The payment plan will be deleted and cannot be restored.
+   *
+   * Minimal usage:
+   *   $this->id = 'rp_000000000000000';
+   *   $this->api_cancel();
+   *
+   * @return mixed
+   *   TRUE if it was succesfull or the error message if it's not.
+   */
+  private function api_cancel() {
+    if ($this->id == NULL) {
+      throw new Exception("Cannot cancl a payment plan without an id.");
+    }
+
+    $class[] = 'includes/checkout-php-library/autoload';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiclient';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiservices/Recurringpayments/Recurringpaymentsservice';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiservices/Sharedmodels/Okresponse';
+
+    foreach ($class as $path) {
+      module_load_include('php', 'uc_checkoutpayment', $path);
+    }
+
+    try {
+      $apiClient = new com\checkout\Apiclient('sk_test_f574d9f5-225b-4d04-bb83-58f5a34e2a97');
+      $service = $apiClient->Recurringpaymentservice();
+
+      $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Planupdate();
+      $reponse = $service->cancelPlan($this->id);
+    }
+    catch (Exception $e) {
+      throw new Exception("API " . $e->getErrorCode() . " | " . $e->getErrorMessage());
+    }
+
+    if ($reponse->hasError()) {
+      throw new Exception("API " . $e->getHttpStatus() . " | " . $e->getMessage());
+    }
+
+    return TRUE;
+  }
 }
 
 /**

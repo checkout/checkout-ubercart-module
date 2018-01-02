@@ -100,7 +100,12 @@ function uc_checkoutpayment_variable_info() {
  */
 function uc_checkoutpayment_page_alter(&$page) {
   $pathElements = explode('/', current_path());
-  $integration_type = cko_store_settings()['settings']['cko_integration'];
+  $settings = cko_store_settings()['settings'];
+  $integration_type = $settings['cko_integration'];
+
+  if ($settings['private_key'] == null || $settings['public_key'] == null) {
+    drupal_set_message(t('The Checkout.com payment method is not configured correctly.'), 'warning');
+  }
 
   if (count($pathElements) == 2 && $pathElements[0] == 'admin' && $pathElements[1] == 'store') {
     $page['sidebar_first']['user_login']['help'] = array(
@@ -563,6 +568,9 @@ function reloadHubCommunicationTableWithTimeRange($form, $form_state) {
     $config['FromDate'] = $form_state['values']['cko_from_date'];
     $config['ToDate'] = $form_state['values']['cko_to_date'];
   }
+
+  module_invoke_all('cko_syncronise', $config);
+  drupal_alter('cko_syncronise', $config);
 
   $instance->reloadHubCommunicationTable($config);
 
@@ -1041,6 +1049,9 @@ function uc_checkoutpayment_process_charge(array $config = array()) {
     $config['postedParam']['products'] = $data['script']['products'];
   }
 
+  module_invoke_all('cko_processing', $order, $config);
+  drupal_alter('cko_processing', $order, $config);
+
   // Create a charge request.
   $result = $api->createCharge($config);
 
@@ -1149,6 +1160,9 @@ function uc_checkoutpayment_process_order() {
 
     if ($object_charge->isValid()) {
       uc_checkoutpayment_add_to_database($object_charge);
+
+      $data = module_invoke_all('cko_webhook', $object_charge);
+      drupal_alter('cko_webhook', $object_charge);
 
       $order_total   = $data['script']['amount'] / 100;
       $order_balance = uc_payment_balance($order);
