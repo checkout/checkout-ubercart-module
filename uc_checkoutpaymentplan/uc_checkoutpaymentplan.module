@@ -74,8 +74,6 @@ function uc_checkoutpaymentplan_help($path, $arg) {
  * Implements hook_form_alter().
  */
 function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
-  //pre_var_dump($form);
-
   switch ($form_id) {
     case 'uc_payment_method_settings_form':
       $form['checkoutpayment_recurring'] = array(
@@ -88,7 +86,6 @@ function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
       $form['checkoutpayment_recurring']['ckopp_autocaptime'] = array(
         '#type' => 'textfield',
         '#title' => t('Standard auto capture time'),
-        '#required' => TRUE,
         '#description' => t('This autocapture time will be used unless another is specified.'),
       );
       break;
@@ -170,12 +167,43 @@ function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
       break;
 
     case 'uc_cart_view_form':
-      foreach ($form['items'] as $line) {
-        if (is_array($line) && array_key_exists("#entity",$line) && $line["#entity"]->data["type"] == 'cko_payment_plan') {
-          pre_var_dump($form);
+      $items = uc_cart_get_contents();
+      $hasSubscription = false;
+
+      foreach ($items as $item) {
+        if ($item->type == 'cko_payment_plan' && $hasSubscription) {
+          uc_cart_remove_item($item->nid, NULL, $item->data);
+          drupal_set_message(
+            t(
+              'We removed :subscription, since only one subscription can be bought at the same time',
+              array(
+                ':subscription' => $item->title
+              )
+            ), 
+            'warning'
+          );
+          drupal_goto('cart');
+        }
+        elseif ($item->type == 'cko_payment_plan') {
+          $hasSubscription = true;
+          if ($item->qty > 1) {
+            drupal_set_message(
+              t(
+                'We removed :qty instances of :subscription, since only one subscription can be bought at the same time',
+                array(
+                  ':qty' => $item->qty - 1,
+                  ':subscription' => $item->title
+                )
+              ), 
+              'warning'
+            );
+            $item->qty = 1;
+            uc_cart_update_item($item);
+            drupal_goto('cart');
+          }
         }
       }
-      
+
       break;
   }
 }
@@ -264,7 +292,6 @@ function uc_checkoutpaymentplan_node_update($node) {
  */
 function uc_checkoutpaymentplan_node_delete($node) {
   if ($node->type = "cko_payment_plan") {
-    error_log(pre_var_dump($node, true));
     $payment_plan = get_payment_plan();
     $payment_plan->trackId = $node->model;
     $response = $payment_plan->delete();
@@ -277,15 +304,19 @@ function uc_checkoutpaymentplan_node_delete($node) {
 function uc_checkoutpaymentplan_cko_processing_alter(&$order, &$config) {
   foreach ($order->products as $key => $value) {
     if ($value->data["type"] == 'cko_payment_plan') {
-      $payment_plan = get_payment_plan();
-      $payment_plan->trackId = $value->model;
-      
-      if ($payment_plan->get()) {
-        $config['postedParam']['paymentPlans'][] = array(
-          "planId" => $payment_plan->id,
-        );
-        $config['postedParam']['transactionIndicator'] = 2;
+      $customer_payment_plan = new CustomerPaymentPlan;
+
+      if ($customer_payment_plan->exists($order->primary_email, $value->model)) {
+        // throw new Exception(
+        //   t("You cannot subscribe to the same subscription multiple times."), 
+        //   1
+        // );
       }
+
+      $config['postedParam']['paymentPlans'][] = array(
+        "planId" => $customer_payment_plan->id,
+      );
+      $config['postedParam']['transactionIndicator'] = 2;
     }
     
   }
@@ -303,17 +334,6 @@ function uc_checkoutpaymentplan_cko_webhook_alter(&$object_charge) {
  */
 function uc_checkoutpaymentplan_cko_syncronise_alter(&$config) {
   // The local database is not yet used.
-}
-
-/**
- * Implements hook_add_to_cart().
- */
-function uc_checkoutpaymentplan_add_to_cart($nid, $qty, $data) {
-  $result[] = array(
-    'success' => FALSE,
-    'message' => t('Sorry, you can only add one of those at a time.'),
-  );
-  return $result;
 }
 
 /**
@@ -341,11 +361,11 @@ function pre_var_dump($var , $buffer = false) {
  *   The output used for rendering the page.
  */
 function page_development() {
-  $cpp = new CustomerPaymentPlan;
-  $cpp->id = 'cp_BC7F19AC240L76BCB9F9';
-  $respons = $cpp->get();
 
-  pre_var_dump($cpp);
+  $customer_payment_plan = new CustomerPaymentPlan;
+  $bool = $customer_payment_plan->exists('gilles.coeman@checkout.com', 'rgerg');
+
+  pre_var_dump($customer_payment_plan);
 
   return 'NULL';
 }

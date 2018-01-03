@@ -275,7 +275,7 @@ class PaymentPlan {
       module_load_include('php', 'uc_checkoutpayment', $path);
     }
 
-    $apiClient = new com\checkout\Apiclient('sk_test_f574d9f5-225b-4d04-bb83-58f5a34e2a97');
+    $apiClient = new com\checkout\Apiclient(variable_get('cko_private_key'));
     $service = $apiClient->Recurringpaymentservice();
     $reponse = $service->getPlan($this->id);
 
@@ -321,7 +321,7 @@ class PaymentPlan {
       module_load_include('php', 'uc_checkoutpayment', $path);
     }
 
-    $apiClient = new com\checkout\Apiclient('sk_test_f574d9f5-225b-4d04-bb83-58f5a34e2a97');
+    $apiClient = new com\checkout\Apiclient(variable_get('cko_private_key'));
     $service = $apiClient->Recurringpaymentservice();
 
     $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Querypaymentplan();
@@ -371,7 +371,7 @@ class PaymentPlan {
     }
 
     try {
-      $apiClient = new com\checkout\Apiclient('sk_test_f574d9f5-225b-4d04-bb83-58f5a34e2a97');
+      $apiClient = new com\checkout\Apiclient(variable_get('cko_private_key'));
       $service = $apiClient->Recurringpaymentservice();
 
       $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Baserecurringpayment();
@@ -427,7 +427,7 @@ class PaymentPlan {
     }
 
     try {
-      $apiClient = new com\checkout\Apiclient('sk_test_f574d9f5-225b-4d04-bb83-58f5a34e2a97');
+      $apiClient = new com\checkout\Apiclient(variable_get('cko_private_key'));
       $service = $apiClient->Recurringpaymentservice();
 
       $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Planupdate();
@@ -491,7 +491,7 @@ class PaymentPlan {
     }
 
     try {
-      $apiClient = new com\checkout\Apiclient('sk_test_f574d9f5-225b-4d04-bb83-58f5a34e2a97');
+      $apiClient = new com\checkout\Apiclient(variable_get('cko_private_key'));
       $service = $apiClient->Recurringpaymentservice();
 
       $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Planupdate();
@@ -711,18 +711,23 @@ class CustomerPaymentPlan {
   public $nextRecurringDate;
 
   /**
-   * Get a customer paymentplan from the Checkout.com server.
+   * Get a customer payment plan from the Checkout.com server.
    *
    * How to use this:
-   *   $customer_payment_plan = new PaymentPlan;
+   *   $customer_payment_plan = new CustomerPaymentPlan;
    *   $customer_payment_plan->id = 'rp_000000000000000';
+   *   $customer_payment_plan->get();
+   *
+   *   $customer_payment_plan = new CustomerPaymentPlan;
+   *   $customer_payment_plan->customerId = 'cust_000000000000000';
+   *   $customer_payment_plan->planId     = 'rp_000000000000000';
    *   $customer_payment_plan->get();
    *
    * @return bool
    *   Returns true if succeeded or false (with drupal message) when failed.
    */
   public function get() {
-    if ($this->api_get()) {
+    if ($this->api_get() || $this->api_query()) {
       return TRUE;
     }
 
@@ -792,6 +797,43 @@ class CustomerPaymentPlan {
   }
 
   /**
+   * Checks if a customer already has a specific subscription.
+   *
+   * How to use this:
+   *   $customer_payment_plan = new CustomerPaymentPlan;
+   *   $bool = $customer_payment_plan->exists(
+   *     'integration@checkout.com', 
+   *     'example_tracker'
+   *   );
+   *
+   * Note: This function will also fill this object with the correct values.
+   *
+   * @param string $email
+   *   The e-mail address which uniquely identiefies the customer.
+   * @param string $trackId
+   *   The unique identifier for the recurring plan set by the Merchant.
+   *   This is equal to the Ubercart SKU.
+   *
+   * @return bool
+   *   Returns true if link exists or false when it doesn't.
+   */
+  public function exists($email, $trackId) {
+    $customer = new Customer;
+    $customer->email = $email;
+
+    $payment_plan = new PaymentPlan;
+    $payment_plan->trackId = $trackId;
+
+    if ($customer->get() && $payment_plan->get()) {
+      $this->customerId = $customer->id;
+      $this->planId = $payment_plan->id;
+      return $this->get();
+    }
+
+    return FALSE;
+  }
+
+  /**
    * Gets this customer paymentplan from the Checkout.com API.
    *
    * Minimal usage:
@@ -815,7 +857,7 @@ class CustomerPaymentPlan {
       module_load_include('php', 'uc_checkoutpayment', $path);
     }
 
-    $apiClient = new com\checkout\Apiclient('sk_test_f574d9f5-225b-4d04-bb83-58f5a34e2a97');
+    $apiClient = new com\checkout\Apiclient(variable_get('cko_private_key'));
     $service = $apiClient->Recurringpaymentservice();
     $reponse = $service->getCustomerPlan($this->id);
 
@@ -863,7 +905,7 @@ class CustomerPaymentPlan {
     }
 
     try {
-      $apiClient = new com\checkout\Apiclient('sk_test_f574d9f5-225b-4d04-bb83-58f5a34e2a97');
+      $apiClient = new com\checkout\Apiclient(variable_get('cko_private_key'));
       $service = $apiClient->Recurringpaymentservice();
 
       $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Planupdate();
@@ -927,7 +969,7 @@ class CustomerPaymentPlan {
     }
 
     try {
-      $apiClient = new com\checkout\Apiclient('sk_test_f574d9f5-225b-4d04-bb83-58f5a34e2a97');
+      $apiClient = new com\checkout\Apiclient(variable_get('cko_private_key'));
       $service = $apiClient->Recurringpaymentservice();
 
       $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Planupdate();
@@ -943,11 +985,152 @@ class CustomerPaymentPlan {
 
     return TRUE;
   }
+
+  /**
+   * Queries for a customer paymentplan from the Checkout.com API.
+   *
+   * Minimal usage:
+   *   $this->customerId = 'cust_000000000000000';
+   *   $this->planId     = 'rp_000000000000000';
+   *   $this->api_query();
+   *
+   * @return bool
+   *   TRUE if it was succesfull, FALSE if it doesn't.
+   */
+  private function api_query() {
+    if ($this->customerId == NULL || $this->planId == NULL) {
+      return FALSE;
+    }
+
+    $class[] = 'includes/checkout-php-library/autoload';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiclient';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiservices/Recurringpayments/Recurringpaymentsservice';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiservices/Recurringpayments/Requestmodels/Querycustomerplan';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiservices/Recurringpayments/Responsemodels/Paymentplanlist';
+
+    foreach ($class as $path) {
+      module_load_include('php', 'uc_checkoutpayment', $path);
+    }
+
+    $apiClient = new com\checkout\Apiclient(variable_get('cko_private_key'));
+    $service = $apiClient->Recurringpaymentservice();
+
+    $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Querycustomerplan();
+    $request->setCustomerId($this->customerId);
+    $request->setPlanId($this->planId);
+
+    $response = $service->queryCustomerPlan($request);
+
+    if ($response->getTotalRows() == 1) {
+      $reponseplan = $response->getData()[0];
+
+      $this->id = $reponseplan['customerPlanId'];
+      $this->planId = $reponseplan['planId'];
+      $this->recurringCountLeft = $reponseplan['recurringCountLeft'];
+      $this->status = $reponseplan['status'];
+      $this->totalCollectionCount = $reponseplan['totalCollectedCount'];
+      $this->totalCollectionValue = $reponseplan['totalCollectedValue'];
+      $this->startDate = $reponseplan['startDate'];
+      $this->previousRecurringDate = $reponseplan['previousRecurringDate'];
+      $this->nextRecurringDate = $reponseplan['nextRecurringDate'];
+
+      return TRUE;
+    }
+
+    return FALSE;
+  }
 }
 
 /**
- * The Checkout.com Payment Plan
+ * The Checkout.com store settings.
  */
 class PaymentPlanStoreSettings {
   public $planId;
+}
+
+/**
+ * The Checkout.com customer objects.
+ */
+class Customer {
+  public $id;
+  public $name;
+  public $customerName;
+  public $created;
+  public $email;
+  public $phoneNumber;
+  public $description;
+  public $ltv;
+  public $defaultCard;
+  public $responseCode;
+  public $liveMode;
+  public $cards;
+  public $metadata;
+
+  /**
+   * Get a customer from the Checkout.com server.
+   *
+   * How to use this:
+   *   $customer = new Customer;
+   *   $customer->email = 'integration@checkout.com';
+   *   $customer->get();
+   *
+   * @return bool
+   *   Returns true if succeeded or false (with drupal message) when failed.
+   */
+  public function get() {
+    if ($this->api_get()) {
+      return TRUE;
+    }
+
+    return FALSE;
+  }
+
+  /**
+   * Gets this customer from the Checkout.com API.
+   *
+   * Minimal usage:
+   *   $this->email = 'integration@checkout.com';
+   *   $this->api_query();
+   *
+   * @return bool
+   *   TRUE if it was succesfull, FALSE if it doesn't.
+   */
+  private function api_get() {
+    if ($this->email == NULL) {
+      return FALSE;
+    }
+
+    $class[] = 'includes/checkout-php-library/autoload';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiclient';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiservices/Customers/Customerservice';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiservices/Customers/Responsemodels/Customer';
+
+    foreach ($class as $path) {
+      module_load_include('php', 'uc_checkoutpayment', $path);
+    }
+
+    $apiClient = new com\checkout\Apiclient(variable_get('cko_private_key'));
+    $service = $apiClient->Customerservice();
+    $response = $service->getCustomer($this->email);
+
+    if ($response != NULL) {
+      $this->id = $response->getId();
+      $this->name = $response->getName();
+      $this->customerName = $response->getCustomerName();
+      $this->created = $response->getCreated();
+      $this->email = $response->getEmail();
+      $this->phoneNumber = $response->getPhoneNumber();
+      $this->description = $response->getDescription();
+      $this->ltv = $response->getLtv();
+      $this->defaultCard = $response->getDefaultCard();
+      $this->responseCode = $response->getResponseCode();
+      $this->liveMode = $response->getLiveMode();
+      $this->cards = $response->getCards();
+      $this->metadata = $response->getMetadata();
+
+      return TRUE;
+    }
+
+    return FALSE;
+  }
 }

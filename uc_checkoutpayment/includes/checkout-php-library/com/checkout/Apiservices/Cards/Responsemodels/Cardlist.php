@@ -100,7 +100,7 @@ class Cardlist extends \com\checkout\Apiservices\Sharedmodels\Basehttp {
    *   A card object.
    */
   private function getCard($card) {
-    $dummyObjCart = new \Checkoutapi_LibrespondObj();
+    $dummyObjCart = new \CheckoutapiLibRespondobj();
     $dummyObjCart->setConfig($card);
     $cardObg = new \com\checkout\Apiservices\Cards\Responsemodels\Card(
       $dummyObjCart
