@@ -95,7 +95,7 @@ input.cko-disabled {
   width: 1.2em;
   display: inline-block;
   background-size: .9em;
-  background-image: url("http://checkoutdev.coeman.me/sites/all/modules/uc_checkoutpaymentplan/includes/images/checkoutcom_logo.png");
+  background-image: url("images/checkoutcom_logo.png");
   background-repeat: no-repeat;
   background-position: center bottom;
 }

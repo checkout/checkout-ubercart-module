@@ -151,7 +151,7 @@ function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
       $form['base']['shippable']['#default_value'] = 0;
 
       if ($form['base']['model']['#default_value'] != '') {
-        $payment_plan = get_payment_plan();
+        $payment_plan = new PaymentPlan;
         $payment_plan->trackId = $form['base']['model']['#default_value'];
         $payment_plan->get();
 
@@ -254,7 +254,7 @@ function uc_checkoutpaymentplan_form_submit($form, &$form_state) {
  */
 function uc_checkoutpaymentplan_node_insert($node) {
   if ($node->type = "cko_payment_plan") {
-    $payment_plan = get_payment_plan();
+    $payment_plan = new PaymentPlan;
 
     $payment_plan->name           = $node->title;
     $payment_plan->trackId        = $node->model;
@@ -274,7 +274,7 @@ function uc_checkoutpaymentplan_node_insert($node) {
  */
 function uc_checkoutpaymentplan_node_update($node) {
   if ($node->type = "cko_payment_plan") {
-    $payment_plan = get_payment_plan();
+    $payment_plan = new PaymentPlan;
 
     $payment_plan->id          = $node->ckopp_pp_plan_id;
     $payment_plan->name        = $node->title;
@@ -292,7 +292,7 @@ function uc_checkoutpaymentplan_node_update($node) {
  */
 function uc_checkoutpaymentplan_node_delete($node) {
   if ($node->type = "cko_payment_plan") {
-    $payment_plan = get_payment_plan();
+    $payment_plan = new PaymentPlan;
     $payment_plan->trackId = $node->model;
     $response = $payment_plan->delete();
   }
@@ -308,7 +308,7 @@ function uc_checkoutpaymentplan_cko_processing_alter(&$order, &$config) {
 
       if (!$customer_payment_plan->exists($order->primary_email, $value->model)) {
         $config['postedParam']['paymentPlans'][] = array(
-          "planId" => $customer_payment_plan->id,
+          "planId" => $customer_payment_plan->planId,
         );
         $config['postedParam']['transactionIndicator'] = 2;
       }
@@ -378,14 +378,4 @@ function page_development() {
  */
 function tooltip($string) {
   return ' <div class="tooltip">?<span class="tooltiptext">' . t($string) . '</span></div> ';
-}
-
-/**
- * Include function for the objects.
- *
- * @return PaymentPlan
- *   A payment plan object.
- */
-function get_payment_plan() {
-  return new PaymentPlan;
 }
