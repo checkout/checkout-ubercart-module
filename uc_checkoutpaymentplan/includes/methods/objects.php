@@ -452,6 +452,10 @@ class PaymentPlan {
       $reponse = $service->updatePlan($request);
     }
     catch (Exception $e) {
+      if (strpos($e->getErrorMessage(), 'Recurring Plan already exists')) {
+        return TRUE;
+      }
+
       throw new Exception("API " . $e->getErrorCode() . " | " . $e->getErrorMessage());
     }
 
