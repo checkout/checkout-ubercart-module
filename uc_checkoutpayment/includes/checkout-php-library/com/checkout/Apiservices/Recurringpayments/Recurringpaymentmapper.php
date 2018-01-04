@@ -104,6 +104,14 @@ class Recurringpaymentmapper {
       ) {
         $requestSinglePaymentplan['value'] = $value;
       }
+
+      if (
+        method_exists($requestModel, 'getStatus') &&
+        ($status = $requestModel->getStatus())
+      ) {
+        $requestSinglePaymentplan['status'] = $status;
+      }
+
       if (
         method_exists($requestModel, 'getCycle') &&
         ($cycle = $requestModel->getCycle())

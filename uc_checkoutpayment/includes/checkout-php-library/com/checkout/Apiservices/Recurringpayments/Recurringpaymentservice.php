@@ -111,13 +111,13 @@ class Recurringpaymentservice extends \com\checkout\Apiservices\Baseservices {
       'authorization' => $this->apiSetting->getSecretKey(),
       'mode' => $this->apiSetting->getMode(),
       'postedParam' => $_requestPayloadConverter['paymentPlans'][0],
-
     );
 
     $updatePlanUri = $this
       ->apiUrl
       ->getRecurringpaymentsApiUri() . '/' . $requestModel
       ->getPlanId();
+
     $processCharge = \com\checkout\Helpers\Apihttpclient::putRequest(
       $updatePlanUri,
       $this->apiSetting->getSecretKey(), $requestPayload

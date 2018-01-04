@@ -446,7 +446,7 @@ class PaymentPlan {
         $request->setValue($this->value);
       }
       if ($this->status != NULL) {
-        $request->setStatus($this->status);
+        $request->setStatus((int)$this->status);
       }
 
       $reponse = $service->updatePlan($request);

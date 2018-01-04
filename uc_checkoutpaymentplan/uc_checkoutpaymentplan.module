@@ -135,7 +135,7 @@ function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
         '#description' => t('Defines the status of the recurring payment plan.') . tooltip('It is used for the endpoint that will allow to monitor the health of a recurring plan.'),
         '#options' => array(
           1 => t('Active'),
-          4  => t('Suspended'),
+          4 => t('Suspended'),
         ),
       );
 
@@ -341,7 +341,9 @@ function pre_var_dump($var , $buffer = false) {
   if ($buffer) {
     ob_start();
     var_dump($var);
-    return ob_get_clean();
+    $string = ob_get_clean();
+    error_log($string, 0);
+    return $string;
   }
   
   echo '<pre>';
