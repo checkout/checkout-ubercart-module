@@ -25,6 +25,7 @@ class Creditcard
 
     if ($order) {
       $amount_cents = number_format(round($order->order_total, variable_get('uc_currency_prec', 2)) * 100, 0, '', '');
+      error_log('amount_cents: ' . $amount_cents . ' | order->order_total: ' . $order->order_total, 0);
       $config = array();
 
       $config['email'] = $order->primary_email;

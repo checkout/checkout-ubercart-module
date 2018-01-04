@@ -1145,7 +1145,6 @@ function uc_checkoutpayment_process_order() {
     }
 
     // Process the data.
-    
     $jsondata = json_decode($post_data);
     $eventType = $jsondata->eventType;
 
@@ -1161,7 +1160,7 @@ function uc_checkoutpayment_process_order() {
     if ($object_charge->isValid()) {
       uc_checkoutpayment_add_to_database($object_charge);
 
-      $data = module_invoke_all('cko_webhook', $object_charge);
+      module_invoke_all('cko_webhook', $object_charge);
       drupal_alter('cko_webhook', $object_charge);
 
       $order_total   = $data['script']['amount'] / 100;
@@ -1242,6 +1241,8 @@ function uc_checkoutpayment_process_order() {
         case EVENT_TYPE_CHARGE_REFUNDED:
           $refunded = $object_charge->getValue() / 100;
 
+          error_log('refunded: ' . $refunded . ' | order_balance: ' . $order_balance . ' | order_total: '. $order_total, 0);
+
           if ($refunded + $order_balance == $order_total) {
             $commentary = t('Payment fully refunded. (Id: @chargeId)',
               array(
@@ -1260,6 +1261,14 @@ function uc_checkoutpayment_process_order() {
               )
             );
             uc_order_update_status($order->order_id, 'cko_part_refunded');
+          }
+          else {
+            $commentary = t(
+              'The payment was possibly refunded, go to The Hub or resync for the right information. (Id: @chargeId)', 
+              array(
+                '@chargeId' => $object_charge->getId(),
+              )
+            );
           }
 
           uc_order_comment_save($order->order_id, 0, $commentary, 'admin');
