@@ -140,10 +140,6 @@ class PaymentPlan {
    *   Riether the error-message or nothing.
    */
   public function validate($object = null, $value = null) {
-    foreach ($this as $object => $value) {
-      # code...
-    }
-
     switch ($object) {
       case 'autoCapTime':
         if (!is_numeric($value)) {
@@ -511,191 +507,6 @@ class PaymentPlan {
 
     return TRUE;
   }
-
-  /**
-   * Checks if this paymentplan exist in the local database.
-   *
-   * Minimal usage:
-   *   $this->id = 'rp_000000000000000';
-   *   $this->db_exists();
-   *
-   * @return bool
-   *   TRUE if it exists, FALSE if it doesn't.
-   */
-  private function db_exists() {
-    $count = db_select('uc_checkoutpaymentplan_payment_plans', 'c')
-      ->fields('c')
-      ->condition('track_id', (string) $this->trackId, '=')
-      ->execute()
-      ->rowCount();
-
-    if ($count == 1) {
-      return TRUE;
-    }
-
-    return FALSE;
-  }
-
-  /**
-   * Gets this paymentplan from the local database.
-   *
-   * Minimal usage:
-   *   $this->id = 'rp_000000000000000';
-   *   $this->db_get();
-   *
-   *   $this->trackId = 'example_tracker';
-   *   $this->db_get();
-   *
-   * @return bool
-   *   TRUE if it was succesfull, FALSE if it doesn't.
-   */
-  private function db_get() {
-    if ($this->id != NULL) {
-      $findcolumn = 'id';
-      $findrow    = $this->id;
-    }
-    elseif ($this->trackId != NULL) {
-      $findcolumn = 'track_id';
-      $findrow    = $this->trackId;
-    }
-    else {
-      return FALSE;
-    }
-
-    $sqlRepsonse = db_select('uc_checkoutpaymentplan_payment_plans', 'c')
-      ->fields('c')
-      ->condition($findcolumn, (string) $findrow, '=')
-      ->execute()
-      ->fetchAll();
-
-    if (!empty($sqlRepsonse)) {
-      $pp = reset($sqlRepsonse);
-
-      $this->id = $pp->id;
-      $this->trackId = $pp->track_id;
-      $this->autoCapTime = $pp->auto_cap_time;
-      $this->cycle = $pp->cycle;
-      $this->recurringCount = $pp->recurring_count;
-      $this->status = $pp->status;
-
-      return TRUE;
-    }
-
-    return FALSE;
-  }
-
-  /**
-   * Adds this paymentplan to the local database.
-   *
-   * Minimal usage:
-   *   $this->id             = 'rp_000000000000000';
-   *   $this->trackId        = 'example_tracker';
-   *   $this->autoCapTime    = 0;
-   *   $this->recurringCount = 10;
-   *   $this->cycle          = '7d';
-   *   $this->status         = 1;
-   *   $this->db_add();
-   *
-   * @return bool
-   *   TRUE if it successfully added to the database.
-   */
-  private function db_add() {
-    if ($this->db_exists()) {
-      throw new Exception("The payment plan already exists.");
-    }
-    elseif (!$this->validate()) {
-      throw new Exception("The supplied values aren't valid.");
-    }
-
-    $db = db_insert('uc_checkoutpaymentplan_payment_plans')
-      ->fields(array(
-        'id'              => $this->id,
-        'track_id'        => $this->trackId,
-        'auto_cap_time'   => $this->autoCapTime,
-        'recurring_count' => $this->recurringCount,
-        'cycle'           => $this->cycle,
-        'status'          => $this->status,
-      ))
-      ->execute();
-
-    return TRUE;
-  }
-
-  /**
-   * Update this paymentplan in the local database.
-   *
-   * Minimal usage:
-   *   $this->id     = 'rp_000000000000000';
-   *   $this->status = 1;
-   *   $this->db_update();
-   *
-   * @return bool
-   *   TRUE if it successfully updated the database.
-   */
-  private function db_update() {
-    if (!$this->db_exists() || !$this->validateAll()) {
-      return FALSE;
-    }
-
-    if ($this->trackId != NULL) {
-      $updatedvalues['track_id'] = $this->trackId;
-    }
-    if ($this->autoCapTime != NULL) {
-      $updatedvalues['auto_cap_time'] = $this->autoCapTime;
-    }
-    if ($this->recurringCount != NULL) {
-      $updatedvalues['recurring_count'] = $this->recurringCount;
-    }
-    if ($this->cycle != NULL) {
-      $updatedvalues['cycle'] = $this->cycle;
-    }
-    if ($this->status != NULL) {
-      $updatedvalues['status'] = $this->status;
-    }
-
-    $db = db_update('uc_checkoutpaymentplan_payment_plans')
-      ->fields($updatedvalues)
-      ->condition('id', $this->id, '=')
-      ->execute();
-
-    if ($db == 1) {
-      return TRUE;
-    }
-
-    return FALSE;
-  }
-
-  /**
-   * Checks all paremeters for validity and returns true if all are valid.
-   *
-   * Note: empty paramates are considered valid.
-   *
-   * @return bool
-   *   TRUE if there are no invalid paramters.
-   */
-  private function validateAll() {
-    foreach ($this as $object => $value) {
-      if ($value != NULL) {
-        $errors[$object] = $this->validate($object, $value);
-      }
-    }
-
-    foreach ($errors as $field => $message) {
-      if ($message != null) {
-        return FALSE;
-      }
-    }
-
-    return TRUE;
-  }
-
-  private function print_errors() {
-    foreach ($this->errors as $error) {
-      
-    }
-    
-    $this->errors = null;
-  }
 }
 
 /**
@@ -960,7 +771,7 @@ class CustomerPaymentPlan {
    */
   private function api_cancel() {
     if ($this->id == NULL) {
-      throw new Exception("Cannot cancl a payment plan without an id.");
+      throw new Exception("Cannot cancel a payment plan without an id.");
     }
 
     $class[] = 'includes/checkout-php-library/autoload';
@@ -1038,6 +849,95 @@ class CustomerPaymentPlan {
       $this->previousRecurringDate = $reponseplan['previousRecurringDate'];
       $this->nextRecurringDate = $reponseplan['nextRecurringDate'];
 
+      return TRUE;
+    }
+
+    return FALSE;
+  }
+}
+
+class CustomerPaymentPlanList {
+  public $list;
+
+  /**
+   * Get a customer payment plan from the Checkout.com server.
+   *
+   * How to use this:
+   *   $customer_payment_plan = new CustomerPaymentPlan;
+   *   $customer_payment_plan->id = 'rp_000000000000000';
+   *   $customer_payment_plan->get();
+   *
+   *   $customer_payment_plan = new CustomerPaymentPlan;
+   *   $customer_payment_plan->customerId = 'cust_000000000000000';
+   *   $customer_payment_plan->planId     = 'rp_000000000000000';
+   *   $customer_payment_plan->get();
+   *
+   * @return bool
+   *   Returns true if succeeded or false (with drupal message) when failed.
+   */
+  public function get($email) {
+    $customer = new Customer;
+    $customer->email = $email;
+
+    if ($customer->get()) {
+      $this->customerId = $customer->id;
+      return $this->api_query();
+    }
+
+    return FALSE;
+  }
+
+  /**
+   * Queries for a customer paymentplan from the Checkout.com API.
+   *
+   * Minimal usage:
+   *   $this->customerId = 'cust_000000000000000';
+   *   $this->api_query();
+   *
+   * @return bool
+   *   TRUE if it was succesfull, FALSE if it doesn't.
+   */
+  private function api_query() {
+    if ($this->customerId == NULL) {
+      return FALSE;
+    }
+
+    $class[] = 'includes/checkout-php-library/autoload';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiclient';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiservices/Recurringpayments/Recurringpaymentsservice';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiservices/Recurringpayments/Requestmodels/Querycustomerplan';
+    $class[] = 'includes/checkout-php-library/com/checkout/Apiservices/Recurringpayments/Responsemodels/Paymentplanlist';
+
+    foreach ($class as $path) {
+      module_load_include('php', 'uc_checkoutpayment', $path);
+    }
+
+    $apiClient = new com\checkout\Apiclient(variable_get('cko_private_key'));
+    $service = $apiClient->Recurringpaymentservice();
+
+    $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Querycustomerplan();
+    $request->setCustomerId($this->customerId);
+
+    $response = $service->queryCustomerPlan($request);
+
+    $this->list = array();
+    foreach ($response->getData() as $key => $value) {
+      $cpp = new CustomerPaymentPlan;
+
+      $cpp->id = $value['customerPlanId'];
+      $cpp->planId = $value['planId'];
+      $cpp->recurringCountLeft = $value['recurringCountLeft'];
+      $cpp->status = $value['status'];
+      $cpp->totalCollectionCount = $value['totalCollectedCount'];
+      $cpp->totalCollectionValue = $value['totalCollectedValue'];
+      $cpp->startDate = $value['startDate'];
+      $cpp->previousRecurringDate = $value['previousRecurringDate'];
+      $cpp->nextRecurringDate = $value['nextRecurringDate'];
+
+      $this->list[] = $cpp;
+    }
+
+    if ($this->list != array()) {
       return TRUE;
     }
 

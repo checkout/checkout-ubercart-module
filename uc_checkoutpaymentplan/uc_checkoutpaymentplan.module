@@ -29,6 +29,14 @@ function uc_checkoutpaymentplan_menu() {
     'type' => MENU_CALLBACK,
   );
 
+  $items['user/%user/subscriptions'] = array(
+    'title' => t('Subscriptions'),
+    'page callback' => 'ckopp_page_subscriptions',
+    'page arguments' => array(1),
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  );
+
   return $items;
 }
 
@@ -331,6 +339,37 @@ function uc_checkoutpaymentplan_cko_syncronise_alter(&$config) {
   // The local database is not yet used.
 }
 
+function ckopp_page_subscriptions() {
+  global $user;
+
+  $customer = new Customer;
+  $customer->email = $user->mail;
+  $customer->get();
+
+  $header = array('Subscription', 'End date', 'Amount', 'Actions');
+
+  $list = new CustomerPaymentPlanList;
+  $list->get($user->mail);
+
+  $rows = array();
+  foreach ($list->list as $key => $value) {
+    $payment_plan = new PaymentPlan;
+    $payment_plan->id = $value->planId;
+    $payment_plan->get();
+
+    $rows[] = array(
+      $payment_plan->name,
+      $value->nextRecurringDate,
+      $payment_plan->currency . ' ' . $payment_plan->value . ' per ' . $payment_plan->cycle,
+      "DELETE",
+    );
+  }
+
+  return theme('table', array('header' => $header, 'rows' => $rows));
+
+  return $build;
+}
+
 /**
  * Developer function to print variables in a clean way.
  *
@@ -359,10 +398,10 @@ function pre_var_dump($var , $buffer = false) {
  */
 function page_development() {
 
-  $customer_payment_plan = new CustomerPaymentPlan;
-  $bool = $customer_payment_plan->exists('gilles.coeman@checkout.com', 'rgerg');
+  $list = new CustomerPaymentPlanList;
+  $list->get('gilles.coeman@checkout.com');
 
-  pre_var_dump($customer_payment_plan);
+  pre_var_dump($list);
 
   return 'NULL';
 }
