@@ -306,17 +306,12 @@ function uc_checkoutpaymentplan_cko_processing_alter(&$order, &$config) {
     if ($value->data["type"] == 'cko_payment_plan') {
       $customer_payment_plan = new CustomerPaymentPlan;
 
-      if ($customer_payment_plan->exists($order->primary_email, $value->model)) {
-        // throw new Exception(
-        //   t("You cannot subscribe to the same subscription multiple times."), 
-        //   1
-        // );
+      if (!$customer_payment_plan->exists($order->primary_email, $value->model)) {
+        $config['postedParam']['paymentPlans'][] = array(
+          "planId" => $customer_payment_plan->id,
+        );
+        $config['postedParam']['transactionIndicator'] = 2;
       }
-
-      $config['postedParam']['paymentPlans'][] = array(
-        "planId" => $customer_payment_plan->id,
-      );
-      $config['postedParam']['transactionIndicator'] = 2;
     }
     
   }
