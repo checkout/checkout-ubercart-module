@@ -8,11 +8,21 @@
  * Ubercart Checkoutpayment offers a PCI-compliant way to process payments.
  */
 
+/**
+ * Global variables declarations.
+ */
+global $baseUrl;
+global $conf;
+
+/**
+ * Constants declarations.
+ */
 const CHECKOUT_API_RESPONSE_CODE_APPROVED      = 10000;
 const CHECKOUT_API_RESPONSE_CODE_APPROVED_RISK = 10100;
 const CHECKOUT_API_PLUGIN_VERSION              = '7.x-2.9';
 const HOSTED_URL_SANDOX                        = 'https://secure.checkout.com/sandbox/payment/';
 const HOSTED_URL_LIVE                          = 'https://secure.checkout.com/payment/';
+const FRAMES_JS_URL                            = 'https://cdn.checkout.com/js/frames.js';
 const REDIRECT_URL                             = '?q=/uc_checkoutpayment/process_charge';
 const CANCEL_URL                               = '?q=/uc_checkoutpayment/fail';
 const EVENT_TYPE_CHARGE_SUCCEEDED              = 'charge.succeeded';
@@ -73,7 +83,6 @@ function uc_checkoutpayment_menu() {
  * Implements hook_init().
  */
 function uc_checkoutpayment_init() {
-  global $conf;
   $conf['i18n_variables'][] = 'uc_checkoutpayment_method_title';
   $conf['i18n_variables'][] = 'uc_checkoutpayment_checkout_button';
 }
@@ -99,18 +108,17 @@ function uc_checkoutpayment_variable_info() {
  */
 function uc_checkoutpayment_page_alter(&$page) {
   $pathElements = explode('/', current_path());
-  $integration_type = cko_store_settings()['settings']['cko_integration'];
+  $integrationType = cko_store_settings()['settings']['cko_integration'];
 
   if (
     (count($pathElements) == 5 && $pathElements[0] == 'admin' && $pathElements[1] == 'store' && $pathElements[2] == 'orders' && $pathElements[4] == 'edit') ||
-    (count($pathElements) == 3 && $pathElements[0] == 'cart' && $pathElements[1] == 'checkout' && $pathElements[2] == 'review' && $integration_type == 'embedded')
+    (count($pathElements) == 3 && $pathElements[0] == 'cart' && $pathElements[1] == 'checkout' && $pathElements[2] == 'review' && $integrationType == 'embedded')
   ) {
-    global $base_url;
-    $path = $base_url . '/' . drupal_get_path('module', 'uc_checkoutpayment');
+    $path = $baseUrl . '/' . drupal_get_path('module', 'uc_checkoutpayment');
     drupal_add_js(
-      "https://cdn.checkout.com/js/frames.js",
+      FRAMES_JS_URL,
       array(
-        'type' => 'file',
+        'type' => 'external',
         'scope' => 'header',
       )
     );
@@ -129,8 +137,6 @@ function uc_checkoutpayment_page_alter(&$page) {
  */
 function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id) {
   if ($form['#form_id'] == 'uc_order_edit_form' && $form_state['order']->order_status == 'pending') {
-    global $base_url;
-
     $form['#submit'][] = 'process_moto_submit';
     $form['#validate'][] = 'process_moto_validate';
 
@@ -150,7 +156,7 @@ function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id) {
     $form['#suffix'] = '
       <div id="cko-paymentpopup" class="order-pane  hidden">
         <p class="order-pane-title">Add card details:</p>
-        <form id="payment-form" method="POST" action="' . $base_url . REDIRECT_URL . '">
+        <form id="payment-form" method="POST" action="' . $baseUrl . REDIRECT_URL . '">
           <table style="border: none;">
             <tr>
               <td colspan="2" style="border: none;">
@@ -238,9 +244,8 @@ function uc_payment_method_checkoutpayment($op, &$order) {
 
   switch ($op) {
     case 'settings':
-      global $base_url;
       $form['checkoutpayment_help_text'] = array(
-        '#markup' => '<div class="help">' . t('<h4><strong>Checkout.com Payment Settings</strong></h4><p>Go to https://sandbox.checkout.com to properly install this module.</p>', array('%base_url' => $base_url)) . '</div>',
+        '#markup' => '<div class="help">' . t('<h4><strong>Checkout.com Payment Settings</strong></h4><p>Go to https://sandbox.checkout.com to properly install this module.</p>', array('%base_url' => $baseUrl)) . '</div>',
       );
 
       $form['checkoutpayment_account'] = array(
@@ -503,7 +508,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
         );
         return $form;
       }
-      elseif ($charge == NULL || $charge->status == "Declined") {
+      elseif ($charge === NULL || $charge->status == "Declined") {
         $form['cko-link'] = array(
           '#type'  => 'markup',
           '#markup' => '<a href="javascript:void(0)" onclick="ckoShowPane()" id="cko-link">Add card details</a>',
@@ -589,11 +594,9 @@ function reloadHubCommunicationTableWithTimeRange($form, $form_state) {
  * Implements hook_form().
  */
 function admin_order_payment_action_form($form, &$form_state, $order) {
-  global $base_url;
-
   $charge = uc_checkoutpayment_get_from_database_by_track_id($order->order_id);
 
-  if ($charge != NULL) {
+  if ($charge !== NULL) {
     $actions = array();
 
     $actions[] = array(
@@ -669,7 +672,7 @@ function admin_order_payment_action_form($form, &$form_state, $order) {
     drupal_set_message(t('No payment details were found for this order.'), 'error');
   }
 
-  $path = $base_url . '/' . drupal_get_path('module', 'uc_checkoutpayment');
+  $path = $baseUrl . '/' . drupal_get_path('module', 'uc_checkoutpayment');
   drupal_add_js(
     $path . "/includes/Methods/js/adminRefresh.js",
     array(
@@ -722,7 +725,7 @@ function admin_order_payment_action_form_submit($form, &$form_state) {
     drupal_set_message(t("The payment was refunded."), 'status');
   }
 
-  if ($response == NULL) {
+  if ($response === NULL) {
     return FALSE;
   }
 
@@ -764,14 +767,13 @@ function uc_checkoutpayment_admin_call($action, $contextId = 0) {
  * Implements hook_form_alter() for uc_cart_checkout_review_form().
  */
 function uc_checkoutpayment_form_uc_cart_checkout_review_form_alter(&$form, &$form_state) {
-  if (($order_id = intval($_SESSION['cart_order'])) > 0) {
+  if (($order_id = (int) $_SESSION['cart_order']) > 0) {
     $order = uc_order_load($order_id);
     $_SESSION['cko_contextid'] = $order_id;
 
     if ($order->payment_method == 'cko') {
       $cko_integration = cko_store_settings()['settings']['cko_integration'];
-      global $base_url;
-      $action = $base_url . REDIRECT_URL;
+      $action = $baseUrl . REDIRECT_URL;
 
       switch ($cko_integration) {
         case 'hosted':
@@ -822,8 +824,6 @@ function uc_checkoutpayment_form_uc_cart_checkout_review_form_alter(&$form, &$fo
  *   The drupal form array.
  */
 function uc_checkoutpayment_form(array $form, array &$form_state, $order) {
-  global $base_url;
-
   $payment_method = cko_store_settings();
   $settings       = $payment_method['settings'];
 
@@ -843,8 +843,8 @@ function uc_checkoutpayment_form(array $form, array &$form_state, $order) {
   $cko_language = $settings['cko_language'];
 
   $cardFormMode = "cardTokenisation";
-  $redirectUrl  = $base_url . REDIRECT_URL;
-  $cancelUrl    = $base_url . CANCEL_URL;
+  $redirectUrl  = $baseUrl . REDIRECT_URL;
+  $cancelUrl    = $baseUrl . CANCEL_URL;
 
   // Order details.
   $contextId     = $order->order_id;
@@ -971,10 +971,10 @@ function get_payment_frames(array $config = array()) {
  *   redirect to succes, fail, or 3D Secure page.
  */
 function uc_checkoutpayment_process_charge(array $config = array()) {
-  if ($_SESSION['cko_contextid'] == NULL && $config == NULL) {
+  if ($_SESSION['cko_contextid'] === NULL && $config === NULL) {
     drupal_goto();
   }
-  elseif ($config != NULL) {
+  elseif ($config !== NULL) {
     $order_id = $config['order_id'];
     $card_token = $config['card_token'];
     $transactionIndicator = $config['transaction_indicator'];
@@ -1105,7 +1105,7 @@ function response_validation($result) {
  * Redirect to success url: example.com/uc_checkoutpayment/success.
  */
 function uc_checkoutpayment_success_order() {
-  if ($_SESSION['cko_contextid'] != NULL) {
+  if ($_SESSION['cko_contextid'] !== NULL) {
     $order = uc_order_load($_SESSION['cko_contextid']);
   }
   else {
@@ -1346,7 +1346,7 @@ function uc_checkoutpayment_get_from_database_by_track_id($order_id) {
     ->execute()
     ->fetchAll();
 
-    if ($sqlRepsonse == NULL) {
+    if ($sqlRepsonse === NULL) {
       $payment_method = cko_store_settings();
       $instance = uc_checkoutpayment_get_instance();
 
@@ -1360,7 +1360,7 @@ function uc_checkoutpayment_get_from_database_by_track_id($order_id) {
   }
   while (empty($sqlRepsonse) && $i < 2);
 
-  if ($sqlRepsonse == NULL) {
+  if ($sqlRepsonse === NULL) {
     return NULL;
   }
 
@@ -1429,7 +1429,7 @@ function uc_checkoutpayment_uc_payment_entered($order, $method, $amount, $accoun
 function cko_store_settings() {
   $payment_method = array();
 
-  if (variable_get('cko_autocaptime') == '') {
+  if (empty(variable_get('cko_autocaptime'))) {
     variable_set('cko_autocaptime', 0);
   }
 
