@@ -510,7 +510,7 @@ class PaymentPlan {
 }
 
 /**
- * The Checkout.com Customer Payment Plan
+ * The Checkout.com Customer Payment Plan.
  */
 class CustomerPaymentPlan {
   public $id;
@@ -787,8 +787,7 @@ class CustomerPaymentPlan {
       $apiClient = new com\checkout\Apiclient(variable_get('cko_private_key'));
       $service = $apiClient->Recurringpaymentservice();
 
-      $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Planupdate();
-      $reponse = $service->cancelPlan($this->id);
+      $reponse = $service->cancelCustomerPlan($this->id);
     }
     catch (Exception $e) {
       throw new Exception("API " . $e->getErrorCode() . " | " . $e->getErrorMessage());
@@ -856,6 +855,9 @@ class CustomerPaymentPlan {
   }
 }
 
+/**
+ * The Checkout.com Customer Payment Plan List.
+ */
 class CustomerPaymentPlanList {
   public $list;
 
@@ -875,14 +877,17 @@ class CustomerPaymentPlanList {
    * @return bool
    *   Returns true if succeeded or false (with drupal message) when failed.
    */
-  public function get($email) {
-    $customer = new Customer;
-    $customer->email = $email;
+  public function get($email = null) {
+    if (!empty($email)) {
+      $customer = new Customer;
+      $customer->email = $email;
 
-    if ($customer->get()) {
-      $this->customerId = $customer->id;
-      return $this->api_query();
+      if ($customer->get()) {
+        $this->customerId = $customer->id;
+      }
     }
+
+    return $this->api_query();
 
     return FALSE;
   }
@@ -897,11 +902,7 @@ class CustomerPaymentPlanList {
    * @return bool
    *   TRUE if it was succesfull, FALSE if it doesn't.
    */
-  private function api_query() {
-    if ($this->customerId == NULL) {
-      return FALSE;
-    }
-
+  public function api_query() {
     $class[] = 'includes/checkout-php-library/autoload';
     $class[] = 'includes/checkout-php-library/com/checkout/Apiclient';
     $class[] = 'includes/checkout-php-library/com/checkout/Apiservices/Recurringpayments/Recurringpaymentsservice';
@@ -916,29 +917,36 @@ class CustomerPaymentPlanList {
     $service = $apiClient->Recurringpaymentservice();
 
     $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Querycustomerplan();
-    $request->setCustomerId($this->customerId);
+
+    if (property_exists($this, 'customerId') && $this->customerId !== NULL) {
+      $request->setCustomerId($this->customerId);
+    }
 
     $response = $service->queryCustomerPlan($request);
 
-    $this->list = array();
-    foreach ($response->getData() as $key => $value) {
-      $cpp = new CustomerPaymentPlan;
+    if ($response->getTotalRows() > 0) {
+      $this->list = array();
+      foreach ($response->getData() as $key => $value) {
+        $cpp = new CustomerPaymentPlan;
 
-      $cpp->id = $value['customerPlanId'];
-      $cpp->planId = $value['planId'];
-      $cpp->recurringCountLeft = $value['recurringCountLeft'];
-      $cpp->status = $value['status'];
-      $cpp->totalCollectionCount = $value['totalCollectedCount'];
-      $cpp->totalCollectionValue = $value['totalCollectedValue'];
-      $cpp->startDate = $value['startDate'];
-      $cpp->previousRecurringDate = $value['previousRecurringDate'];
-      $cpp->nextRecurringDate = $value['nextRecurringDate'];
+        $cpp->id = $value['customerPlanId'];
+        $cpp->planId = $value['planId'];
+        $cpp->cardId = $value['cardId'];
+        $cpp->customerId = $value['customerId'];
+        $cpp->recurringCountLeft = $value['recurringCountLeft'];
+        $cpp->status = $value['status'];
+        $cpp->totalCollectionCount = $value['totalCollectedCount'];
+        $cpp->totalCollectionValue = $value['totalCollectedValue'];
+        $cpp->startDate = $value['startDate'];
+        $cpp->previousRecurringDate = $value['previousRecurringDate'];
+        $cpp->nextRecurringDate = $value['nextRecurringDate'];
+  
+        $this->list[] = $cpp;
+      }
 
-      $this->list[] = $cpp;
-    }
-
-    if ($this->list != array()) {
-      return TRUE;
+      if ($this->list != array()) {
+        return TRUE;
+      }
     }
 
     return FALSE;
@@ -978,6 +986,10 @@ class Customer {
    *   $customer->email = 'integration@checkout.com';
    *   $customer->get();
    *
+   *   $customer = new Customer;
+   *   $customer->id = 'cust_0000000000000000000000';
+   *   $customer->get();
+   *
    * @return bool
    *   Returns true if succeeded or false (with drupal message) when failed.
    */
@@ -1000,8 +1012,14 @@ class Customer {
    *   TRUE if it was succesfull, FALSE if it doesn't.
    */
   private function api_get() {
-    if ($this->email == NULL) {
+    if ($this->email === NULL && $this->id === NULL) {
       return FALSE;
+    }
+    elseif ($this->email === NULL) {
+      $queryValue = $this->id;
+    }
+    else {
+      $queryValue = $this->email;
     }
 
     $class[] = 'includes/checkout-php-library/autoload';
@@ -1015,7 +1033,7 @@ class Customer {
 
     $apiClient = new com\checkout\Apiclient(variable_get('cko_private_key'));
     $service = $apiClient->Customerservice();
-    $response = $service->getCustomer($this->email);
+    $response = $service->getCustomer($queryValue);
 
     if ($response != NULL) {
       $this->id = $response->getId();

@@ -182,6 +182,10 @@ class Recurringpaymentquerymapper {
       }
     }
 
+    if ($requestQuery == NULL) {
+      $requestQuery = json_decode ("{}");
+    }
+
     return $requestQuery;
   }
 

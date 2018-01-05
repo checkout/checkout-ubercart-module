@@ -411,7 +411,6 @@ class Recurringpaymentservice extends \com\checkout\Apiservices\Baseservices {
       $getPlanUri,
       $this->apiSetting->getSecretKey(), $requestPayload
     );
-    echo $getPlanUri;
 
     $responseModel = new \com\checkout\Apiservices\Recurringpayments\Responsemodels\Customerpaymentplan($processCharge);
 
@@ -463,11 +462,12 @@ class Recurringpaymentservice extends \com\checkout\Apiservices\Baseservices {
     $queryUri = $this->apiUrl->getRecurringpaymentsCustomersQueryApiUri();
     $secretKey = $this->apiSetting->getSecretKey();
 
+    
+
     $requestQuery = array(
       'authorization' => $secretKey,
       'mode' => $this->apiSetting->getMode(),
       'postedParam' => $queryMapper->requestQueryConverter(),
-
     );
 
     $processQuery = \com\checkout\Helpers\Apihttpclient::postRequest(

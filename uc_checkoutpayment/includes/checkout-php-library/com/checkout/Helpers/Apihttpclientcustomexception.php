@@ -31,6 +31,10 @@ final class Apihttpclientcustomexception extends \Exception {
    *   The request model.
    */
   public function __construct($errorMessage, $errorCode, $eventId) {
+    pre_var_dump('errorMessage: ' . $errorMessage);
+    pre_var_dump('errorCode: ' . $errorCode);
+    pre_var_dump('eventId: ' . $eventId);
+
     $this->errorMessage = $errorMessage;
     $this->errorCode = $errorCode;
     $this->eventId = $eventId;
