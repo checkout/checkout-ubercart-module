@@ -49,7 +49,7 @@ input.cko-disabled {
   position: relative;
   display: inline-block;
   padding: 0 2px;
-  margin: 0 10px 0 -5px;
+  /*margin: 0 10px 0 -5px;*/
   border-bottom: 1px dotted black; /* If you want dots under the hoverable text */
 }
 
@@ -98,4 +98,26 @@ input.cko-disabled {
   background-image: url("images/checkoutcom_logo.png");
   background-repeat: no-repeat;
   background-position: center bottom;
+}
+
+.ckopp_progressbar {
+  width: 100%;
+  border: 1px solid #cdd7e7;
+  position: relative;
+  background:#f8f9fb;
+}
+
+.ckopp_progressbar span {
+  position: absolute;   
+  left: 45%;
+  top: 0;
+  
+  font-family: 'Open Sans', sans-serif;
+  color: #313b4b;
+}
+
+.ckopp_progressbar div {
+  height: 20px;
+  background-color: #3075dd;
+  width: 0%;
 }

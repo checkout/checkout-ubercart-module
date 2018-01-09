@@ -31,7 +31,7 @@ function uc_checkoutpaymentplan_menu() {
 
   $items['user/%user/subscriptions'] = array(
     'title' => t('Subscriptions'),
-    'page callback' => 'ckopp_page_subscriptions',
+    'page callback' => 'ckopp_page_user_subscriptions',
     'page arguments' => array(1),
     'access arguments' => array('view own subscriptions'),
     'type' => MENU_LOCAL_TASK,
@@ -39,7 +39,7 @@ function uc_checkoutpaymentplan_menu() {
 
   $items['admin/store/orders/subscriptions'] = array(
     'title' => t('Subscriptions'),
-    'page callback' => 'ckopp_page_subscriptions_overview',
+    'page callback' => 'ckopp_page_admin_subscriptions',
     'page arguments' => array(1),
     'access arguments' => array('view subscriptions'),
     'type' => MENU_CALLBACK,
@@ -68,6 +68,14 @@ function uc_checkoutpaymentplan_permission() {
     'view subscriptions' => array(
       'title' => t('View subscriptions'),
       'description' => t('Allows you to see all user subscription pages.'),
+    ),
+    'Delete own subscriptions' => array(
+      'title' => t('Delete own subscriptions'),
+      'description' => t('Let a user delete subscriptions linked to it\'s account.'),
+    ),
+    'Delete subscriptions' => array(
+      'title' => t('Delete subscriptions'),
+      'description' => t('Allows you to delete all user subscription pages.'),
     ),
   );
 }
@@ -377,7 +385,16 @@ function uc_checkoutpaymentplan_cko_syncronise_alter(&$config) {
   // The local database is not yet used.
 }
 
-function ckopp_page_subscriptions($user) {
+/**
+ * Outputs the "/user/%user/subscriptions" page.
+ *
+ * @param object $user
+ *   The Drupal user object of the visited user.
+ *
+ * @return string
+ *   The html output value.
+ */
+function ckopp_page_user_subscriptions($user) {
   drupal_set_title($title = "Subscriptions", $output = CHECK_PLAIN);
 
   $customer = new Customer;
@@ -412,16 +429,22 @@ function ckopp_page_subscriptions($user) {
   return '<div class="messages info">' . t('There are no active subscriptions.') . '</div>';
 }
 
-function ckopp_page_subscriptions_overview() {
+/**
+ * Outputs the "/admin/store/subscriptions" page.
+ *
+ * @return string
+ *   The html output value.
+ */
+function ckopp_page_admin_subscriptions() {
   drupal_set_title($title = "Subscriptions overview", $output = CHECK_PLAIN);
 
   $header = array(
     'subscription' => 'Subscription',
     'customer' => 'Customer name',
-    'startDate' => 'First payment',
+    'installmentsPayed' => 'Installments payed',
     'nextRecurringDate' => 'Next payment',
-    'Amount' => 'Amount', 
-    'Actions' =>'Actions'
+    'frequency' => 'Frequency',
+    'actions' =>'Actions'
   );
 
   $list = new CustomerPaymentPlanList;
@@ -436,18 +459,73 @@ function ckopp_page_subscriptions_overview() {
       $row['nextRecurringDate'] = new DateTime($value->nextRecurringDate);
       $row['nextRecurringDate'] = $row['nextRecurringDate']->format('d M \'y');
 
-      $row['startDate'] = new DateTime($value->startDate);
-      $row['startDate'] = $row['startDate']->format('d M \'y');
-
-      $row['Actions'] = drupal_get_form('ckopp_remove_subscription_form', $value->id);
-      $row['Actions'] = render($row['Actions']);
+      $row['actions'] = drupal_get_form('ckopp_remove_subscription_form', $value->id);
+      $row['actions'] = render($row['actions']);
 
       $payment_plan = new PaymentPlan;
       $payment_plan->id = $value->planId;
       $payment_plan->get();
 
-      $row['subscription'] = l($payment_plan->name, 'admin/structure/book');
-      $row['Amount'] = uc_currency_format($payment_plan->value/100);
+      if (($totalCount = substr($payment_plan->cycle, 0, -1)) == 1) {
+        switch (strtolower(substr($payment_plan->cycle, -1))) {
+          case 'd':
+            $row['frequency'] = t('Every day');
+            break;
+
+          case 'w':
+            $row['frequency'] = t('Every week');
+            break;
+
+          case 'm':
+            $row['frequency'] = t('Every month');
+            break;
+
+          case 'y':
+            $row['frequency'] = t('Every year');
+            break;
+        }
+      }
+      else {
+        switch (strtolower(substr($payment_plan->cycle, -1))) {
+          case 'd':
+            $row['frequency'] = t('Every :count days', array(':count' => $totalCount));
+            break;
+
+          case 'w':
+            $row['frequency'] = t('Every :count weeks', array(':count' => $totalCount));
+            break;
+
+          case 'm':
+            $row['frequency'] = t('Every :count months', array(':count' => $totalCount));
+            break;
+
+          case 'y':
+            $row['frequency'] = t('Every :count years', array(':count' => $totalCount));
+            break;
+        }
+      }
+
+      $row['installmentsPayed'] = round((($payment_plan->recurringCount - $value->recurringCountLeft)/$payment_plan->recurringCount)*100);
+      $row['installmentsPayed'] = '
+        <div class="ckopp_progressbar" >
+          <div style="width: ' . $row['installmentsPayed'] . '%;" ></div>
+          <span>'. $row['installmentsPayed'] . '%</span>
+        </div>
+      ';
+
+      $result = db_select('uc_products', 'p')
+        ->fields('p')
+        ->condition('model', $payment_plan->trackId, '=')
+        ->orderBy('vid', 'DESC')
+        ->execute()
+        ->fetchObject();
+
+      if (empty($result)) {
+        $row['subscription'] = $payment_plan->name . tooltip('This subscription has no matching node on this website.');
+      }
+      else {
+        $row['subscription'] = l($payment_plan->name, drupal_get_path_alias('node/' . $result->nid));
+      }
 
       $customer = new Customer;
       $customer->id = $value->customerId;
@@ -457,20 +535,10 @@ function ckopp_page_subscriptions_overview() {
         $row['customer'] = l($customer->name, 'user/' . $user->uid);
       }
       else {
-        $row['customer'] = $customer->name;
+        $row['customer'] = $customer->name . tooltip('This person does not have an account on this website.');
       }
 
       $rows[] = $row;
-
-      // $amount = uc_currency_format($payment_plan->value/100);
-  
-      // $rows[] = array(
-      //   1 => $payment_plan->name,
-      //   2 => $startDate,
-      //   3 => $nextDate,
-      //   4 => $amount . ' per ' . $payment_plan->cycle,
-      //   5 => render($actions),
-      // );
     }
   
     return theme('table', array('header' => $header, 'rows' => $rows));
@@ -601,5 +669,5 @@ function page_development() {
  *   The HTML code for the tooltip with translated text.
  */
 function tooltip($string) {
-  return ' <div class="tooltip">?<span class="tooltiptext">' . t($string) . '</span></div> ';
+  return '&nbsp;<div class="tooltip"> ? <span class="tooltiptext">' . t($string) . '</span></div>&nbsp;';
 }

@@ -30,7 +30,7 @@ class PaymentPlan {
    *   Returns true if succeeded or false (with drupal message) when failed.
    */
   public function get() {
-    if ($this->api_query() || $this->api_get()) {
+    if ($this->db_get() || $this->api_get() || $this->api_query()) {
       return TRUE;
     }
 
@@ -286,6 +286,8 @@ class PaymentPlan {
       $this->recurringCount = $reponse->getRecurringCount();
       $this->status = $reponse->getStatus();
 
+      $this->db_add();
+
       return TRUE;
     }
 
@@ -338,6 +340,8 @@ class PaymentPlan {
       $this->cycle = $reponseplan['cycle'];
       $this->recurringCount = $reponseplan['recurringCount'];
       $this->status = $reponseplan['status'];
+
+      $this->db_add();
 
       return TRUE;
     }
@@ -507,6 +511,88 @@ class PaymentPlan {
 
     return TRUE;
   }
+
+  /**
+   * Gets this paymentplan from the local database.
+   *
+   * Minimal usage:
+   *   $this->id = 'rp_000000000000000';
+   *   $this->db_get();
+   *
+   *   $this->trackId = 'example_tracker';
+   *   $this->db_get();
+   *
+   * @return bool
+   *   TRUE if it was succesfull, FALSE if it doesn't.
+   */
+  private function db_get() {
+    if ($this->id != NULL) {
+      $findcolumn = 'id';
+      $findrow    = $this->id;
+    }
+    elseif ($this->trackId != NULL) {
+      $findcolumn = 'track_id';
+      $findrow    = $this->trackId;
+    }
+    else {
+      return FALSE;
+    }
+
+    $sqlRepsonse = db_select('uc_checkoutpaymentplan_payment_plans', 'c')
+      ->fields('c')
+      ->condition($findcolumn, (string) $findrow, '=')
+      ->execute()
+      ->fetchAll();
+
+    if (!empty($sqlRepsonse)) {
+      $pp = reset($sqlRepsonse);
+      $this->id = $pp->id;
+      $this->name = $pp->name;
+      $this->trackId = $pp->track_id;
+      $this->autoCapTime = $pp->auto_cap_time;
+      $this->currency = $pp->currency;
+      $this->value = $pp->value;
+      $this->cycle = $pp->cycle;
+      $this->recurringCount = $pp->recurring_count;
+      $this->status = $pp->status;
+
+      return TRUE;
+    }
+    return FALSE;
+  }
+
+  /**
+   * Adds this paymentplan to the local database.
+   *
+   * Minimal usage:
+   *   $this->id             = 'rp_000000000000000';
+   *   $this->trackId        = 'example_tracker';
+   *   $this->autoCapTime    = 0;
+   *   $this->recurringCount = 10;
+   *   $this->cycle          = '7d';
+   *   $this->status         = 1;
+   *   $this->db_add();
+   *
+   * @return bool
+   *   TRUE if it successfully added to the database.
+   */
+  private function db_add() {
+    $db = db_insert('uc_checkoutpaymentplan_payment_plans')
+      ->fields(array(
+        'id'              => $this->id,
+        'name'            => $this->name,
+        'track_id'        => $this->trackId,
+        'auto_cap_time'   => $this->autoCapTime,
+        'currency'        => $this->currency,
+        'value'           => $this->value,
+        'cycle'           => $this->cycle,
+        'recurring_count' => $this->recurringCount,
+        'status'          => $this->status,
+      ))
+      ->execute();
+
+    return TRUE;
+  }
 }
 
 /**
@@ -542,7 +628,7 @@ class CustomerPaymentPlan {
    *   Returns true if succeeded or false (with drupal message) when failed.
    */
   public function get() {
-    if ($this->api_get() || $this->api_query()) {
+    if ($this->db_get() || $this->api_get() || $this->api_query()) {
       return TRUE;
     }
 
@@ -686,6 +772,8 @@ class CustomerPaymentPlan {
       $this->startDate = $reponse->getStartDate();
       $this->previousRecurringDate = $reponse->getPreviousRecurringDate();
       $this->nextRecurringDate = $reponse->getNextRecurringDate();
+
+      $this->db_add();
 
       return TRUE;
     }
@@ -848,10 +936,109 @@ class CustomerPaymentPlan {
       $this->previousRecurringDate = $reponseplan['previousRecurringDate'];
       $this->nextRecurringDate = $reponseplan['nextRecurringDate'];
 
+      $this->db_add();
+
       return TRUE;
     }
 
     return FALSE;
+  }
+
+  /**
+   * Gets this customer payment plan from the local database.
+   *
+   * Minimal usage:
+   *   $this->id = 'rp_000000000000000';
+   *   $this->get();
+   *
+   *   $this->customerId = 'cust_000000000000000';
+   *   $this->planId     = 'rp_000000000000000';
+   *   $this->get();
+   *
+   * @return bool
+   *   TRUE if it was succesfull, FALSE if it doesn't.
+   */
+  private function db_get() {
+    if ($this->id != NULL) {
+      $findcolumn1 = 'id';
+      $findrow1    = $this->id;
+      $findcolumn2 = TRUE;
+      $findrow2 = TRUE;
+    }
+    elseif ($this->customerId != NULL || $this->planId != NULL) {
+      $findcolumn1 = 'customer_id';
+      $findrow1    = $this->customerId;
+      $findcolumn2 = 'plan_id';
+      $findrow2 = $this->planId;
+    }
+    else {
+      return FALSE;
+    }
+
+    $sqlRepsonse = db_select('uc_checkoutpaymentplan_customer_payment_plans', 'c')
+      ->fields('c')
+      ->condition($findcolumn1, (string) $findrow1, '=')
+      ->condition($findcolumn2, (string) $findrow2, '=')
+      ->execute()
+      ->fetchObject();
+
+    if (!empty($sqlRepsonse)) {
+      $this->id                    = $sqlRepsonse->id;
+      $this->planId                = $sqlRepsonse->plan_id;
+      $this->cardId                = $sqlRepsonse->card_id;
+      $this->customerId            = $sqlRepsonse->customer_id;
+      $this->recurringCountLeft    = $sqlRepsonse->recurring_count_left;
+      $this->status                = $sqlRepsonse->status;
+      $this->totalCollectionCount  = $sqlRepsonse->total_collection_count;
+      $this->totalCollectionValue  = $sqlRepsonse->total_collection_value;
+      $this->startDate             = $sqlRepsonse->start_date;
+      $this->previousRecurringDate = $sqlRepsonse->previous_recurring_date;
+      $this->nextRecurringDate     = $sqlRepsonse->next_recurring_date;
+
+      return TRUE;
+    }
+    return FALSE;
+  }
+
+  /**
+   * Adds this customer payment plan to the local database.
+   *
+   * @return bool
+   *   TRUE if it successfully added to the database.
+   *   FALSE if an error ocourred and a the error is added to Watchdog.
+   */
+  private function db_add() {
+    try {
+      db_insert('uc_checkoutpaymentplan_customer_payment_plans')
+        ->fields(array(
+          'id'                      => $this->id,
+          'plan_id'                 => $this->planId,
+          'card_id'                 => $this->cardId,
+          'customer_id'             => $this->customerId,
+          'recurring_count_left'    => $this->recurringCountLeft,
+          'status'                  => $this->status,
+          'total_collection_count'  => $this->totalCollectionCount,
+          'total_collection_value'  => $this->totalCollectionValue,
+          'start_date'              => $this->startDate,
+          'previous_recurring_date' => $this->previousRecurringDate,
+          'next_recurring_date'     => $this->nextRecurringDate,
+        ))
+        ->execute();
+    }
+    catch (Exception $e) {
+      watchdog(
+        'uc_checkoutpaymentplan',
+        'Notice: An error occured when adding a customer payment plan to the local database. (:errorMessage)',
+        array(
+          ':errorMessage' => $e->getMessage(),
+        ),
+        WATCHDOG_WARNING
+      );
+
+      return FALSE;
+    }
+
+    return TRUE;
   }
 }
 
@@ -887,7 +1074,9 @@ class CustomerPaymentPlanList {
       }
     }
 
-    return $this->api_query();
+    if ($this->db_get() || $this->api_query()) {
+      return TRUE;
+    }
 
     return FALSE;
   }
@@ -940,6 +1129,8 @@ class CustomerPaymentPlanList {
         $cpp->startDate = $value['startDate'];
         $cpp->previousRecurringDate = $value['previousRecurringDate'];
         $cpp->nextRecurringDate = $value['nextRecurringDate'];
+
+        $this->db_add($cpp);
   
         $this->list[] = $cpp;
       }
@@ -950,6 +1141,80 @@ class CustomerPaymentPlanList {
     }
 
     return FALSE;
+  }
+
+  /**
+   * Queries for a customer paymentplan from the Checkout.com API.
+   *
+   * Minimal usage:
+   *   $this->customerId = 'cust_000000000000000';
+   *   $this->api_query();
+   *
+   * @return bool
+   *   TRUE if it was succesfull, FALSE if it doesn't.
+   */
+  public function db_get() {
+    // if (property_exists($this, 'customerId') && $this->customerId !== NULL) {
+    //   $sqlRepsonse->condition('customer_id', (string) $this->customerId, '=');
+    // }
+
+    $sqlRepsonse = db_select('uc_checkoutpaymentplan_customer_payment_plans', 'c')
+      ->fields('c')
+      ->orderBy('start_date', 'ASC')
+      ->execute()
+      ->fetchAll();
+
+    if (!empty($sqlRepsonse)) {
+      $this->list = array();
+      foreach ($sqlRepsonse as $key => $value) {
+        $cpp = new CustomerPaymentPlan;
+
+        $cpp->id                    = $value->id;
+        $cpp->planId                = $value->plan_id;
+        $cpp->cardId                = $value->card_id;
+        $cpp->customerId            = $value->customer_id;
+        $cpp->recurringCountLeft    = $value->recurring_count_left;
+        $cpp->status                = $value->status;
+        $cpp->totalCollectionCount  = $value->total_collection_count;
+        $cpp->totalCollectionValue  = $value->total_collection_value;
+        $cpp->startDate             = $value->start_date;
+        $cpp->previousRecurringDate = $value->previous_recurring_date;
+        $cpp->nextRecurringDate     = $value->next_recurring_date;
+
+        $this->list[] = $cpp;
+      }
+
+      if ($this->list != array()) {
+        return TRUE;
+      }
+    }
+    return FALSE;
+  }
+
+  /**
+   * Adds this customer payment plan to the local database.
+   *
+   * @return bool
+   *   TRUE if it successfully added to the database.
+   */
+  private function db_add($cpp) {
+    $db = db_insert('uc_checkoutpaymentplan_customer_payment_plans')
+      ->fields(array(
+        'id'                      => $cpp->id,
+        'plan_id'                 => $cpp->planId,
+        'card_id'                 => $cpp->cardId,
+        'customer_id'             => $cpp->customerId,
+        'recurring_count_left'    => $cpp->recurringCountLeft,
+        'status'                  => $cpp->status,
+        'total_collection_count'  => $cpp->totalCollectionCount,
+        'total_collection_value'  => $cpp->totalCollectionValue,
+        'start_date'              => $cpp->startDate,
+        'previous_recurring_date' => $cpp->previousRecurringDate,
+        'next_recurring_date'     => $cpp->nextRecurringDate,
+      ))
+      ->execute();
+
+    return TRUE;
   }
 }
 
@@ -966,20 +1231,17 @@ class PaymentPlanStoreSettings {
 class Customer {
   public $id;
   public $name;
-  public $customerName;
   public $created;
   public $email;
   public $phoneNumber;
   public $description;
-  public $ltv;
   public $defaultCard;
-  public $responseCode;
   public $liveMode;
   public $cards;
   public $metadata;
 
   /**
-   * Get a customer from the Checkout.com server.
+   * Get a Checkout.com customer.
    *
    * How to use this:
    *   $customer = new Customer;
@@ -991,10 +1253,10 @@ class Customer {
    *   $customer->get();
    *
    * @return bool
-   *   Returns true if succeeded or false (with drupal message) when failed.
+   *   Returns true if succeeded or false when failed.
    */
   public function get() {
-    if ($this->api_get()) {
+    if ($this->db_get() || $this->api_get()) {
       return TRUE;
     }
 
@@ -1038,21 +1300,111 @@ class Customer {
     if ($response != NULL) {
       $this->id = $response->getId();
       $this->name = $response->getName();
-      $this->customerName = $response->getCustomerName();
       $this->created = $response->getCreated();
       $this->email = $response->getEmail();
       $this->phoneNumber = $response->getPhoneNumber();
       $this->description = $response->getDescription();
-      $this->ltv = $response->getLtv();
       $this->defaultCard = $response->getDefaultCard();
-      $this->responseCode = $response->getResponseCode();
       $this->liveMode = $response->getLiveMode();
       $this->cards = $response->getCards();
       $this->metadata = $response->getMetadata();
+
+      $this->db_add();
 
       return TRUE;
     }
 
     return FALSE;
+  }
+
+  /**
+   * Gets this customer from the local database.
+   *
+   * Minimal usage:
+   *   $this->email = 'integration@checkout.com';
+   *   $this->db_get();
+   *
+   * @return bool
+   *   TRUE if it was succesfull, FALSE if it doesn't.
+   */
+  private function db_get() {
+    if ($this->email === NULL && $this->id === NULL) {
+      return FALSE;
+    }
+    elseif ($this->email === NULL) {
+      $query = array('id', $this->id);
+    }
+    else {
+      $query = array('email', $this->email);
+    }
+
+
+    $sqlRepsonse = db_select('uc_checkoutpaymentplan_customer', 'c')
+      ->fields('c')
+      ->condition($query[0],$query[1], '=')
+      ->execute()
+      ->fetchObject();
+
+    if (!empty($sqlRepsonse)) {
+      $this->id          = $sqlRepsonse->id;
+      $this->name        = $sqlRepsonse->name;
+      $this->created     = $sqlRepsonse->created;
+      $this->email       = $sqlRepsonse->email;
+      $this->phoneNumber = $sqlRepsonse->phone_number;
+      $this->description = $sqlRepsonse->description;
+      $this->defaultCard = $sqlRepsonse->default_card;
+      $this->liveMode    = $sqlRepsonse->live_mode;
+      $this->cards       = $sqlRepsonse->cards;
+      $this->metadata    = $sqlRepsonse->metadata;
+
+      return TRUE;
+    }
+
+    return FALSE;
+  }
+
+  /**
+   * Adds this customer to the local database.
+   *
+   * Minimal usage:
+   *   $this->id    = 'cust_0000000000000000000000';
+   *   $this->email = 'integration@checkout.com';
+   *   $this->db_add();
+   *
+   * @return bool
+   *   TRUE if it successfully added to the database.
+   *   FALSE if an error ocourred and a the error is added to Watchdog.
+   */
+  private function db_add() {
+    try {
+      db_insert('uc_checkoutpaymentplan_customer')
+        ->fields(array(
+          'id' => $this->id,
+          'name' => $this->name,
+          'created' => $this->created,
+          'email' => $this->email,
+          'phone_number' => $this->phoneNumber,
+          'description' => $this->description,
+          'default_card' => $this->defaultCard,
+          'live_mode' => $this->liveMode,
+          'cards' => null,
+          'metadata' => null,
+        ))
+        ->execute();
+    }
+    catch (Exception $e) {
+      watchdog(
+        'uc_checkoutpaymentplan',
+        'Notice: An error occured when adding a customer to the local database. (:errorMessage)',
+        array(
+          ':errorMessage' => $e->getMessage(),
+        ),
+        WATCHDOG_WARNING
+      );
+
+      return FALSE;
+    }
+
+    return TRUE;
   }
 }
