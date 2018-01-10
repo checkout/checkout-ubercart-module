@@ -387,7 +387,9 @@ class PaymentPlan {
       $reponse = $service->createSinglePlan($request);
     }
     catch (Exception $e) {
-      throw new Exception("API " . $e->getErrorCode() . " | " . $e->getErrorMessage());
+      throw new Exception(
+        "API " . $e->getErrorCode() . " | " . $e->getErrorMessage()
+      );
     }
 
     $reponseplan = $reponse->getPaymentPlans()[0];
@@ -456,11 +458,15 @@ class PaymentPlan {
         return TRUE;
       }
 
-      throw new Exception("API " . $e->getErrorCode() . " | " . $e->getErrorMessage());
+      throw new Exception(
+        "API " . $e->getErrorCode() . " | " . $e->getErrorMessage()
+      );
     }
 
     if ($reponse->hasError()) {
-      throw new Exception("API " . $e->getHttpStatus() . " | " . $e->getMessage());
+      throw new Exception(
+        "API " . $e->getHttpStatus() . " | " . $e->getMessage()
+      );
     }
 
     $this->db_update();
@@ -502,11 +508,15 @@ class PaymentPlan {
       $reponse = $service->cancelPlan($this->id);
     }
     catch (Exception $e) {
-      throw new Exception("API " . $e->getErrorCode() . " | " . $e->getErrorMessage());
+      throw new Exception(
+        "API " . $e->getErrorCode() . " | " . $e->getErrorMessage()
+      );
     }
 
     if ($reponse->hasError()) {
-      throw new Exception("API " . $e->getHttpStatus() . " | " . $e->getMessage());
+      throw new Exception(
+        "API " . $e->getHttpStatus() . " | " . $e->getMessage()
+      );
     }
 
     return TRUE;
@@ -538,7 +548,7 @@ class PaymentPlan {
       return FALSE;
     }
 
-    $sqlRepsonse = db_select('uc_checkoutpaymentplan_payment_plans', 'c')
+    $sqlRepsonse = db_select('uc_checkoutpaymentplan_payment_plan', 'c')
       ->fields('c')
       ->condition($findcolumn, (string) $findrow, '=')
       ->execute()
@@ -566,8 +576,10 @@ class PaymentPlan {
    *
    * Minimal usage:
    *   $this->id             = 'rp_000000000000000';
-   *   $this->trackId        = 'example_tracker';
+   *   $this->name           = 'Example title';
    *   $this->autoCapTime    = 0;
+   *   $this->currency       = 'USD';
+   *   $this->value          = 500;
    *   $this->recurringCount = 10;
    *   $this->cycle          = '7d';
    *   $this->status         = 1;
@@ -577,19 +589,39 @@ class PaymentPlan {
    *   TRUE if it successfully added to the database.
    */
   private function db_add() {
-    $db = db_insert('uc_checkoutpaymentplan_payment_plans')
-      ->fields(array(
-        'id'              => $this->id,
-        'name'            => $this->name,
-        'track_id'        => $this->trackId,
-        'auto_cap_time'   => $this->autoCapTime,
-        'currency'        => $this->currency,
-        'value'           => $this->value,
-        'cycle'           => $this->cycle,
-        'recurring_count' => $this->recurringCount,
-        'status'          => $this->status,
-      ))
-      ->execute();
+    try {
+      $db = db_insert('uc_checkoutpaymentplan_payment_plan')
+        ->fields(array(
+          'id'              => $this->id,
+          'name'            => $this->name,
+          'track_id'        => $this->trackId,
+          'auto_cap_time'   => $this->autoCapTime,
+          'currency'        => $this->currency,
+          'value'           => $this->value,
+          'cycle'           => $this->cycle,
+          'recurring_count' => $this->recurringCount,
+          'status'          => $this->status,
+        ))
+        ->execute();
+    }
+    catch (Exception $e) {
+      if (empty($this->name)) {
+        $this->name = 'UNKNOWN';
+      }
+
+      watchdog(
+        'Checkout.com Recurring Payments',
+        'Notice: Subscription, :name, was not added to local database.
+        (:errorMessage)',
+        array(
+          ':name' => $this->name,
+          ':errorMessage' => $e->getMessage(),
+        ),
+        WATCHDOG_NOTICE
+      );
+
+      return FALSE;
+    }
 
     return TRUE;
   }
@@ -658,7 +690,10 @@ class CustomerPaymentPlan {
       $this->api_update();
     }
     catch (Exception $e) {
-      drupal_set_message(t(':message', array(':message' => $e->getMessage(),)), 'error');
+      drupal_set_message(
+        t(':message', array(':message' => $e->getMessage(),)), 
+        'error'
+      );
       return FALSE;
     }
 
@@ -684,16 +719,23 @@ class CustomerPaymentPlan {
     if ($this->get()) {
       try {
         $this->api_cancel();
+        $this->db_remove();
       }
       catch (Exception $e) {
-        drupal_set_message(t(':message', array(':message' => $e->getMessage(),)), 'error');
+        drupal_set_message(
+          t(':message', array(':message' => $e->getMessage(),)), 
+          'error'
+        );
         return FALSE;
       }
   
       return TRUE;
     }
   
-    drupal_set_message(t('The payment plan was not found on the Checkout.com server.'), 'error');
+    drupal_set_message(
+      t('The payment plan was not found on the Checkout.com server.'), 
+      'error'
+    );
     return false;
   }
 
@@ -785,8 +827,8 @@ class CustomerPaymentPlan {
    * Update this paymentplan from the Checkout.com API.
    *
    * Minimal usage:
-   *   $this->id = 'rp_000000000000000';
-   *   $this->trackId = 'example_tracker';
+   *   $this->id     = 'cp_000000000000000';
+   *   $this->status = 4;
    *   $this->api_update();
    *
    * @return mixed
@@ -833,11 +875,15 @@ class CustomerPaymentPlan {
       $reponse = $service->updatePlan($request);
     }
     catch (Exception $e) {
-      throw new Exception("API " . $e->getErrorCode() . " | " . $e->getErrorMessage());
+      throw new Exception(
+        "API " . $e->getErrorCode() . " | " . $e->getErrorMessage()
+      );
     }
 
     if ($reponse->hasError()) {
-      throw new Exception("API " . $e->getHttpStatus() . " | " . $e->getMessage());
+      throw new Exception(
+        "API " . $e->getHttpStatus() . " | " . $e->getMessage()
+      );
     }
 
     $this->db_update();
@@ -878,11 +924,15 @@ class CustomerPaymentPlan {
       $reponse = $service->cancelCustomerPlan($this->id);
     }
     catch (Exception $e) {
-      throw new Exception("API " . $e->getErrorCode() . " | " . $e->getErrorMessage());
+      throw new Exception(
+        "API " . $e->getErrorCode() . " | " . $e->getErrorMessage()
+      );
     }
 
     if ($reponse->hasError()) {
-      throw new Exception("API " . $e->getHttpStatus() . " | " . $e->getMessage());
+      throw new Exception(
+        "API " . $e->getHttpStatus() . " | " . $e->getMessage()
+      );
     }
 
     return TRUE;
@@ -948,12 +998,12 @@ class CustomerPaymentPlan {
    * Gets this customer payment plan from the local database.
    *
    * Minimal usage:
-   *   $this->id = 'rp_000000000000000';
-   *   $this->get();
+   *   $this->id = 'cp_000000000000000';
+   *   $this->db_get();
    *
    *   $this->customerId = 'cust_000000000000000';
    *   $this->planId     = 'rp_000000000000000';
-   *   $this->get();
+   *   $this->db_get();
    *
    * @return bool
    *   TRUE if it was succesfull, FALSE if it doesn't.
@@ -975,7 +1025,10 @@ class CustomerPaymentPlan {
       return FALSE;
     }
 
-    $sqlRepsonse = db_select('uc_checkoutpaymentplan_customer_payment_plans', 'c')
+    $sqlRepsonse = db_select(
+      'uc_checkoutpaymentplan_customer_payment_plan', 
+      'c'
+    )
       ->fields('c')
       ->condition($findcolumn1, (string) $findrow1, '=')
       ->condition($findcolumn2, (string) $findrow2, '=')
@@ -1003,13 +1056,19 @@ class CustomerPaymentPlan {
   /**
    * Adds this customer payment plan to the local database.
    *
+   * Minimal usage:
+   *   $this->id         = 'cp_000000000000000';
+   *   $this->planId     = 'rp_000000000000000';
+   *   $this->customerId = 'cust_000000000000000';
+   *   $this->db_add();
+   *
    * @return bool
    *   TRUE if it successfully added to the database.
    *   FALSE if an error ocourred and a the error is added to Watchdog.
    */
   private function db_add() {
     try {
-      db_insert('uc_checkoutpaymentplan_customer_payment_plans')
+      db_insert('uc_checkoutpaymentplan_customer_payment_plan')
         ->fields(array(
           'id'                      => $this->id,
           'plan_id'                 => $this->planId,
@@ -1027,9 +1086,50 @@ class CustomerPaymentPlan {
     }
     catch (Exception $e) {
       watchdog(
-        'uc_checkoutpaymentplan',
-        'Notice: An error occured when adding a customer payment plan to the local database. (:errorMessage)',
+        'Checkout.com Recurring Payments',
+        'Notice: Customer payment plan was not added to the local database.
+        (:errorMessage)',
         array(
+          ':errorMessage' => $e->getMessage(),
+        ),
+        WATCHDOG_NOTICE
+      );
+
+      return FALSE;
+    }
+
+    return TRUE;
+  }
+
+  /**
+   * Remove this customer payment plan from the local database.
+   *
+   * Minimal usage:
+   *   $this->id = 'cp_000000000000000';
+   *   $this->db_remove();
+   *
+   * @return bool
+   *   TRUE if it was succesfull, FALSE if it doesn't.
+   */
+  public function db_remove() {
+    try {
+      $sqlRepsonse = db_delete('uc_checkoutpaymentplan_customer_payment_plan')
+        ->condition('id', (string) $this->id, '=')
+        ->execute();
+    }
+    catch (Exception $e) {
+      if (empty($this->id)) {
+        $this->id = 'UNKNOWN';
+      }
+
+      watchdog(
+        'Checkout.com Recurring Payments',
+        'Notice: Subscription, :id, was not deleted from the local database.
+        (:errorMessage) You can solve this problem by manualy dropping the
+        table [uc_checkoutpaymentplan_customer_payment_plan] or by running
+        a synscronisation in the Checkout.com payment settings.',
+        array(
+          ':id' => $this->id,
           ':errorMessage' => $e->getMessage(),
         ),
         WATCHDOG_WARNING
@@ -1038,7 +1138,10 @@ class CustomerPaymentPlan {
       return FALSE;
     }
 
-    return TRUE;
+    if (!empty($sqlRepsonse)) {
+      return TRUE;
+    }
+    return FALSE;
   }
 }
 
@@ -1154,12 +1257,19 @@ class CustomerPaymentPlanList {
    *   TRUE if it was succesfull, FALSE if it doesn't.
    */
   public function db_get() {
-    // if (property_exists($this, 'customerId') && $this->customerId !== NULL) {
-    //   $sqlRepsonse->condition('customer_id', (string) $this->customerId, '=');
-    // }
+    $findcolumn = $findrow = TRUE;
 
-    $sqlRepsonse = db_select('uc_checkoutpaymentplan_customer_payment_plans', 'c')
+    if (property_exists($this, 'customerId') && $this->customerId !== NULL) {
+      $findcolumn = 'customer_id';
+      $findrow = $this->customerId;
+    }
+
+    $sqlRepsonse = db_select(
+      'uc_checkoutpaymentplan_customer_payment_plan',
+      'c'
+    )
       ->fields('c')
+      ->condition($findcolumn, $findrow, '=')
       ->orderBy('start_date', 'ASC')
       ->execute()
       ->fetchAll();
@@ -1198,7 +1308,7 @@ class CustomerPaymentPlanList {
    *   TRUE if it successfully added to the database.
    */
   private function db_add($cpp) {
-    $db = db_insert('uc_checkoutpaymentplan_customer_payment_plans')
+    $db = db_insert('uc_checkoutpaymentplan_customer_payment_plan')
       ->fields(array(
         'id'                      => $cpp->id,
         'plan_id'                 => $cpp->planId,
@@ -1393,13 +1503,19 @@ class Customer {
         ->execute();
     }
     catch (Exception $e) {
+      if (empty($this->name)) {
+        $this->name = 'UNKNOWN';
+      }
+
       watchdog(
-        'uc_checkoutpaymentplan',
-        'Notice: An error occured when adding a customer to the local database. (:errorMessage)',
+        'Checkout.com Recurring Payments',
+        'Notice: Customer, :name, was not added to local database.
+        (:errorMessage)',
         array(
+          ':name' => $this->name,
           ':errorMessage' => $e->getMessage(),
         ),
-        WATCHDOG_WARNING
+        WATCHDOG_NOTICE
       );
 
       return FALSE;

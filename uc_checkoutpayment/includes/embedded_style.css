@@ -121,3 +121,7 @@ input.cko-disabled {
   background-color: #3075dd;
   width: 0%;
 }
+
+.cko_float_left {
+  float: left;
+}
