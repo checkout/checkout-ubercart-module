@@ -1,0 +1,7 @@
+name = Checkout.com Recurring Payments
+description = Checkout.com’s Recurring Payments feature offers merchants the ability to take debit or credit card payments from customers on a recurring basis.
+configure = admin/store/settings/payment/method/cko
+package = Ubercart - payment
+dependencies[] = uc_payment
+dependencies[] = uc_checkoutpayment
+core = 7.x

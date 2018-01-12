@@ -49,7 +49,7 @@ input.cko-disabled {
   position: relative;
   display: inline-block;
   padding: 0 2px;
-  margin: 0 10px 0 -5px;
+  /*margin: 0 10px 0 -5px;*/
   border-bottom: 1px dotted black; /* If you want dots under the hoverable text */
 }
 
@@ -88,4 +88,76 @@ input.cko-disabled {
 
 .cko-warning {
   color: #b11717;
+}
+
+.cko-logo {
+  height: 1em;
+  width: 1.2em;
+  display: inline-block;
+  background-size: .9em;
+  background-image: url("images/checkoutcom_logo.png");
+  background-repeat: no-repeat;
+  background-position: center bottom;
+}
+
+.ckopp_progressbar {
+  width: 100%;
+  border: 1px solid #cdd7e7;
+  position: relative;
+  background:#f8f9fb;
+}
+
+.ckopp_progressbar span {
+  position: absolute;   
+  left: 45%;
+  top: 0;
+  
+  font-family: 'Open Sans', sans-serif;
+  color: #313b4b;
+}
+
+.ckopp_progressbar div {
+  height: 20px;
+  background-color: #3075dd;
+  width: 0%;
+}
+
+.cko_float_left {
+  float: left;
+}
+
+.cko-fieldset-fields {
+  width: 45%;
+  min-width: 200px;
+  max-width: 400px;
+  float: left;
+  border-bottom: dotted #3075dd .5px;
+  margin: 10px; 
+}
+
+.cko-fieldset-actions {
+  clear: both;
+  float: right;
+}
+
+.cko-fieldset-fields label {
+  float: left;
+}
+
+.cko-fieldset-fields field {
+  float: right;
+  font-size: .85em;
+}
+
+.cko-warning {
+  height: 1.2em;
+  width: 1.2em;
+  background-image: url("images/notification-error.svg");
+  background-repeat: no-repeat;
+  background-position: center bottom;
+}
+
+.cko-loading {
+  float: left;
+  height: 2em;
 }

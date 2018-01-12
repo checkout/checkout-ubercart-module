@@ -17,8 +17,8 @@ use com\checkout\Apiservices\Baseservices;
 use com\checkout\Apiservices\Charges\Chargesmapper;
 use com\checkout\Apiservices\Sharedmodels\Okresponse;
 use com\checkout\Apiservices\Tokens\Requestmodels\Paymenttokenupdate;
-use com\checkout\Helpers\ApiHttpClient;
-use com\checkout\Helpers\ApiHttpClientCustomException;
+use com\checkout\Helpers\Apihttpclient;
+use com\checkout\Helpers\ApihttpclientCustomException;
 
 /**
  * Class Token Service.
@@ -37,7 +37,7 @@ class Tokenservice extends Baseservices {
    * @return Responsemodels\Paymenttoken
    *   The response model or payment token object.
    *
-   * @throws ApiHttpClientCustomException
+   * @throws ApihttpclientCustomException
    */
   public function createPaymenttoken(
     Requestmodels\Paymenttokencreate $requestModel
@@ -50,7 +50,7 @@ class Tokenservice extends Baseservices {
       'postedParam' => $chargeMapper->requestPayloadConverter(),
     );
 
-    $processCharge = ApiHttpClient::postRequest(
+    $processCharge = Apihttpclient::postRequest(
       $this->apiUrl->getPaymenttokensApiUri(),
       $this->apiSetting->getSecretKey(), $requestPayload
     );
@@ -67,7 +67,7 @@ class Tokenservice extends Baseservices {
    * @return Responsemodels\Paymenttokenupdate
    *   The response model or payment token object.
    *
-   * @throws ApiHttpClientCustomException
+   * @throws ApihttpclientCustomException
    */
   public function updatePaymenttoken(
     Requestmodels\Paymenttokenupdate $requestModel
@@ -86,7 +86,7 @@ class Tokenservice extends Baseservices {
       $requestModel->getId()
     );
 
-    $processCharge = ApiHttpClient::putRequest(
+    $processCharge = Apihttpclient::putRequest(
       $updateUri,
       $this->apiSetting->getSecretKey(), $requestPayload
     );

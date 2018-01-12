@@ -44,7 +44,7 @@ class Cardservice extends \com\checkout\Apiservices\Baseservices {
       $this->apiUrl->getCardsApiUri(),
       $requestModel->getCustomerId()
     );
-    $processCharge = \com\checkout\Helpers\ApiHttpClient::postRequest(
+    $processCharge = \com\checkout\Helpers\Apihttpclient::postRequest(
       $createCardUri,
       $this->apiSetting->getSecretKey(),
       $requestPayload
@@ -77,7 +77,7 @@ class Cardservice extends \com\checkout\Apiservices\Baseservices {
       $customerId
     ) . '/' . $cardId;
 
-    $processCharge = \com\checkout\Helpers\ApiHttpClient::getRequest(
+    $processCharge = \com\checkout\Helpers\Apihttpclient::getRequest(
       $getCardUri,
       $this->apiSetting->getSecretKey(), $requestPayload
     );
@@ -111,7 +111,7 @@ class Cardservice extends \com\checkout\Apiservices\Baseservices {
       $requestModel->getCustomerId()
     ) . '/' . $requestModel->getCardId();
 
-    $processCharge = \com\checkout\Helpers\ApiHttpClient::putRequest(
+    $processCharge = \com\checkout\Helpers\Apihttpclient::putRequest(
       $getCardUri,
       $this->apiSetting->getSecretKey(), $requestPayload
     );
@@ -141,7 +141,7 @@ class Cardservice extends \com\checkout\Apiservices\Baseservices {
       $customerId
     ) . '/' . $cardId;
 
-    $processCharge = \com\checkout\Helpers\ApiHttpClient::deleteRequest(
+    $processCharge = \com\checkout\Helpers\Apihttpclient::deleteRequest(
       $getCardUri,
       $this->apiSetting->getSecretKey(), $requestPayload
     );
@@ -170,7 +170,7 @@ class Cardservice extends \com\checkout\Apiservices\Baseservices {
 
     $getCardUri = sprintf($this->apiUrl->getCardsApiUri(), $customerId);
 
-    $processCharge = \com\checkout\Helpers\ApiHttpClient::getRequest(
+    $processCharge = \com\checkout\Helpers\Apihttpclient::getRequest(
       $getCardUri,
       $this->apiSetting->getSecretKey(), $requestPayload
     );

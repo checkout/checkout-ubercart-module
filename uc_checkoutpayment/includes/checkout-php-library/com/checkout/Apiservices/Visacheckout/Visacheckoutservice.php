@@ -45,7 +45,7 @@ class Visacheckoutservice extends \com\checkout\Apiservices\Baseservices {
       'postedParam' => $visaCheckoutMapper->requestPayloadConverter(),
     );
 
-    $processVisacheckout = \com\checkout\Helpers\ApiHttpClient::postRequest(
+    $processVisacheckout = \com\checkout\Helpers\Apihttpclient::postRequest(
       $visaCheckoutUri, $publicKey,
       $requestVisacheckout
     );

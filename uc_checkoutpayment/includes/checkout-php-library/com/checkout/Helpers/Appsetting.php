@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Checkout.com Helpers\AppSetting.
+ * Checkout.com Helpers\Appsetting.
  *
  * PHP Version 5.6
  *
@@ -18,7 +18,7 @@ namespace com\checkout\Helpers;
  * @category Helpers
  * @version Release: @package_version@
  */
-class AppSetting {
+class Appsetting {
   protected static $instance = null;
   private $secretKey = null;
   private $requestTimeOut = 60;
@@ -66,7 +66,7 @@ class AppSetting {
    */
   public static function getSingletonInstance() {
     if (!isset(static::$instance)) {
-      static::$instance = new AppSetting();
+      static::$instance = new Appsetting();
     }
     return static::$instance;
   }
@@ -77,11 +77,11 @@ class AppSetting {
    * @param bool|false $override
    *   The override.
    *
-   * @return AppSetting
+   * @return Appsetting
    *   The instance.
    */
   public static function getInstance($override = false) {
-    $instance = new AppSetting();
+    $instance = new Appsetting();
     if ($override) {
       static::$instance = $instance;
     }

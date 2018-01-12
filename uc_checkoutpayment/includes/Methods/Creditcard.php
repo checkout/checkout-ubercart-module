@@ -25,6 +25,7 @@ class Creditcard
 
     if ($order) {
       $amount_cents = number_format(round($order->order_total, variable_get('uc_currency_prec', 2)) * 100, 0, '', '');
+      error_log('amount_cents: ' . $amount_cents . ' | order->order_total: ' . $order->order_total, 0);
       $config = array();
 
       $config['email'] = $order->primary_email;
@@ -476,7 +477,7 @@ class Creditcard
     $secret_key = $payment_method['settings']['private_key'];
     $mode = $payment_method['settings']['mode'];
 
-    $config = array();          
+    $config = array();
     $config['authorization'] = $secret_key;
     $config['chargeId'] = $result->id;
     $config['postedParam'] = array(
@@ -485,6 +486,45 @@ class Creditcard
 
     $api = CheckoutapiApi::getApi(array('mode' => $mode));
     return $api->refundCharge($config);
+  }
+
+  /**
+   * Create a cko cancel request.
+   *
+   * Only for an order which is Authorized but not yet Captured.
+   *
+   * @param object $order
+   *   A Ubercart order object.
+   * @param array $payment_method
+   *   An array with the CKO settings.
+   * @param int $value
+   *   Is the value which should be captured.
+   *
+   * @return httpresponse
+   *   The response from the CKO server.
+   */
+  public function cancelCharge($order, array $payment_method, $value)
+  {
+    $config = array();
+
+    $secret_key = $payment_method['settings']['private_key'];
+    $mode = $payment_method['settings']['mode'];
+
+    $result = db_select('uc_checkoutpayment_hub_communication', 'c')
+      ->fields('c')
+      ->condition('track_id', $order->order_id, '=')
+      ->condition('status', "Authorised", '=')
+      ->execute()
+      ->fetchObject();
+
+    $config['authorization'] = $secret_key;
+    $config['chargeId'] = $result->id;
+    $config['postedParam'] = array(
+      'value' => $value,
+    );
+
+    $api = CheckoutapiApi::getApi(array('mode' => $mode));
+    return $api->voidCharge($config);
   }
 
   /**
@@ -547,7 +587,7 @@ class Creditcard
     $totalNumberOfPages = 1;
     for ($i = 0; $i < $totalNumberOfPages; $i++) {
       set_time_limit(30);
-      
+
       $reportingModel->setPageNumber((string) $i);
 
       $reportingResponse = $reportingService->queryTransaction($reportingModel);
@@ -592,7 +632,7 @@ class Creditcard
 
         $order = uc_order_load($cko_charge->getTrackId());
 
-        if ($order != NULL) {
+        if ($order != null) {
           $order_total = $order->order_total;
 
           try {
@@ -609,8 +649,7 @@ class Creditcard
                 'status' => $cko_charge->getStatus(),
               ))
               ->execute();
-          }
-          catch (Exception $e) {
+          } catch (Exception $e) {
             //If this fails the key is already in the database.
           }
 
@@ -619,7 +658,7 @@ class Creditcard
           if (strpos($comments, $cko_charge->getId()) === false) {
             $order_balance = uc_payment_balance($order);
             $order_value = $cko_charge->getAmount() / 100;
-  
+
             switch ($cko_charge->getStatus()) {
               case 'Authorised':
                 $commentary = t(
@@ -629,7 +668,7 @@ class Creditcard
                   )
                 );
                 break;
-  
+
               case 'Flagged':
                 $commentary = t(
                   'Payment authorised and flagged. (Id: @chargeId)',
@@ -638,7 +677,7 @@ class Creditcard
                   )
                 );
                 break;
-  
+
               case 'Captured':
                 if ($order_value == $order_total) {
                   $commentary = t('Payment received. (Id: @chargeId)',
@@ -646,8 +685,7 @@ class Creditcard
                       '@chargeId' => $cko_charge->getId(),
                     )
                   );
-                }
-                else {
+                } else {
                   $commentary = t(
                     'Partial payment received @captured received instead of @order_total. (Id: @chargeId)',
                     array(
@@ -657,10 +695,10 @@ class Creditcard
                     )
                   );
                 }
-  
+
                 uc_payment_enter($order->order_id, 'cko', $order_value, 0, null, $commentary);
                 break;
-  
+
               case 'Refunded':
                 if ($order_value + $order_balance == $order_total) {
                   $commentary = t('Payment fully refunded. (Id: @chargeId)',
@@ -668,8 +706,7 @@ class Creditcard
                       '@chargeId' => $cko_charge->getId(),
                     )
                   );
-                }
-                else {
+                } else {
                   $commentary = t(
                     'Partial refunded made: @refunded of @order_total.  (Id: @chargeId)',
                     array(
@@ -679,10 +716,10 @@ class Creditcard
                     )
                   );
                 }
-  
+
                 uc_payment_enter($order->order_id, 'cko', -$order_value, 0, null, $commentary);
                 break;
-  
+
               case 'Voided':
                 $commentary = t('Payment authorised and flagged. (Id: @chargeId)',
                   array(
@@ -690,7 +727,7 @@ class Creditcard
                   )
                 );
                 break;
-  
+
               case 'Declined':
                 $help = '';
                 $commentary = t('<div class="tooltip">?<span class="tooltiptext"> This data cannot be syncronised. </span></div> Action declined, check the Hub for more information. (Id: @chargeId)',
@@ -699,7 +736,7 @@ class Creditcard
                   )
                 );
                 break;
-  
+
               case 'Pending':
                 $commentary = t('Payment pending. (Id: @chargeId)',
                   array(
@@ -708,7 +745,7 @@ class Creditcard
                 );
                 break;
             }
-  
+
             uc_order_comment_save($cko_charge->getTrackId(), 0, $commentary, 'admin');
           }
         }

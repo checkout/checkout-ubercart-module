@@ -33,8 +33,8 @@ class Recurringpayment extends \com\checkout\Apiservices\Sharedmodels\Basehttp {
     $this->setTotalCollectionCount($response->getTotalCollectionCount());
     $this->setTotalCollectionValue($response->getTotalCollectionValue());
 
-    if ($response->getPaymentplans()) {
-      $this->setPaymentplans($response->getPaymentplans());
+    if ($response->getPaymentPlans()) {
+      $this->setPaymentplans($response->getPaymentPlans());
     }
   }
 
@@ -108,7 +108,7 @@ class Recurringpayment extends \com\checkout\Apiservices\Sharedmodels\Basehttp {
    * @param mixed $paymentPlans
    *   The paymentPlans.
    */
-  protected function setPaymentplans($paymentPlans) {
+  protected function setPaymentPlans($paymentPlans) {
     $paymentPlansArray = $paymentPlans->toArray();
     $paymentPlansToReturn = array();
     if ($paymentPlansArray) {

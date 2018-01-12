@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Checkout.com Helpers\ApiHttpClient.
+ * Checkout.com Helpers\Apihttpclient.
  *
  * PHP Version 5.6
  *
@@ -87,12 +87,13 @@ final class Apihttpclient {
       return $temp;
     }
     else {
-      $_errorMessageCodes = $temp->getErrorMessageCodes();
+      $errorMessageCodes = $temp->getErrorMessageCodes();
+      pre_var_dump('$errorMessageCodes ' . $errorMessageCodes);
       throw new Apihttpclientcustomexception(
         $temp
           ->getExceptionState()
           ->getErrorMessage(),
-        $_errorMessageCodes[0],
+        $errorMessageCodes[0],
         $temp
           ->getEventId()
       );

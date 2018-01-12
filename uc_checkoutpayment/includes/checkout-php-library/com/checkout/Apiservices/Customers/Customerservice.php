@@ -38,7 +38,7 @@ class Customerservice extends \com\checkout\Apiservices\Baseservices {
       'postedParam' => $customerMapper->requestPayloadConverter(),
 
     );
-    $processCharge = \com\checkout\Helpers\ApiHttpClient::postRequest(
+    $processCharge = \com\checkout\Helpers\Apihttpclient::postRequest(
       $this->apiUrl->getCustomersApiUri(),
       $this->apiSetting->getSecretKey(), $requestPayload
     );
@@ -69,7 +69,7 @@ class Customerservice extends \com\checkout\Apiservices\Baseservices {
       ->apiUrl
       ->getCustomersApiUri() . '/' . $requestModel
       ->getCustomerId();
-    $processCharge = \com\checkout\Helpers\ApiHttpClient::putRequest(
+    $processCharge = \com\checkout\Helpers\Apihttpclient::putRequest(
       $updateCustomerUri,
       $this->apiSetting->getSecretKey(), $requestPayload
     );
@@ -99,7 +99,7 @@ class Customerservice extends \com\checkout\Apiservices\Baseservices {
 
     );
     $deleteCustomerUri = $this->apiUrl->getCustomersApiUri() . '/' . $customerId;
-    $processCharge = \com\checkout\Helpers\ApiHttpClient::deleteRequest(
+    $processCharge = \com\checkout\Helpers\Apihttpclient::deleteRequest(
       $deleteCustomerUri,
       $this->apiSetting->getSecretKey(), $requestPayload
     );
@@ -128,7 +128,7 @@ class Customerservice extends \com\checkout\Apiservices\Baseservices {
 
     );
     $getCustomerUri = $this->apiUrl->getCustomersApiUri() . '/' . $customerId;
-    $processCharge = \com\checkout\Helpers\ApiHttpClient::getRequest(
+    $processCharge = \com\checkout\Helpers\Apihttpclient::getRequest(
       $getCustomerUri,
       $this->apiSetting->getSecretKey(), $requestPayload
     );
@@ -196,7 +196,7 @@ class Customerservice extends \com\checkout\Apiservices\Baseservices {
       'mode' => $this->apiSetting->getMode(),
 
     );
-    $processCharge = \com\checkout\Helpers\ApiHttpClient::getRequest(
+    $processCharge = \com\checkout\Helpers\Apihttpclient::getRequest(
       $customerUri,
       $this->apiSetting->getSecretKey(), $requestPayload
     );

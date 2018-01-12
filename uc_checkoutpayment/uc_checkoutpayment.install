@@ -129,6 +129,8 @@ function uc_checkoutpayment_install() {
       'locked' => 1,
     ))
     ->execute();
+
+
 }
 
 /**
@@ -142,5 +144,7 @@ function uc_checkoutpayment_uninstall() {
   db_delete('variable')
     ->condition('name', 'cko_%', 'LIKE')
     ->execute();
-  cache_clear_all('variables', 'cache_bootstrap');
+
+  cache_clear_all('variables', 'cache_bootstrap');  
 }
+
