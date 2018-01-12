@@ -156,3 +156,8 @@ input.cko-disabled {
   background-repeat: no-repeat;
   background-position: center bottom;
 }
+
+.cko-loading {
+  float: left;
+  height: 2em;
+}

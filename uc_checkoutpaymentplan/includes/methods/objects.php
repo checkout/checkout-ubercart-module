@@ -34,12 +34,26 @@ class CustomerPaymentPlan {
    */
   public function get() {
     if ($this->db_get() || $this->api_get() || $this->api_query()) {
-      return TRUE;
+      return true;
     }
 
-    return FALSE;
+    return false;
   }
 
+  /**
+   * Get a readable string for an property.
+   *
+   * How to use this:
+   *   $payment_plan = new PaymentPlan;
+   *   $payment_plan->cycle = '1d';
+   *   echo $payment_plan->getString('cycle');
+   *
+   * @param string $property
+   *   The name of one of the objects properties.
+   *
+   * @return string|null
+   *   Returns readable string or null.
+   */
   public function getString($property) {
     if (property_exists($this, $property)) {
       switch ($property) {
@@ -50,7 +64,7 @@ class CustomerPaymentPlan {
         case 'planId':
           return $this->planId;
           break;
-      
+
         case 'cardId':
           return $this->cardId;
           break;
@@ -70,7 +84,7 @@ class CustomerPaymentPlan {
             t("Cancelled"),
             t("In Arrears"),
             t("Suspended"),
-            t("Completed")
+            t("Completed"),
           );
           return $statusses[$this->status];
           break;
@@ -111,7 +125,7 @@ class CustomerPaymentPlan {
    *   $payment_plan->id = 'rp_000000000000000';
    *   $payment_plan->status = 1;
    *   $payment_plan->db_update();
-   * 
+   *
    * The folling fields can be updated:
    *   name.
    *   autoCapTime.
@@ -127,13 +141,13 @@ class CustomerPaymentPlan {
     }
     catch (Exception $e) {
       drupal_set_message(
-        t(':message', array(':message' => $e->getMessage(),)), 
+        t(':message', array(':message' => $e->getMessage())),
         'error'
       );
-      return FALSE;
+      return false;
     }
 
-    return TRUE;
+    return true;
   }
 
   /**
@@ -159,17 +173,17 @@ class CustomerPaymentPlan {
       }
       catch (Exception $e) {
         drupal_set_message(
-          t(':message', array(':message' => $e->getMessage(),)), 
+          t(':message', array(':message' => $e->getMessage())),
           'error'
         );
-        return FALSE;
+        return false;
       }
-  
-      return TRUE;
+
+      return true;
     }
-  
+
     drupal_set_message(
-      t('The payment plan was not found on the Checkout.com server.'), 
+      t('The payment plan was not found on the Checkout.com server.'),
       'error'
     );
     return false;
@@ -181,7 +195,7 @@ class CustomerPaymentPlan {
    * How to use this:
    *   $customer_payment_plan = new CustomerPaymentPlan;
    *   $bool = $customer_payment_plan->exists(
-   *     'integration@checkout.com', 
+   *     'integration@checkout.com',
    *     'example_tracker'
    *   );
    *
@@ -209,7 +223,7 @@ class CustomerPaymentPlan {
       return $this->get();
     }
 
-    return FALSE;
+    return false;
   }
 
   /**
@@ -223,8 +237,8 @@ class CustomerPaymentPlan {
    *   TRUE if it was succesfull, FALSE if it doesn't.
    */
   private function api_get() {
-    if ($this->id == NULL) {
-      return FALSE;
+    if ($this->id == null) {
+      return false;
     }
 
     $class[] = 'includes/checkout-php-library/autoload';
@@ -240,7 +254,7 @@ class CustomerPaymentPlan {
     $service = $apiClient->Recurringpaymentservice();
     $reponse = $service->getCustomerPlan($this->id);
 
-    if ($reponse != NULL) {
+    if ($reponse != null) {
       $this->id = $reponse->getCustomerPlanId();
       $this->planId = $reponse->getPlanId();
       $this->recurringCountLeft = $reponse->getRecurringCountLeft();
@@ -253,10 +267,10 @@ class CustomerPaymentPlan {
 
       $this->db_add();
 
-      return TRUE;
+      return true;
     }
 
-    return FALSE;
+    return false;
   }
 
   /**
@@ -271,7 +285,7 @@ class CustomerPaymentPlan {
    *   TRUE if it was succesfull or the error message if it's not.
    */
   private function api_update() {
-    if ($this->id == NULL) {
+    if ($this->id == null) {
       throw new Exception("Cannot update a payment plan without an id.");
     }
 
@@ -292,19 +306,19 @@ class CustomerPaymentPlan {
       $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Planupdate();
       $request->setPlanId($this->id);
 
-      if ($this->name != NULL) {
+      if ($this->name != null) {
         $request->setName($this->name);
       }
-      if ($this->trackId != NULL) {
+      if ($this->trackId != null) {
         $request->setPlanTrackId($this->trackId);
       }
-      if ($this->autoCapTime != NULL) {
+      if ($this->autoCapTime != null) {
         $request->setAutoCapTime($this->autoCapTime);
       }
-      if ($this->value != NULL) {
+      if ($this->value != null) {
         $request->setValue($this->value);
       }
-      if ($this->status != NULL) {
+      if ($this->status != null) {
         $request->setStatus($this->status);
       }
 
@@ -324,7 +338,7 @@ class CustomerPaymentPlan {
 
     $this->db_update();
 
-    return TRUE;
+    return true;
   }
 
   /**
@@ -340,7 +354,7 @@ class CustomerPaymentPlan {
    *   TRUE if it was succesfull or the error message if it's not.
    */
   private function api_cancel() {
-    if ($this->id == NULL) {
+    if ($this->id == null) {
       throw new Exception("Cannot cancel a payment plan without an id.");
     }
 
@@ -371,7 +385,7 @@ class CustomerPaymentPlan {
       );
     }
 
-    return TRUE;
+    return true;
   }
 
   /**
@@ -386,8 +400,8 @@ class CustomerPaymentPlan {
    *   TRUE if it was succesfull, FALSE if it doesn't.
    */
   private function api_query() {
-    if ($this->customerId == NULL || $this->planId == NULL) {
-      return FALSE;
+    if ($this->customerId == null || $this->planId == null) {
+      return false;
     }
 
     $class[] = 'includes/checkout-php-library/autoload';
@@ -424,10 +438,10 @@ class CustomerPaymentPlan {
 
       $this->db_add();
 
-      return TRUE;
+      return true;
     }
 
-    return FALSE;
+    return false;
   }
 
   /**
@@ -445,24 +459,24 @@ class CustomerPaymentPlan {
    *   TRUE if it was succesfull, FALSE if it doesn't.
    */
   private function db_get() {
-    if ($this->id != NULL) {
+    if ($this->id != null) {
       $findcolumn1 = 'id';
-      $findrow1    = $this->id;
-      $findcolumn2 = TRUE;
-      $findrow2 = TRUE;
+      $findrow1 = $this->id;
+      $findcolumn2 = true;
+      $findrow2 = true;
     }
-    elseif ($this->customerId != NULL || $this->planId != NULL) {
+    elseif ($this->customerId != null || $this->planId != null) {
       $findcolumn1 = 'customer_id';
-      $findrow1    = $this->customerId;
+      $findrow1 = $this->customerId;
       $findcolumn2 = 'plan_id';
       $findrow2 = $this->planId;
     }
     else {
-      return FALSE;
+      return false;
     }
 
     $sqlRepsonse = db_select(
-      'uc_checkoutpaymentplan_customer_payment_plan', 
+      'uc_checkoutpaymentplan_customer_payment_plan',
       'c'
     )
       ->fields('c')
@@ -472,21 +486,21 @@ class CustomerPaymentPlan {
       ->fetchObject();
 
     if (!empty($sqlRepsonse)) {
-      $this->id                    = $sqlRepsonse->id;
-      $this->planId                = $sqlRepsonse->plan_id;
-      $this->cardId                = $sqlRepsonse->card_id;
-      $this->customerId            = $sqlRepsonse->customer_id;
-      $this->recurringCountLeft    = $sqlRepsonse->recurring_count_left;
-      $this->status                = $sqlRepsonse->status;
-      $this->totalCollectionCount  = $sqlRepsonse->total_collection_count;
-      $this->totalCollectionValue  = $sqlRepsonse->total_collection_value;
-      $this->startDate             = $sqlRepsonse->start_date;
+      $this->id = $sqlRepsonse->id;
+      $this->planId = $sqlRepsonse->plan_id;
+      $this->cardId = $sqlRepsonse->card_id;
+      $this->customerId = $sqlRepsonse->customer_id;
+      $this->recurringCountLeft = $sqlRepsonse->recurring_count_left;
+      $this->status = $sqlRepsonse->status;
+      $this->totalCollectionCount = $sqlRepsonse->total_collection_count;
+      $this->totalCollectionValue = $sqlRepsonse->total_collection_value;
+      $this->startDate = $sqlRepsonse->start_date;
       $this->previousRecurringDate = $sqlRepsonse->previous_recurring_date;
-      $this->nextRecurringDate     = $sqlRepsonse->next_recurring_date;
+      $this->nextRecurringDate = $sqlRepsonse->next_recurring_date;
 
-      return TRUE;
+      return true;
     }
-    return FALSE;
+    return false;
   }
 
   /**
@@ -506,17 +520,17 @@ class CustomerPaymentPlan {
     try {
       db_insert('uc_checkoutpaymentplan_customer_payment_plan')
         ->fields(array(
-          'id'                      => $this->id,
-          'plan_id'                 => $this->planId,
-          'card_id'                 => $this->cardId,
-          'customer_id'             => $this->customerId,
-          'recurring_count_left'    => $this->recurringCountLeft,
-          'status'                  => $this->status,
-          'total_collection_count'  => $this->totalCollectionCount,
-          'total_collection_value'  => $this->totalCollectionValue,
-          'start_date'              => $this->startDate,
+          'id' => $this->id,
+          'plan_id' => $this->planId,
+          'card_id' => $this->cardId,
+          'customer_id' => $this->customerId,
+          'recurring_count_left' => $this->recurringCountLeft,
+          'status' => $this->status,
+          'total_collection_count' => $this->totalCollectionCount,
+          'total_collection_value' => $this->totalCollectionValue,
+          'start_date' => $this->startDate,
           'previous_recurring_date' => $this->previousRecurringDate,
-          'next_recurring_date'     => $this->nextRecurringDate,
+          'next_recurring_date' => $this->nextRecurringDate,
         ))
         ->execute();
     }
@@ -531,10 +545,10 @@ class CustomerPaymentPlan {
         WATCHDOG_NOTICE
       );
 
-      return FALSE;
+      return false;
     }
 
-    return TRUE;
+    return true;
   }
 
   /**
@@ -571,13 +585,13 @@ class CustomerPaymentPlan {
         WATCHDOG_WARNING
       );
 
-      return FALSE;
+      return false;
     }
 
     if (!empty($sqlRepsonse)) {
-      return TRUE;
+      return true;
     }
-    return FALSE;
+    return false;
   }
 }
 
@@ -602,7 +616,7 @@ class PaymentPlan {
    *   $payment_plan = new PaymentPlan;
    *   $payment_plan->id = 'rp_000000000000000';
    *   $payment_plan->get();
-   * 
+   *
    *   $payment_plan = new PaymentPlan;
    *   $payment_plan->trackId = 'example_tracker';
    *   $payment_plan->get();
@@ -612,14 +626,27 @@ class PaymentPlan {
    */
   public function get() {
     if ($this->db_get() || $this->api_get() || $this->api_query()) {
-      return TRUE;
+      return true;
     }
 
-    return FALSE;
+    return false;
   }
 
+  /**
+   * Get a readable string for an property.
+   *
+   * How to use this:
+   *   $payment_plan = new PaymentPlan;
+   *   $payment_plan->cycle = '1d';
+   *   echo $payment_plan->getString('cycle');
+   *
+   * @param string $property
+   *   The name of one of the objects properties.
+   *
+   * @return string|null
+   *   Returns readable string or null.
+   */
   public function getString($property) {
-
     if (property_exists($this, $property)) {
       switch ($property) {
         case 'id':
@@ -629,7 +656,7 @@ class PaymentPlan {
         case 'name':
           return $this->name;
           break;
-      
+
         case 'trackId':
           return $this->trackId;
           break;
@@ -643,62 +670,62 @@ class PaymentPlan {
           break;
 
         case 'value':
-          return uc_currency_format($this->value/100);
+          return uc_currency_format($this->value / 100);
           break;
 
-        case 'cycle': {
-          if (($totalCount = substr($this->cycle, 0, -1)) == 1) {
-            switch (strtolower(substr($this->cycle, -1))) {
-              case 'd':
-                return t('Every day');
-                break;
-    
-              case 'w':
-                return t('Every week');
-                break;
-    
-              case 'm':
-                return t('Every month');
-                break;
-    
-              case 'y':
-                return t('Every year');
-                break;
+        case 'cycle':{
+            if (($totalCount = substr($this->cycle, 0, -1)) == 1) {
+              switch (strtolower(substr($this->cycle, -1))) {
+                case 'd':
+                  return t('Every day');
+                  break;
+
+                case 'w':
+                  return t('Every week');
+                  break;
+
+                case 'm':
+                  return t('Every month');
+                  break;
+
+                case 'y':
+                  return t('Every year');
+                  break;
+              }
             }
-          }
-          else {
-            switch (strtolower(substr($this->cycle, -1))) {
-              case 'd':
-                return t(
-                  'Every :count days', 
-                  array(':count' => $totalCount)
-                );
-                break;
-    
-              case 'w':
-                return t(
-                  'Every :count weeks', 
-                  array(':count' => $totalCount)
-                );
-                break;
-    
-              case 'm':
-                return t(
-                  'Every :count months', 
-                  array(':count' => $totalCount)
-                );
-                break;
-    
-              case 'y':
-                return t(
-                  'Every :count years', 
-                  array(':count' => $totalCount)
-                );
-                break;
+            else {
+              switch (strtolower(substr($this->cycle, -1))) {
+                case 'd':
+                  return t(
+                    'Every :count days',
+                    array(':count' => $totalCount)
+                  );
+                  break;
+
+                case 'w':
+                  return t(
+                    'Every :count weeks',
+                    array(':count' => $totalCount)
+                  );
+                  break;
+
+                case 'm':
+                  return t(
+                    'Every :count months',
+                    array(':count' => $totalCount)
+                  );
+                  break;
+
+                case 'y':
+                  return t(
+                    'Every :count years',
+                    array(':count' => $totalCount)
+                  );
+                  break;
+              }
             }
+            break;
           }
-          break; 
-        }
 
         case 'recurringCount':
           return $this->recurringCount;
@@ -736,11 +763,11 @@ class PaymentPlan {
       $this->api_create();
     }
     catch (Exception $e) {
-      drupal_set_message(t(':message', array(':message' => $e->getMessage(),)), 'error');
-      return FALSE;
+      drupal_set_message(t(':message', array(':message' => $e->getMessage())), 'error');
+      return false;
     }
 
-    return TRUE;
+    return true;
   }
 
   /**
@@ -751,7 +778,7 @@ class PaymentPlan {
    *   $payment_plan->id = 'rp_000000000000000';
    *   $payment_plan->status = 1;
    *   $payment_plan->db_update();
-   * 
+   *
    * The folling fields can be updated:
    *   name.
    *   autoCapTime.
@@ -766,11 +793,11 @@ class PaymentPlan {
       $this->api_update();
     }
     catch (Exception $e) {
-      drupal_set_message(t(':message', array(':message' => $e->getMessage(),)), 'error');
-      return FALSE;
+      drupal_set_message(t(':message', array(':message' => $e->getMessage())), 'error');
+      return false;
     }
 
-    return TRUE;
+    return true;
   }
 
   /**
@@ -794,13 +821,13 @@ class PaymentPlan {
         $this->api_cancel();
       }
       catch (Exception $e) {
-        drupal_set_message(t(':message', array(':message' => $e->getMessage(),)), 'error');
-        return FALSE;
+        drupal_set_message(t(':message', array(':message' => $e->getMessage())), 'error');
+        return false;
       }
-  
-      return TRUE;
+
+      return true;
     }
-  
+
     drupal_set_message(t('The payment plan was not found on the Checkout.com server.'), 'error');
     return false;
   }
@@ -828,7 +855,7 @@ class PaymentPlan {
           return t('The automatic capture time cannot be above 168.');
         }
         break;
-      
+
       case 'cycle':
         if (strlen($value) > 4) {
           return t(
@@ -841,7 +868,7 @@ class PaymentPlan {
             )
           );
         }
-        else{
+        else {
           $int = (int) substr($value, 0, -1);
 
           if ($int < 1) {
@@ -854,25 +881,25 @@ class PaymentPlan {
                 return t('The cycle can maximum be 730 days long.');
               }
               break;
-        
+
             case 'w':
               if ($int > 730) {
                 return t('The cycle can maximum be 104 weeks long.');
               }
               break;
-        
+
             case 'm':
               if ($int > 730) {
                 return t('The cycle can maximum be 24 months long.');
               }
               break;
-        
+
             case 'y':
               if ($int > 730) {
                 return t('The cycle can maximum be 2 years long.');
               }
               break;
-            
+
             default:
               return t(
                 'The cycle needs to formatted as :xd, :xw, :xm, or :xy.',
@@ -896,7 +923,7 @@ class PaymentPlan {
           return t('The recurring count cannot be more than 6993.');
         }
         break;
-      
+
       case 'status':
         if ($value != 1 && $value != 0) {
           return t('The status can only be active or suspended.');
@@ -934,8 +961,8 @@ class PaymentPlan {
    *   TRUE if it was succesfull, FALSE if it doesn't.
    */
   private function api_get() {
-    if ($this->id == NULL) {
-      return FALSE;
+    if ($this->id == null) {
+      return false;
     }
 
     $class[] = 'includes/checkout-php-library/autoload';
@@ -951,7 +978,7 @@ class PaymentPlan {
     $service = $apiClient->Recurringpaymentservice();
     $reponse = $service->getPlan($this->id);
 
-    if ($reponse != NULL) {
+    if ($reponse != null) {
       $this->id = $reponse->getPlanId();
       $this->name = $reponse->getName();
       $this->trackId = $reponse->getPlanTrackId();
@@ -964,10 +991,10 @@ class PaymentPlan {
 
       $this->db_add();
 
-      return TRUE;
+      return true;
     }
 
-    return FALSE;
+    return false;
   }
 
   /**
@@ -981,8 +1008,8 @@ class PaymentPlan {
    *   TRUE if it was succesfull, FALSE if it doesn't.
    */
   private function api_query() {
-    if ($this->trackId == NULL) {
-      return FALSE;
+    if ($this->trackId == null) {
+      return false;
     }
 
     $class[] = 'includes/checkout-php-library/autoload';
@@ -1002,7 +1029,6 @@ class PaymentPlan {
     $request->setPlanTrackId($this->trackId);
 
     $reponse = $service->queryPlan($request);
-    
 
     if ($reponse->getTotalRows() == 1) {
       $reponseplan = $reponse->getData()[0];
@@ -1019,10 +1045,10 @@ class PaymentPlan {
 
       $this->db_add();
 
-      return TRUE;
+      return true;
     }
 
-    return FALSE;
+    return false;
   }
 
   /**
@@ -1069,13 +1095,13 @@ class PaymentPlan {
     }
 
     $reponseplan = $reponse->getPaymentPlans()[0];
-    
+
     $this->id = $reponseplan->getPlanId();
     $this->value = $reponseplan->getValue();
 
     $this->db_add();
 
-    return TRUE;
+    return true;
   }
 
   /**
@@ -1090,7 +1116,7 @@ class PaymentPlan {
    *   TRUE if it was succesfull or the error message if it's not.
    */
   private function api_update() {
-    if ($this->id == NULL) {
+    if ($this->id == null) {
       throw new Exception("Cannot update a payment plan without an id.");
     }
 
@@ -1111,27 +1137,27 @@ class PaymentPlan {
       $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Planupdate();
       $request->setPlanId($this->id);
 
-      if ($this->name != NULL) {
+      if ($this->name != null) {
         $request->setName($this->name);
       }
-      if ($this->trackId != NULL) {
+      if ($this->trackId != null) {
         $request->setPlanTrackId($this->trackId);
       }
-      if ($this->autoCapTime != NULL) {
+      if ($this->autoCapTime != null) {
         $request->setAutoCapTime($this->autoCapTime);
       }
-      if ($this->value != NULL) {
+      if ($this->value != null) {
         $request->setValue($this->value);
       }
-      if ($this->status != NULL) {
-        $request->setStatus((int)$this->status);
+      if ($this->status != null) {
+        $request->setStatus((int) $this->status);
       }
 
       $reponse = $service->updatePlan($request);
     }
     catch (Exception $e) {
       if (strpos($e->getErrorMessage(), 'Recurring Plan already exists')) {
-        return TRUE;
+        return true;
       }
 
       throw new Exception(
@@ -1147,7 +1173,7 @@ class PaymentPlan {
 
     $this->db_update();
 
-    return TRUE;
+    return true;
   }
 
   /**
@@ -1163,7 +1189,7 @@ class PaymentPlan {
    *   TRUE if it was succesfull or the error message if it's not.
    */
   private function api_cancel() {
-    if ($this->id == NULL) {
+    if ($this->id == null) {
       throw new Exception("Cannot cancl a payment plan without an id.");
     }
 
@@ -1195,7 +1221,7 @@ class PaymentPlan {
       );
     }
 
-    return TRUE;
+    return true;
   }
 
   /**
@@ -1212,16 +1238,16 @@ class PaymentPlan {
    *   TRUE if it was succesfull, FALSE if it doesn't.
    */
   private function db_get() {
-    if ($this->id != NULL) {
+    if ($this->id != null) {
       $findcolumn = 'id';
-      $findrow    = $this->id;
+      $findrow = $this->id;
     }
-    elseif ($this->trackId != NULL) {
+    elseif ($this->trackId != null) {
       $findcolumn = 'track_id';
-      $findrow    = $this->trackId;
+      $findrow = $this->trackId;
     }
     else {
-      return FALSE;
+      return false;
     }
 
     $sqlRepsonse = db_select('uc_checkoutpaymentplan_payment_plan', 'c')
@@ -1242,9 +1268,9 @@ class PaymentPlan {
       $this->recurringCount = $pp->recurring_count;
       $this->status = $pp->status;
 
-      return TRUE;
+      return true;
     }
-    return FALSE;
+    return false;
   }
 
   /**
@@ -1268,15 +1294,15 @@ class PaymentPlan {
     try {
       $db = db_insert('uc_checkoutpaymentplan_payment_plan')
         ->fields(array(
-          'id'              => $this->id,
-          'name'            => $this->name,
-          'track_id'        => $this->trackId,
-          'auto_cap_time'   => $this->autoCapTime,
-          'currency'        => $this->currency,
-          'value'           => $this->value,
-          'cycle'           => $this->cycle,
+          'id' => $this->id,
+          'name' => $this->name,
+          'track_id' => $this->trackId,
+          'auto_cap_time' => $this->autoCapTime,
+          'currency' => $this->currency,
+          'value' => $this->value,
+          'cycle' => $this->cycle,
           'recurring_count' => $this->recurringCount,
-          'status'          => $this->status,
+          'status' => $this->status,
         ))
         ->execute();
     }
@@ -1296,10 +1322,10 @@ class PaymentPlan {
         WATCHDOG_NOTICE
       );
 
-      return FALSE;
+      return false;
     }
 
-    return TRUE;
+    return true;
   }
 }
 
@@ -1335,10 +1361,10 @@ class Customer {
    */
   public function get() {
     if ($this->db_get() || $this->api_get()) {
-      return TRUE;
+      return true;
     }
 
-    return FALSE;
+    return false;
   }
 
   /**
@@ -1352,10 +1378,10 @@ class Customer {
    *   TRUE if it was succesfull, FALSE if it doesn't.
    */
   private function api_get() {
-    if ($this->email === NULL && $this->id === NULL) {
-      return FALSE;
+    if ($this->email === null && $this->id === null) {
+      return false;
     }
-    elseif ($this->email === NULL) {
+    elseif ($this->email === null) {
       $queryValue = $this->id;
     }
     else {
@@ -1375,7 +1401,7 @@ class Customer {
     $service = $apiClient->Customerservice();
     $response = $service->getCustomer($queryValue);
 
-    if ($response != NULL) {
+    if ($response != null) {
       $this->id = $response->getId();
       $this->name = $response->getName();
       $this->created = $response->getCreated();
@@ -1389,10 +1415,10 @@ class Customer {
 
       $this->db_add();
 
-      return TRUE;
+      return true;
     }
 
-    return FALSE;
+    return false;
   }
 
   /**
@@ -1406,39 +1432,38 @@ class Customer {
    *   TRUE if it was succesfull, FALSE if it doesn't.
    */
   private function db_get() {
-    if ($this->email === NULL && $this->id === NULL) {
-      return FALSE;
+    if ($this->email === null && $this->id === null) {
+      return false;
     }
-    elseif ($this->email === NULL) {
+    elseif ($this->email === null) {
       $query = array('id', $this->id);
     }
     else {
       $query = array('email', $this->email);
     }
 
-
     $sqlRepsonse = db_select('uc_checkoutpaymentplan_customer', 'c')
       ->fields('c')
-      ->condition($query[0],$query[1], '=')
+      ->condition($query[0], $query[1], '=')
       ->execute()
       ->fetchObject();
 
     if (!empty($sqlRepsonse)) {
-      $this->id          = $sqlRepsonse->id;
-      $this->name        = $sqlRepsonse->name;
-      $this->created     = $sqlRepsonse->created;
-      $this->email       = $sqlRepsonse->email;
+      $this->id = $sqlRepsonse->id;
+      $this->name = $sqlRepsonse->name;
+      $this->created = $sqlRepsonse->created;
+      $this->email = $sqlRepsonse->email;
       $this->phoneNumber = $sqlRepsonse->phone_number;
       $this->description = $sqlRepsonse->description;
       $this->defaultCard = $sqlRepsonse->default_card;
-      $this->liveMode    = $sqlRepsonse->live_mode;
-      $this->cards       = $sqlRepsonse->cards;
-      $this->metadata    = $sqlRepsonse->metadata;
+      $this->liveMode = $sqlRepsonse->live_mode;
+      $this->cards = $sqlRepsonse->cards;
+      $this->metadata = $sqlRepsonse->metadata;
 
-      return TRUE;
+      return true;
     }
 
-    return FALSE;
+    return false;
   }
 
   /**
@@ -1486,10 +1511,10 @@ class Customer {
         WATCHDOG_NOTICE
       );
 
-      return FALSE;
+      return false;
     }
 
-    return TRUE;
+    return true;
   }
 }
 
@@ -1513,7 +1538,7 @@ class CheckoutComList {
    *   $checkout_com_list = new CheckoutComList;
    *   $checkout_com_list->queryObject = new PaymentPlan;
    *   $checkout_com_list->get();
-   * 
+   *
    *   $checkout_com_list = new CheckoutComList;
    *   $checkout_com_list->queryObject = new CustomerPaymentPlan;
    *   $checkout_com_list->get();
@@ -1525,18 +1550,18 @@ class CheckoutComList {
     switch (get_class($this->queryObject)) {
       case 'PaymentPlan':
         if ($this->db_getPaymentPlans() || $this->api_getPaymentPlans()) {
-          return TRUE;
+          return true;
         }
         break;
-      
+
       case 'CustomerPaymentPlan':
         if ($this->db_getCustomerPaymentPlans() || $this->api_getCustomerPaymentPlans()) {
-          return TRUE;
+          return true;
         }
         break;
     }
 
-    return FALSE;
+    return false;
   }
 
   /**
@@ -1546,7 +1571,7 @@ class CheckoutComList {
    *   $checkout_com_list = new CheckoutComList;
    *   $checkout_com_list->queryObject = new PaymentPlan;
    *   $checkout_com_list->get();
-   * 
+   *
    *   $checkout_com_list = new CheckoutComList;
    *   $checkout_com_list->queryObject = new CustomerPaymentPlan;
    *   $checkout_com_list->get();
@@ -1558,48 +1583,48 @@ class CheckoutComList {
     switch (get_class($this->queryObject)) {
       case 'PaymentPlan':
         if ($this->db_getPaymentPlans()) {
-          return TRUE;
+          return true;
         }
         do {
           if (!$this->api_getPaymentPlans()) {
-            return FALSE;
+            return false;
             break;
           }
           $this->offset += $this->count;
         } while ($this->count == $this->totalRows);
-        return TRUE;
+        return true;
         break;
-      
+
       case 'CustomerPaymentPlan':
         if ($this->db_getCustomerPaymentPlans()) {
-          return TRUE;
+          return true;
         }
         do {
           if (!$this->api_getCustomerPaymentPlans()) {
-            return FALSE;
+            return false;
             break;
           }
           $this->offset += $this->count;
         } while ($this->count == $this->totalRows);
-        return TRUE;
+        return true;
         break;
 
       case 'Customer':
         if ($this->db_getCustomers()) {
-          return TRUE;
+          return true;
         }
         do {
           if (!$this->api_getCustomers()) {
-            return FALSE;
+            return false;
             break;
           }
           $this->offset += $this->count;
         } while ($this->count == $this->totalRows);
-        return TRUE;
+        return true;
         break;
     }
 
-    return FALSE;
+    return false;
   }
 
   /**
@@ -1619,7 +1644,7 @@ class CheckoutComList {
 
       $sqlRepsonse = db_delete('uc_checkoutpaymentplan_payment_plan')
         ->execute();
-      
+
       $sqlRepsonse = db_delete('uc_checkoutpaymentplan_customer')
         ->execute();
     }
@@ -1635,7 +1660,7 @@ class CheckoutComList {
         WATCHDOG_ERROR
       );
 
-      return FALSE;
+      return false;
     }
 
     $this->queryObject = new PaymentPlan;
@@ -1681,7 +1706,7 @@ class CheckoutComList {
 
     $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Querycustomerplan();
 
-    if (property_exists($this->queryObject, 'customerId') && $this->queryObject->customerId !== NULL) {
+    if (property_exists($this->queryObject, 'customerId') && $this->queryObject->customerId !== null) {
       $request->setCustomerId($this->queryObject->customerId);
     }
 
@@ -1723,12 +1748,12 @@ class CheckoutComList {
         $cpp->nextRecurringDate = $value['nextRecurringDate'];
 
         $cpp->db_add();
-  
+
         $this->list[] = $cpp;
       }
-      return TRUE;
+      return true;
     }
-    return FALSE;
+    return false;
   }
 
   /**
@@ -1757,7 +1782,7 @@ class CheckoutComList {
 
     $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Querypaymentplan();
 
-    if (property_exists($this->queryObject, 'status') && $this->queryObject->status !== NULL) {
+    if (property_exists($this->queryObject, 'status') && $this->queryObject->status !== null) {
       $request->setStatus($this->queryObject->status);
     }
 
@@ -1795,19 +1820,19 @@ class CheckoutComList {
         $pp->cycle = $value['cycle'];
         $pp->recurringCount = $value['recurringCount'];
         $pp->status = $value['status'];
-  
+
         $pp->db_add();
-  
+
         $this->list[] = $pp;
       }
-      return TRUE;
+      return true;
     }
-    return FALSE;
+    return false;
   }
 
   /**
    * Get settings to use the API.
-   * 
+   *
    * @param array $class
    *   An array filled with paths from the Checkout liberary to include.
    */
@@ -1829,7 +1854,7 @@ class CheckoutComList {
    *
    * Minimal usage:
    *   $this->db_getCustomerPaymentPlans();
-   * 
+   *
    * Expanded usage:
    *   $this->queryObject = new CustomerPaymentPlan;
    *   $this->queryObject->customerId = 'cust_0000000000000000000000';
@@ -1839,9 +1864,9 @@ class CheckoutComList {
    *   TRUE if it was succesfull, FALSE if it doesn't.
    */
   private function db_getCustomerPaymentPlans() {
-    $findcolumn = $findrow = TRUE;
+    $findcolumn = $findrow = true;
 
-    if (property_exists($this->queryObject, 'customerId') && $this->queryObject->customerId !== NULL) {
+    if (property_exists($this->queryObject, 'customerId') && $this->queryObject->customerId !== null) {
       $findcolumn = 'customer_id';
       $findrow = $this->queryObject->customerId;
     }
@@ -1861,26 +1886,26 @@ class CheckoutComList {
       foreach ($sqlRepsonse as $key => $value) {
         $cpp = new CustomerPaymentPlan;
 
-        $cpp->id                    = $value->id;
-        $cpp->planId                = $value->plan_id;
-        $cpp->cardId                = $value->card_id;
-        $cpp->customerId            = $value->customer_id;
-        $cpp->recurringCountLeft    = $value->recurring_count_left;
-        $cpp->status                = $value->status;
-        $cpp->totalCollectionCount  = $value->total_collection_count;
-        $cpp->totalCollectionValue  = $value->total_collection_value;
-        $cpp->startDate             = $value->start_date;
+        $cpp->id = $value->id;
+        $cpp->planId = $value->plan_id;
+        $cpp->cardId = $value->card_id;
+        $cpp->customerId = $value->customer_id;
+        $cpp->recurringCountLeft = $value->recurring_count_left;
+        $cpp->status = $value->status;
+        $cpp->totalCollectionCount = $value->total_collection_count;
+        $cpp->totalCollectionValue = $value->total_collection_value;
+        $cpp->startDate = $value->start_date;
         $cpp->previousRecurringDate = $value->previous_recurring_date;
-        $cpp->nextRecurringDate     = $value->next_recurring_date;
+        $cpp->nextRecurringDate = $value->next_recurring_date;
 
         $this->list[] = $cpp;
       }
 
       if ($this->list != array()) {
-        return TRUE;
+        return true;
       }
     }
-    return FALSE;
+    return false;
   }
 
   /**
@@ -1898,9 +1923,9 @@ class CheckoutComList {
    *   TRUE if it was succesfull, FALSE if it doesn't.
    */
   private function db_getPaymentPlans() {
-    $findcolumn = $findrow = TRUE;
+    $findcolumn = $findrow = true;
 
-    if (property_exists($this->queryObject, 'status') && $this->queryObject->status !== NULL) {
+    if (property_exists($this->queryObject, 'status') && $this->queryObject->status !== null) {
       $findcolumn = 'status';
       $findrow = $this->queryObject->status;
     }
@@ -1934,9 +1959,9 @@ class CheckoutComList {
       }
 
       if ($this->list != array()) {
-        return TRUE;
+        return true;
       }
     }
-    return FALSE;
+    return false;
   }
 }

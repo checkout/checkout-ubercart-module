@@ -7,6 +7,9 @@
  * This module provides Checkout.com payment plan integration to Ubercart,
  */
 
+/**
+ * Constants declarations.
+ */
 const TECHNICAL_NAME = "cko_payment_plan";
 const USER_FRIENDLY_NAME = "Payment Plan";
 const USER_FRIENDLY_PLURAL = "Payment Plans";
@@ -20,14 +23,6 @@ module_load_include('php', 'uc_checkoutpaymentplan', 'includes/methods/objects')
  */
 function uc_checkoutpaymentplan_menu() {
   $items = array();
-
-  $items['uc_checkoutpaymentplan/develop'] = array(
-    'title' => 'Developping page',
-    'page callback' => 'page_development',
-    /* Access neccecary for webhooks */
-    'access callback' => TRUE,
-    'type' => MENU_CALLBACK,
-  );
 
   $items['user/%user/subscriptions'] = array(
     'title' => t('Subscriptions'),
@@ -49,7 +44,7 @@ function uc_checkoutpaymentplan_menu() {
     'title' => 'Ajax call',
     'page callback' => 'ckopp_ajax_call',
     /* Access neccecary for AJAX request */
-    'access callback' => TRUE,
+    'access callback' => true,
     'type' => MENU_CALLBACK,
   );
 
@@ -96,7 +91,7 @@ function uc_checkoutpaymentplan_access($op, $node, $account) {
       user_access('edit own ' . TECHNICAL_NAME, $account)
       && ($account->uid == $node->uid)
     ) {
-      return TRUE;
+      return true;
     }
   }
 }
@@ -108,8 +103,8 @@ function uc_checkoutpaymentplan_help($path, $arg) {
   switch ($path) {
     case 'admin/help#uc_checkoutpaymentplan':
       ob_start();
-        include 'includes/help.page.inc';
-        $html = ob_get_clean();
+      include 'includes/help.page.inc';
+      $html = ob_get_clean();
       ob_end_flush();
       return $html;
   }
@@ -120,9 +115,15 @@ function uc_checkoutpaymentplan_help($path, $arg) {
  */
 function uc_checkoutpaymentplan_page_alter(&$page) {
   switch (current_path()) {
+    case 'admin/store':
+      $tabOrders = explode("</dl>", $page["content"]["system_main"]["blocks"]["#blocks"]["49990 Orders 314"]["content"])[0];
+      $tabOrders .= '<div class="admin-block-item admin-store-orders-search"><dt><a href="/admin/store/orders/subscriptions">Subscriptions</a></dt></div></dl>';
+      $page["content"]["system_main"]["blocks"]["#blocks"]["49990 Orders 314"]["content"] = $tabOrders;
+      break;
+
     case 'admin/store/orders/subscriptions':
-      global $base_url;
-      $path = $base_url . '/' . drupal_get_path('module', 'uc_checkoutpaymentplan');
+      global $baseUrl;
+      $path = $baseUrl . '/' . drupal_get_path('module', 'uc_checkoutpaymentplan');
       drupal_add_js(
         $path . "/includes/scripts/subscription_details.js",
         array(
@@ -141,8 +142,8 @@ function uc_checkoutpaymentplan_page_alter(&$page) {
  */
 function uc_checkoutpaymentplan_cron() {
   $queue = DrupalQueue::get("uc_checkoutpaymentplan_worker");
-  $queue->createQueue(" ");
-  
+  $queue->createItem(null);
+
 }
 
 /*
@@ -150,9 +151,7 @@ function uc_checkoutpaymentplan_cron() {
  *
  * @todo Make the cron job work or delete this function.
  */
-function uc_checkoutpaymentplan_cron_queue_info(){
-  watchdog("Checkout.com RP","uc_checkoutpaymentplan_cron_queue_info called");
-
+function uc_checkoutpaymentplan_cron_queue_info() {
   $queues['uc_checkoutpaymentplan_worker'] = array(
     'worker callback' => 'ckopp_worker',
   );
@@ -168,8 +167,8 @@ function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
       $form['checkoutpayment_recurring'] = array(
         '#type' => 'fieldset',
         '#title' => t('Recurring Payments'),
-        '#collapsible' => TRUE,
-        '#collapsed' => TRUE,
+        '#collapsible' => true,
+        '#collapsed' => true,
       );
 
       $form['checkoutpayment_recurring']['ckopp_autocaptime'] = array(
@@ -186,15 +185,15 @@ function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
 
       $form['cko_pp'] = array(
         "#type" => "fieldset",
-        "#access"=> TRUE,
+        "#access" => true,
         "#title" => "Recurring Payments *",
-        "#collapsible" => TRUE,
-        "#collapsed" => TRUE,
+        "#collapsible" => true,
+        "#collapsed" => true,
         "#weight" => -8,
         "#group" => "additional_settings",
         "#attributes" => array(
           "class" => array(
-            "comment-node-settings-form"
+            "comment-node-settings-form",
           ),
         ),
       );
@@ -202,7 +201,7 @@ function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
       $form['cko_pp']['ckopp_pp_plan_id'] = array(
         '#type' => 'textfield',
         '#title' => t('PlanId'),
-        '#disabled' => TRUE,
+        '#disabled' => true,
         '#description' => t(
           'Payment plan id, provided by <i class="cko-logo"></i>
           <b>Checkout</b>.com, prefixed with <i>rp_</i> for identical
@@ -213,7 +212,7 @@ function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
       $form['cko_pp']['ckopp_pp_cycle'] = array(
         '#type' => 'textfield',
         '#title' => t('Cycle'),
-        '#required' => TRUE,
+        '#required' => true,
         '#description' => t(
           'Elapsed time between the charge and the first transaction of the
           recurring plan.'
@@ -223,15 +222,15 @@ function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
       $form['cko_pp']['ckopp_pp_recurring_count'] = array(
         '#type' => 'textfield',
         '#title' => t('Recurring Count'),
-        '#required' => TRUE,
+        '#required' => true,
         '#description' => t(
           'Number of recurring transactions included in the Payment Plan.'
-          ) . ckopp_html(
-            'tooltip',
-            array(
-              'message' => '<b>Note</b>: recurringCount does not include the initial payment.'
-            )
-          ),
+        ) . ckopp_html(
+          'tooltip',
+          array(
+            'message' => '<b>Note</b>: recurringCount does not include the initial payment.',
+          )
+        ),
       );
 
       $form['cko_pp']['ckopp_pp_status'] = array(
@@ -239,13 +238,13 @@ function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
         '#title' => t('Status'),
         '#description' => t(
           'Defines the status of the recurring payment plan.'
-          ) . ckopp_html(
-            'tooltip',
-            array(
-              'message' => 'It is used for the endpoint that will allow to 
-              monitor the health of a recurring plan.'
-            )
-          ),
+        ) . ckopp_html(
+          'tooltip',
+          array(
+            'message' => 'It is used for the endpoint that will allow to
+              monitor the health of a recurring plan.',
+          )
+        ),
         '#options' => array(
           1 => t('Active'),
           4 => t('Suspended'),
@@ -259,7 +258,7 @@ function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
           'Delayed capture time in hours for the transactions generated by
           the recurring engine.'
         ),
-        '#default_value' => 0
+        '#default_value' => 0,
       );
 
       $form['base']['model']['#description'] = t(
@@ -275,9 +274,9 @@ function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
         $payment_plan->trackId = $form['base']['model']['#default_value'];
         $payment_plan->get();
 
-        $form['base']['model']['#disabled'] = TRUE;
-        $form['cko_pp']['ckopp_pp_cycle']['#disabled'] = TRUE;
-        $form['cko_pp']['ckopp_pp_recurring_count']['#disabled'] = TRUE;
+        $form['base']['model']['#disabled'] = true;
+        $form['cko_pp']['ckopp_pp_cycle']['#disabled'] = true;
+        $form['cko_pp']['ckopp_pp_recurring_count']['#disabled'] = true;
         $form['cko_pp']['ckopp_pp_plan_id']['#value'] = $payment_plan->id;
         $form['cko_pp']['ckopp_pp_cycle']['#default_value'] = $payment_plan->cycle;
         $form['cko_pp']['ckopp_pp_recurring_count']['#default_value'] = $payment_plan->recurringCount;
@@ -292,15 +291,15 @@ function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
 
       foreach ($items as $item) {
         if ($item->type == 'cko_payment_plan' && $hasSubscription) {
-          uc_cart_remove_item($item->nid, NULL, $item->data);
+          uc_cart_remove_item($item->nid, null, $item->data);
           drupal_set_message(
             t(
               'We removed :subscription, since only one subscription can be
               bought at the same time',
               array(
-                ':subscription' => $item->title
+                ':subscription' => $item->title,
               )
-            ), 
+            ),
             'warning'
           );
           drupal_goto('cart');
@@ -314,9 +313,9 @@ function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
                 subscription can be bought at the same time',
                 array(
                   ':qty' => $item->qty - 1,
-                  ':subscription' => $item->title
+                  ':subscription' => $item->title,
                 )
-              ), 
+              ),
               'warning'
             );
             $item->qty = 1;
@@ -333,7 +332,7 @@ function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
 /**
  * Implements hook_validate().
  */
-function uc_checkoutpaymentplan_form_validate(&$elements, &$form_state, $form_id = NULL) {
+function uc_checkoutpaymentplan_form_validate(&$elements, &$form_state, $form_id = null) {
   switch ($form_state['build_info']['form_id']) {
     case 'cko_payment_plan_node_form':
       $values = $form_state['values'];
@@ -369,35 +368,20 @@ function uc_checkoutpaymentplan_form_validate(&$elements, &$form_state, $form_id
 }
 
 /**
- * Implements hook_form_submit().
- */
-function uc_checkoutpaymentplan_form_submit($form, &$form_state) {
-  switch ($form_id) {
-    case 'uc_payment_method_settings_form':
-      // @Todo save these settings.
-      break;
-
-    case 'cko_payment_plan_node_form':
-      // @Todo save these settings.
-      break;
-  }
-}
-
-/**
  * Implements hook_node_insert().
  */
 function uc_checkoutpaymentplan_node_insert($node) {
   if ($node->type = "cko_payment_plan") {
     $payment_plan = new PaymentPlan;
 
-    $payment_plan->name           = $node->title;
-    $payment_plan->trackId        = $node->model;
-    $payment_plan->autoCapTime    = $node->ckopp_pp_autocaptime;
-    $payment_plan->currency       = 'EUR';
-    $payment_plan->value          = round($node->sell_price * 100, 0);
-    $payment_plan->cycle          = $node->ckopp_pp_cycle;
+    $payment_plan->name = $node->title;
+    $payment_plan->trackId = $node->model;
+    $payment_plan->autoCapTime = $node->ckopp_pp_autocaptime;
+    $payment_plan->currency = 'EUR';
+    $payment_plan->value = round($node->sell_price * 100, 0);
+    $payment_plan->cycle = $node->ckopp_pp_cycle;
     $payment_plan->recurringCount = $node->ckopp_pp_recurring_count;
-    $payment_plan->status         = $node->ckopp_pp_status;
+    $payment_plan->status = $node->ckopp_pp_status;
 
     $response = $payment_plan->create();
   }
@@ -410,12 +394,12 @@ function uc_checkoutpaymentplan_node_update($node) {
   if ($node->type = "cko_payment_plan") {
     $payment_plan = new PaymentPlan;
 
-    $payment_plan->id          = $node->ckopp_pp_plan_id;
-    $payment_plan->name        = $node->title;
-    $payment_plan->trackId     = $node->model;
+    $payment_plan->id = $node->ckopp_pp_plan_id;
+    $payment_plan->name = $node->title;
+    $payment_plan->trackId = $node->model;
     $payment_plan->autoCapTime = $node->ckopp_pp_autocaptime;
-    $payment_plan->value       = round($node->sell_price * 100, 0);
-    $payment_plan->status      = $node->ckopp_pp_status;
+    $payment_plan->value = round($node->sell_price * 100, 0);
+    $payment_plan->status = $node->ckopp_pp_status;
 
     $response = $payment_plan->update();
   }
@@ -450,27 +434,20 @@ function uc_checkoutpaymentplan_cko_processing_alter(&$order, &$config) {
       }
       else {
         pre_var_dump($order, true);
-        uc_cart_remove_item($value->nid, NULL, $value->data);
+        uc_cart_remove_item($value->nid, null, $value->data);
         drupal_set_message(
           t(
             "You are already subscribed to :subscription",
             array(
-              ':subscription' => $value->title
+              ':subscription' => $value->title,
             )
           ), "error");
         $config = array();
         drupal_goto('cart');
       }
     }
-    
-  }
-}
 
-/**
- * Implements hook_cko_webhook_alter().
- */
-function uc_checkoutpaymentplan_cko_webhook_alter(&$object_charge) {
-  //error_log("This function ran: " . pre_var_dump($object_charge, true), 0);
+  }
 }
 
 /**
@@ -497,10 +474,10 @@ function uc_checkoutpaymentplan_cko_syncronise_alter(&$config) {
 function ckopp_page_user_subscriptions($user) {
   global $user;
   if (
-    !user_access('view subscriptions') && 
+    !user_access('view subscriptions') &&
     !(
-      user_access('view own subscriptions') && 
-      explode('/',current_path())[1] === $user->uid
+      user_access('view own subscriptions') &&
+      explode('/', current_path())[1] === $user->uid
     )
   ) {
     return drupal_access_denied();
@@ -525,14 +502,14 @@ function ckopp_page_user_subscriptions($user) {
       $payment_plan = new PaymentPlan;
       $payment_plan->id = $customer_payment_plan->planId;
       $payment_plan->get();
-  
+
       $actions = drupal_get_form(
-        'ckopp_subscription_actions_form', 
+        'ckopp_subscription_actions_form',
         array(
-          'id' => $customer_payment_plan->id
+          'id' => $customer_payment_plan->id,
         )
       );
-  
+
       $rows[] = array(
         $payment_plan->name,
         $customer_payment_plan->nextRecurringDate,
@@ -540,7 +517,7 @@ function ckopp_page_user_subscriptions($user) {
         render($actions),
       );
     }
-  
+
     return theme('table', array('header' => $header, 'rows' => $rows));
   }
 
@@ -563,7 +540,7 @@ function ckopp_page_admin_subscriptions() {
     'installmentsPayed' => 'Installments payed',
     'nextRecurringDate' => 'Next payment',
     'frequency' => 'Frequency',
-    'actions' =>'Actions'
+    'actions' => 'Actions',
   );
 
   $list = new CheckoutComList;
@@ -587,7 +564,7 @@ function ckopp_page_admin_subscriptions() {
           'id' => $customer_payment_plan->id,
           'view' => 'list',
         )
-        
+
       );
       $row['actions'] = drupal_render($row['actions']);
 
@@ -601,8 +578,8 @@ function ckopp_page_admin_subscriptions() {
         'progressbar',
         array(
           'percentage' => round(
-            (($payment_plan->recurringCount - $customer_payment_plan->recurringCountLeft)/$payment_plan->recurringCount)*100
-          )
+            (($payment_plan->recurringCount - $customer_payment_plan->recurringCountLeft) / $payment_plan->recurringCount) * 100
+          ),
         )
       );
 
@@ -617,14 +594,14 @@ function ckopp_page_admin_subscriptions() {
         $row['subscription'] = $payment_plan->name . ckopp_html(
           'tooltip',
           array(
-            'message' => 'This subscription has no matching node 
-            on this website.'
+            'message' => 'This subscription has no matching node
+            on this website.',
           )
         );
       }
       else {
         $row['subscription'] = l(
-          $payment_plan->name, 
+          $payment_plan->name,
           drupal_get_path_alias('node/' . $result->nid)
         );
       }
@@ -641,14 +618,14 @@ function ckopp_page_admin_subscriptions() {
           'tooltip',
           array(
             'message' => 'This person does not have
-            an account on this website.'
+            an account on this website.',
           )
         );
       }
 
-      $rows[] = $row;
+      $rows[] = array('data' => $row, 'class' => array($customer_payment_plan->id));
     }
-  
+
     return '<div id="cko-subscription-details" class="hidden"></div>' . theme('table', array('header' => $header, 'rows' => $rows));
   }
 
@@ -671,17 +648,19 @@ function ckopp_page_admin_subscriptions() {
 function ckopp_subscription_actions_form($form, &$form_state, array $config = array()) {
   global $user;
 
+  $form['#attributes']['class'][] = $config['id'];
+
   if (
-    user_access('delete subscriptions') || 
+    user_access('delete subscriptions') ||
     (
-      user_access('delete own subscriptions') && 
-      explode('/',current_path())[1] === $user->uid
+      user_access('delete own subscriptions') &&
+      explode('/', current_path())[1] === $user->uid
     )
   ) {
     $form['cko_remove'] = array(
       '#type' => 'button',
       '#action' => $config['id'],
-      '#value'  => t('Delete'),
+      '#value' => t('Delete'),
       '#prefix' => '<div id="delete_' . $config['id'] . '" class="cko_float_left">',
       '#suffix' => '</div>',
       '#ajax' => array(
@@ -728,13 +707,15 @@ function ckopp_ajax_call($form, $form_state) {
       switch ($form_state['triggering_element']["#value"]) {
         case 'Delete':
           if ($cpp->delete()) {
+            $path = $baseUrl . '/' . drupal_get_path('module', 'uc_checkoutpayment');
             $build['checkoutpayment_recurring'] = array(
               '#type' => 'html_tag',
-              '#tag' => 'p',
-              '#value' => t('Cancelled'),
+              '#tag' => 'img',
               '#attributes' => array(
-                'class' => 'ok'
-              )
+                'src' => $path . '/includes/images/loading.svg',
+                'onload' => 'ckoRemoveSubscriptions("' . $cpp->id . '")',
+                'class' => 'cko-loading',
+              ),
             );
             return render($build);
           }
@@ -759,9 +740,9 @@ function ckopp_ajax_call($form, $form_state) {
 
             unset($actions['cko_view']);
 
-
             $ckopp_html_config = array(
               'title' => $c->name . ' - ' . $pp->getString('name'),
+              'row' => $cpp->id,
               'fields' => array(
                 "Status" => $cpp->getString('status'),
                 "Value" => $pp->getString('value'),
@@ -778,12 +759,11 @@ function ckopp_ajax_call($form, $form_state) {
                 "Next Recurring Date" => $cpp->getString('nextRecurringDate'),
               ),
               'actions' => drupal_render($actions),
-              'wrapper' => 'cko-subscription-details'
+              'wrapper' => 'cko-subscription-details',
             );
             return ckopp_html('fieldset', $ckopp_html_config);
           }
           break;
-
 
       }
 
@@ -795,9 +775,9 @@ function ckopp_ajax_call($form, $form_state) {
           'id' => 'cko-subscription-details',
           'class' => array(
             'messages',
-            'error'
-          )
-        )
+            'error',
+          ),
+        ),
       );
       return render($build);
       break;
@@ -810,48 +790,20 @@ function ckopp_ajax_call($form, $form_state) {
  * @todo Make the cron job work or delete this function.
  */
 function ckopp_worker($data) {
-  watchdog("Checkout.com RP","ckopp_syncronise called");
-  error_log("TEST THIS FUNCTION " . date("Y-m-d H:i:s"), 0);
-}
-
-/**
- * Developer function to print variables in a clean way.
- *
- * @param mixed $var
- *   Any variable of anytype.
- */
-function pre_var_dump($var , $buffer = false) {
-  if ($buffer) {
-    ob_start();
-    var_dump($var);
-    $string = ob_get_clean();
-    error_log($string, 0);
-    return $string;
-  }
-
-  echo '<pre>';
-  var_dump($var);
-  echo '</pre>';
-}
-
-/**
- * Developer function which gives access to a developper page.
- *
- * @return mixed
- *   The output used for rendering the page.
- */
-function page_development() {
   $list = new CheckoutComList;
   $list->syncronise();
 
-  pre_var_dump($list);
-
-  return 'NULL';
+  watchdog(
+    "Checkout.com RP",
+    "The local database was syncronised with the Checkout.com database",
+    null,
+    WATCHDOG_INFO
+  );
 }
 
 /**
  * Formatting function to create HTML tooltips in strings.
- * 
+ *
  * Possible usages:
  *   ckopp_html(
  *     'progressbar',
@@ -860,11 +812,12 @@ function page_development() {
  *       ['wrapper' => 'wrapper id']
  *     )
  *   );
- * 
+ *
  *   ckopp_html(
  *     'subscription details',
  *     array(
- *       'title' => 'Example title'
+ *       'title' => 'Example title',
+ *       'row' => 'identiefier of the row',
  *       'properties' => array(
  *         'label 1' => 'value 1',
  *         'label 2' => 'value 2',
@@ -897,19 +850,19 @@ function ckopp_html($element, array $config = array()) {
       foreach ($config['fields'] as $label => $value) {
         $renderedProps .= '
         <labelled-field class="cko-fieldset-fields">
-          <label> '. $label . '</label>
-          <field> '. $value . '</field>
+          <label> ' . $label . '</label>
+          <field> ' . $value . '</field>
         </labelled-field>';
       }
 
       $build['checkoutpaymentplan_subscription'] = array(
-        '#markup' => '<fieldset id="cko-fieldset">
+        '#markup' => '<fieldset id="cko-fieldset" class="' . $config['row'] . '">
         <legend>
           ' . $config['title'] . '
         </legend>
         <div>
           <div class="cko-fieldset-actions">
-            <a href="javascript:void(0)" onclick="ckoClose()" id="cko-link">Close this window</a>
+            <a href="javascript:void(0)" onclick="ckoClose(\'cko-fieldset\')" id="cko-link">Close this window</a>
           </div>
           <div>
             ' . $renderedProps . '
@@ -919,7 +872,7 @@ function ckopp_html($element, array $config = array()) {
           </div>
         </div>
       </fieldset>
-      '
+      ',
       );
 
       break;
@@ -929,7 +882,7 @@ function ckopp_html($element, array $config = array()) {
         '#markup' => '
           <div class="ckopp_progressbar" >
             <div style="width: ' . $config['percentage'] . '%;" ></div>
-            <span>'. $config['percentage'] . '%</span>
+            <span>' . $config['percentage'] . '%</span>
           </div>
         ',
       );
@@ -939,7 +892,7 @@ function ckopp_html($element, array $config = array()) {
       $build['checkoutpaymentplan_tooltip'] = array(
         '#markup' => '
           &nbsp;
-          <div class="tooltip"> ? 
+          <div class="tooltip"> ?
             <span class="tooltiptext">
               ' . t($config['message']) . '
             </span>
@@ -959,4 +912,3 @@ function ckopp_html($element, array $config = array()) {
 
   return render($build);
 }
-
