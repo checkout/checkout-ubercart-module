@@ -569,12 +569,20 @@ function reloadHubCommunicationTableWithTimeRange($form, $form_state) {
     $config['ToDate'] = $form_state['values']['cko_to_date'];
   }
 
-  module_invoke_all('cko_syncronise', $config);
-  drupal_alter('cko_syncronise', $config);
+  $config['message'][] = 'All the charges have been syncronised.';
 
   $instance->reloadHubCommunicationTable($config);
 
-  return $form['checkoutpayment_sync']['cko_syncronise_repsons']['#markup'] = 'All the charges have been syncronised.';
+  module_invoke_all('cko_syncronise', $config);
+  drupal_alter('cko_syncronise', $config);
+
+  $fullmessage = "Syncronisation";
+
+  foreach ($config['message'] as $message) {
+    $fullmessage .= ' | ' . $message;
+  }
+
+  return $form['checkoutpayment_sync']['cko_syncronise_repsons']['#markup'] = $fullmessage;
 }
 
 /**
