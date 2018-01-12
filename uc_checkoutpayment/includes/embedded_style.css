@@ -125,3 +125,34 @@ input.cko-disabled {
 .cko_float_left {
   float: left;
 }
+
+.cko-fieldset-fields {
+  width: 45%;
+  min-width: 200px;
+  max-width: 400px;
+  float: left;
+  border-bottom: dotted #3075dd .5px;
+  margin: 10px; 
+}
+
+.cko-fieldset-actions {
+  clear: both;
+  float: right;
+}
+
+.cko-fieldset-fields label {
+  float: left;
+}
+
+.cko-fieldset-fields field {
+  float: right;
+  font-size: .85em;
+}
+
+.cko-warning {
+  height: 1.2em;
+  width: 1.2em;
+  background-image: url("images/notification-error.svg");
+  background-repeat: no-repeat;
+  background-position: center bottom;
+}
