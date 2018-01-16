@@ -11,7 +11,7 @@
 /**
  * Global variables declarations.
  */
-global $baseUrl;
+global $base_url;
 global $conf;
 
 /**
@@ -127,7 +127,7 @@ function uc_checkoutpayment_page_alter(&$page) {
     (count($pathElements) == 5 && $pathElements[0] == 'admin' && $pathElements[1] == 'store' && $pathElements[2] == 'orders' && $pathElements[4] == 'edit') ||
     (count($pathElements) == 3 && $pathElements[0] == 'cart' && $pathElements[1] == 'checkout' && $pathElements[2] == 'review' && $integrationType == 'embedded')
   ) {
-    $path = $baseUrl . '/' . drupal_get_path('module', 'uc_checkoutpayment');
+    $path = $base_url . '/' . drupal_get_path('module', 'uc_checkoutpayment');
     drupal_add_js(
       FRAMES_JS_URL,
       array(
@@ -169,7 +169,7 @@ function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id) {
     $form['#suffix'] = '
       <div id="cko-paymentpopup" class="order-pane  hidden">
         <p class="order-pane-title">Add card details:</p>
-        <form id="payment-form" method="POST" action="' . $baseUrl . REDIRECT_URL . '">
+        <form id="payment-form" method="POST" action="' . $base_url . REDIRECT_URL . '">
           <table style="border: none;">
             <tr>
               <td colspan="2" style="border: none;">
@@ -236,7 +236,7 @@ function uc_payment_method_checkoutpayment($op, &$order) {
   switch ($op) {
     case 'settings':
       $form['checkoutpayment_help_text'] = array(
-        '#markup' => '<div class="help">' . t('<h4><i class="cko-logo"></i><b>Checkout</b>.com<strong> Payment Settings</strong></h4><p>Go to https://sandbox.checkout.com to properly install this module.</p>', array('%base_url' => $baseUrl)) . '</div>',
+        '#markup' => '<div class="help">' . t('<h4><i class="cko-logo"></i><b>Checkout</b>.com<strong> Payment Settings</strong></h4><p>Go to https://sandbox.checkout.com to properly install this module.</p>', array('%base_url' => $base_url)) . '</div>',
       );
 
       $form['checkoutpayment_account'] = array(
@@ -674,7 +674,7 @@ function admin_order_payment_action_form($form, &$form_state, $order) {
     drupal_set_message(t('No payment details were found for this order.'), 'error');
   }
 
-  $path = $baseUrl . '/' . drupal_get_path('module', 'uc_checkoutpayment');
+  $path = $base_url . '/' . drupal_get_path('module', 'uc_checkoutpayment');
   drupal_add_js(
     $path . "/includes/Methods/js/adminRefresh.js",
     array(
@@ -775,7 +775,7 @@ function uc_checkoutpayment_form_uc_cart_checkout_review_form_alter(&$form, &$fo
 
     if ($order->payment_method == 'cko') {
       $cko_integration = cko_store_settings()['settings']['cko_integration'];
-      $action = $baseUrl . REDIRECT_URL;
+      $action = $base_url . REDIRECT_URL;
 
       switch ($cko_integration) {
         case 'hosted':
@@ -845,8 +845,8 @@ function uc_checkoutpayment_form(array $form, array &$form_state, $order) {
   $cko_language = $settings['cko_language'];
 
   $cardFormMode = "cardTokenisation";
-  $redirectUrl  = $baseUrl . REDIRECT_URL;
-  $cancelUrl    = $baseUrl . CANCEL_URL;
+  $redirectUrl  = $base_url . REDIRECT_URL;
+  $cancelUrl    = $base_url . CANCEL_URL;
 
   // Order details.
   $contextId     = $order->order_id;
