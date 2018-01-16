@@ -9,12 +9,6 @@
  */
 
 /**
- * Global variables declarations.
- */
-global $base_url;
-global $conf;
-
-/**
  * Constants declarations.
  */
 const CHECKOUT_API_RESPONSE_CODE_APPROVED      = 10000;
@@ -84,6 +78,7 @@ function uc_checkoutpayment_menu() {
  * Implements hook_init().
  */
 function uc_checkoutpayment_init() {
+  global $conf;
   $conf['i18n_variables'][] = 'uc_checkoutpayment_method_title';
   $conf['i18n_variables'][] = 'uc_checkoutpayment_checkout_button';
 }
@@ -108,6 +103,8 @@ function uc_checkoutpayment_variable_info() {
  * Implements hook_page_build().
  */
 function uc_checkoutpayment_page_alter(&$page) {
+  global $baseUrl;
+
   $pathElements = explode('/', current_path());
   $settings = cko_store_settings()['settings'];
   $integration_type = $settings['cko_integration'];
@@ -149,6 +146,8 @@ function uc_checkoutpayment_page_alter(&$page) {
  * Implements hook_form_alter().
  */
 function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id) {
+  global $baseUrl;
+
   if ($form['#form_id'] == 'uc_order_edit_form' && $form_state['order']->order_status == 'pending') {
     $form['#submit'][] = 'process_moto_submit';
     $form['#validate'][] = 'process_moto_validate';
@@ -230,6 +229,8 @@ function uc_checkoutpayment_uc_payment_method() {
  * Implements hook_payment_method_callback().
  */
 function uc_payment_method_checkoutpayment($op, &$order) {
+  global $baseUrl;
+
   module_load_include('module', 'uc_credit', 'uc_credit');
   $settings = cko_store_settings()['settings'];
 
@@ -596,6 +597,8 @@ function reloadHubCommunicationTableWithTimeRange($form, $form_state) {
  * Implements hook_form().
  */
 function admin_order_payment_action_form($form, &$form_state, $order) {
+  global $baseUrl;
+
   $charge = uc_checkoutpayment_get_from_database_by_track_id($order->order_id);
 
   if ($charge !== NULL) {
@@ -769,6 +772,8 @@ function uc_checkoutpayment_admin_call($action, $contextId = 0) {
  * Implements hook_form_alter() for uc_cart_checkout_review_form().
  */
 function uc_checkoutpayment_form_uc_cart_checkout_review_form_alter(&$form, &$form_state) {
+  global $baseUrl;
+
   if (($order_id = (int) $_SESSION['cart_order']) > 0) {
     $order = uc_order_load($order_id);
     $_SESSION['cko_contextid'] = $order_id;
@@ -826,6 +831,8 @@ function uc_checkoutpayment_form_uc_cart_checkout_review_form_alter(&$form, &$fo
  *   The drupal form array.
  */
 function uc_checkoutpayment_form(array $form, array &$form_state, $order) {
+  global $baseUrl;
+
   $payment_method = cko_store_settings();
   $settings       = $payment_method['settings'];
 
