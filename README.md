@@ -5,10 +5,10 @@ See the [installation guide](https://github.com/checkout/checkout-ubercart-modul
 
 Webhook
 ========
-Url: example.com/checkoutapi/process
+Url: example.com/checkoutpayment/webhook
 
 Redirect Url
 ========
-Redirection Url: example.com/uc_checkoutpayment/success
+Redirection Url: example.com/checkoutpayment/success
 
-Redirection Fail Url: example.com/uc_checkoutpayment/fail
+Redirection Fail Url: example.com/checkoutpayment/fail
