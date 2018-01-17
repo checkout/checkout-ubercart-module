@@ -88,7 +88,6 @@ final class Apihttpclient {
     }
     else {
       $errorMessageCodes = $temp->getErrorMessageCodes();
-      pre_var_dump('$errorMessageCodes ' . $errorMessageCodes);
       throw new Apihttpclientcustomexception(
         $temp
           ->getExceptionState()

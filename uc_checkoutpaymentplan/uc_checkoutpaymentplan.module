@@ -163,23 +163,6 @@ function uc_checkoutpaymentplan_cron_queue_info() {
  */
 function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
   switch ($form_id) {
-    case 'uc_payment_method_settings_form':
-      $form['checkoutpayment_recurring'] = array(
-        '#type' => 'fieldset',
-        '#title' => t('Recurring Payments'),
-        '#collapsible' => true,
-        '#collapsed' => true,
-      );
-
-      $form['checkoutpayment_recurring']['ckopp_autocaptime'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Standard auto capture time'),
-        '#description' => t(
-          'This autocapture time will be used unless another is specified.'
-        ),
-      );
-      break;
-
     case 'cko_payment_plan_node_form':
       $form['#validate'][] = 'uc_checkoutpaymentplan_form_validate';
 
@@ -433,7 +416,6 @@ function uc_checkoutpaymentplan_cko_processing_alter(&$order, &$config) {
         $config['postedParam']['transactionIndicator'] = 2;
       }
       else {
-        pre_var_dump($order, true);
         uc_cart_remove_item($value->nid, null, $value->data);
         drupal_set_message(
           t(
@@ -458,8 +440,6 @@ function uc_checkoutpaymentplan_cko_syncronise_alter(&$config) {
   $list->syncronise();
 
   $config['message'][] = 'All the payment plans have been syncronised.';
-
-  pre_var_dump($config, true);
 }
 
 /**
