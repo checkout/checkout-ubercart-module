@@ -17,8 +17,13 @@ const CHECKOUT_API_PLUGIN_VERSION              = '7.x-2.9';
 const HOSTED_URL_SANDOX                        = 'https://secure.checkout.com/sandbox/payment/';
 const HOSTED_URL_LIVE                          = 'https://secure.checkout.com/payment/';
 const FRAMES_JS_URL                            = 'https://cdn.checkout.com/js/frames.js';
-const REDIRECT_URL                             = '/checkoutapi/process_charge';
-const CANCEL_URL                               = '/checkoutapi/fail';
+const HUB_URL                                  = 'https://hub.checkout.com/';
+const GITHUB_WIKI_URL                          = 'https://github.com/checkout/checkout-ubercart-module/wiki';
+const WEBHOOKS_URL                             = 'checkoutpayment/webhook';
+const REDIRECT_URL                             = 'checkoutpayment/process';
+const SUCCESS_URL                              = 'checkoutpayment/success';
+const CANCEL_URL                               = 'checkoutpayment/fail';
+const AJAX_URL                                 = 'checkoutpayment/ajax';
 const EVENT_TYPE_CHARGE_SUCCEEDED              = 'charge.succeeded';
 const EVENT_TYPE_CHARGE_CAPTURED               = 'charge.captured';
 const EVENT_TYPE_CHARGE_REFUNDED               = 'charge.refunded';
@@ -33,7 +38,7 @@ module_load_include('php', 'uc_checkoutpayment', 'includes/Methods/objects');
 function uc_checkoutpayment_menu() {
   $items = array();
 
-  $items['checkoutapi/process'] = array(
+  $items[WEBHOOKS_URL] = array(
     'title' => 'Ipn checkout',
     'page callback' => 'uc_checkoutpayment_process_order',
     /* Access neccecary for webhooks */
@@ -41,7 +46,7 @@ function uc_checkoutpayment_menu() {
     'type' => MENU_CALLBACK,
   );
 
-  $items['uc_checkoutpayment/admin'] = array(
+  $items[AJAX_URL] = array(
     'title' => 'Admin ajex call',
     'page callback' => 'uc_checkoutpayment_admin_call',
     /* Access neccecary for AJAX request */
@@ -49,7 +54,7 @@ function uc_checkoutpayment_menu() {
     'type' => MENU_CALLBACK,
   );
 
-  $items['checkoutapi/success'] = array(
+  $items[SUCCESS_URL] = array(
     'title' => 'Success page',
     'page callback' => 'uc_checkoutpayment_success_order',
     /* Redirect costumers to this address when the charge request has been succesfull */
@@ -57,7 +62,7 @@ function uc_checkoutpayment_menu() {
     'type' => MENU_CALLBACK,
   );
 
-  $items['uc_checkoutpayment/process_charge'] = array(
+  $items[REDIRECT_URL] = array(
     'title' => 'Create Order page',
     'page callback' => 'uc_checkoutpayment_process_charge',
     /* Redirect costumers to this address when processing the card entry */
@@ -65,7 +70,7 @@ function uc_checkoutpayment_menu() {
     'type' => MENU_CALLBACK,
   );
 
-  $items['checkoutapi/fail'] = array(
+  $items[CANCEL_URL] = array(
     'title' => 'Fail Order page',
     'page callback' => 'uc_checkoutpayment_fail_order',
     /* Redirect costumers to this address when the charge request has failed */
@@ -111,7 +116,7 @@ function uc_checkoutpayment_page_alter(&$page) {
     empty(variable_get('cko_private_key')) || empty(variable_get('cko_public_key'))
   ) {
     drupal_set_message(
-      t('The Checkout.com payment method is not configured correctly.'),
+      t('The Checkout.com payment method is not configured correctly.') . l(' Click here to configure the method.', 'admin/store/settings/payment/method/cko'),
       'warning'
     );
   }
@@ -293,7 +298,18 @@ function uc_payment_method_checkoutpayment($op, &$order) {
   switch ($op) {
     case 'settings':
       $form['checkoutpayment_help_text'] = array(
-        '#markup' => '<div class="help">' . t('<h4><i class="cko-logo"></i><b>Checkout</b>.com<strong> Payment Settings</strong></h4><p>Go to https://sandbox.checkout.com to properly install this module.</p>', array('%base_url' => $base_url)) . '</div>',
+        '#markup' => '
+        <div class="help">
+          <h4>
+            <i class="cko-logo"></i><b>Checkout</b>.com
+            <strong>
+              ' . t('Payment Settings') . '
+            </strong>
+          </h4>
+          <p>
+            ' . t('Go to ') . l('the hub', HUB_URL) . t(' to find your channel credentials or go to the ') . l('GitHub wiki page', GITHUB_WIKI_URL) . t(' for more information on the installation process of this module.') . 
+          '</p>
+        </div>',
       );
 
       $form['checkoutpayment_account'] = array(
@@ -1346,7 +1362,7 @@ function uc_checkoutpayment_uc_payment_entered($order, $method, $amount, $accoun
   $payed_amount = ($order->order_total - (uc_payment_balance($order) + $amount));
 
   if ($method == "cko" && $account->uid != "0" && $comment != "Automated balance restore") {
-    $charge = new Charge('594');
+    $charge = new Charge($order->order_id);
 
     if ($amount > 0 && $charge->status != 'Captured') {
       uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, t("Automated balance restore"));
@@ -1356,13 +1372,9 @@ function uc_checkoutpayment_uc_payment_entered($order, $method, $amount, $accoun
       uc_payment_delete(end($payments)->receipt_id);
       drupal_set_message(t("You cannot capture more than once."), 'error');
     }
-    elseif ($charge->status == 'Captured' && -$amount <= $payed_amount) {
+    elseif (-$amount <= $payed_amount) {
       uc_payment_enter($order->order_id, 'cko', -$amount, 0, NULL, t("Automated balance restore"));
       $instance->refundCharge($order, $payment_method, ($amount * -100));
-    }
-    elseif (-$amount <= $payed_amount) {
-      uc_payment_delete(end($payments)->receipt_id);
-      drupal_set_message(t("You cannot refund before you captured the payment"), 'error');
     }
     else {
       uc_payment_delete(end($payments)->receipt_id);

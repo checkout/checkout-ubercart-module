@@ -456,24 +456,6 @@ class Creditcard
       ->execute()
       ->fetchObject();
 
-    // if ($value > $result->value) {
-    //   $refundObjects = db_select('uc_checkoutpayment_hub_communication', 'c')
-    //     ->fields('c')
-    //     ->condition('track_id', $order->order_id, '=')
-    //     ->condition('status', "Refunded", '=')
-    //     ->execute()
-    //     ->fetchObject();
-
-    //   $value = $result->value;
-
-    //   if ($refundObjects != NULL) {
-    //     foreach ($refundObjects as $refund) {
-    //       $value -= $refund->value;
-    //       error_log("The refund value is " . $refund->value . " total remaining value " . $value, 0);
-    //     }
-    //   }
-    // }
-
     $secret_key = $payment_method['settings']['private_key'];
     $mode = $payment_method['settings']['mode'];
 
