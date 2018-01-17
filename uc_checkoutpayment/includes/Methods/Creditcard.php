@@ -214,15 +214,15 @@ class Creditcard
       'publicKey' => $settings['public_key'],
       'paymentToken' => $data['script']['paymentToken'],
       'paymentMode' => $settings['paymentMode'],
-      'customerEmail' => $data['script']['email'],
+      'customerEmail' => addslashes($data['script']['email']),
       'value' => $data['script']['amount'],
       'currency' => $data['script']['currency'],
       'renderMode' => $settings['cko_render_mode'],
-      'formButtonLabel' => $settings['button_label'],
-      'title' => $settings['title'],
-      'themeColor' => $settings['themecolor'],
-      'logoUrl' => $settings['logourl'],
-      'subtitle' => $settings['subtitle'],
+      'formButtonLabel' => addslashes($settings['button_label']),
+      'title' => addslashes($settings['title']),
+      'themeColor' => addslashes($settings['themecolor']),
+      'logoUrl' => addslashes($settings['logourl']),
+      'subtitle' => addslashes($settings['subtitle']),
       'localisation' => $settings['cko_language'],
       'useCurrencyCode' => $settings['currencycode'],
 
@@ -455,24 +455,6 @@ class Creditcard
       ->condition('status', "Captured", '=')
       ->execute()
       ->fetchObject();
-
-    // if ($value > $result->value) {
-    //   $refundObjects = db_select('uc_checkoutpayment_hub_communication', 'c')
-    //     ->fields('c')
-    //     ->condition('track_id', $order->order_id, '=')
-    //     ->condition('status', "Refunded", '=')
-    //     ->execute()
-    //     ->fetchObject();
-
-    //   $value = $result->value;
-
-    //   if ($refundObjects != NULL) {
-    //     foreach ($refundObjects as $refund) {
-    //       $value -= $refund->value;
-    //       error_log("The refund value is " . $refund->value . " total remaining value " . $value, 0);
-    //     }
-    //   }
-    // }
 
     $secret_key = $payment_method['settings']['private_key'];
     $mode = $payment_method['settings']['mode'];
