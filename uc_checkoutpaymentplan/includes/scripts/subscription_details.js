@@ -16,6 +16,5 @@ function ckoRemoveSubscriptions($id) {
 
 function ckoRefreshPage() {
   'use strict';
-  alert('TEST');
   location.reload(true);
 }

@@ -810,6 +810,8 @@ function ckopp_subscription_filter_form($form, &$form_state) {
  *   This could be a string, a build array, json string, ...
  */
 function ckopp_ajax_call($form, $form_state) {
+  $path = $baseUrl . '/' . drupal_get_path('module', 'uc_checkoutpayment');
+
   switch ($form["#form_id"]) {
     case 'ckopp_subscription_actions_form':
       $cpp = new CustomerPaymentPlan;
@@ -898,7 +900,16 @@ function ckopp_ajax_call($form, $form_state) {
         case 'Update':
           $list = new CheckoutComList;
           if ($list->syncronise()) {
-            return '<div class="cko-success cko-right cko-reponse" onload="ckoRefreshPage()"> </div>';
+            $build['checkoutpayment_recurring'] = array(
+              '#type' => 'html_tag',
+              '#tag' => 'img',
+              '#attributes' => array(
+                'src' => $path . '/includes/images/loading.svg',
+                'onload' => 'ckoRefreshPage()',
+                'class' => 'cko-loading',
+              ),
+            );
+            return render($build);
           }
           break;
       }
