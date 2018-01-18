@@ -33,11 +33,13 @@ function uc_checkoutpaymentplan_menu() {
   );
 
   $items['admin/store/orders/subscriptions'] = array(
-    'title' => t('Subscriptions'),
+    'title' => 'Subscriptions',
+    'description' => 'View the subscriptions handled by Checkout.com.',
     'page callback' => 'ckopp_page_admin_subscriptions',
-    'page arguments' => array(1),
+    'page arguments' => array(NULL, NULL),
     'access arguments' => array('view subscriptions'),
-    'type' => MENU_CALLBACK,
+    'type' => MENU_NORMAL_ITEM,
+    'weight' => 5,
   );
 
   $items['uc_checkoutpaymentplan/ajax'] = array(
@@ -115,12 +117,6 @@ function uc_checkoutpaymentplan_help($path, $arg) {
  */
 function uc_checkoutpaymentplan_page_alter(&$page) {
   switch (current_path()) {
-    case 'admin/store':
-      $tabOrders = explode("</dl>", $page["content"]["system_main"]["blocks"]["#blocks"]["49990 Orders 314"]["content"])[0];
-      $tabOrders .= '<div class="admin-block-item admin-store-orders-search"><dt><a href="/admin/store/orders/subscriptions">Subscriptions</a></dt></div></dl>';
-      $page["content"]["system_main"]["blocks"]["#blocks"]["49990 Orders 314"]["content"] = $tabOrders;
-      break;
-
     case 'admin/store/orders/subscriptions':
       global $baseUrl;
       $path = $baseUrl . '/' . drupal_get_path('module', 'uc_checkoutpaymentplan');
@@ -360,7 +356,7 @@ function uc_checkoutpaymentplan_node_insert($node) {
     $payment_plan->name = $node->title;
     $payment_plan->trackId = $node->model;
     $payment_plan->autoCapTime = $node->ckopp_pp_autocaptime;
-    $payment_plan->currency = 'EUR';
+    $payment_plan->currency = variable_get('uc_currency_code');
     $payment_plan->value = round($node->sell_price * 100, 0);
     $payment_plan->cycle = $node->ckopp_pp_cycle;
     $payment_plan->recurringCount = $node->ckopp_pp_recurring_count;
@@ -534,7 +530,10 @@ function ckopp_page_admin_subscriptions() {
 
       $row['nextRecurringDate'] = $customer_payment_plan->getString('nextRecurringDate');
 
-      if ($customer_payment_plan->status != 1) {
+      if ($customer_payment_plan->status == 5) {
+        $row['status'] = '<div class="cko-success"> </div>';
+      }
+      elseif ($customer_payment_plan->status != 1) {
         $row['status'] = '<div class="cko-warning"> </div>';
       }
 

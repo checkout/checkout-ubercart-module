@@ -155,7 +155,19 @@ input.cko-disabled {
   background-image: url("images/notification-error.svg");
   background-repeat: no-repeat;
   background-position: center bottom;
+  background-size: 1.1em;
 }
+
+.cko-success {
+  height: 1.2em;
+  width: 1.2em;
+  background: #3075dd;
+  background-image: url("images/notification-success.svg");
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  background-size: 1.1em;
+}
+
 
 .cko-loading {
   float: left;
