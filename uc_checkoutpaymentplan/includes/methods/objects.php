@@ -1746,6 +1746,8 @@ class CheckoutComList {
 
       unset($customer);
     }
+
+    return true;
   }
 
   /**

@@ -13,3 +13,9 @@ function ckoRemoveSubscriptions($id) {
     elements[i].classList.add('hidden');
   }
 }
+
+function ckoRefreshPage() {
+  'use strict';
+  alert('TEST');
+  location.reload(true);
+}

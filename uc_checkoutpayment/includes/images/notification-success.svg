@@ -1,44 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="-263.5 236.5 26 26">
+<svg viewBox="0 0 87 87" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <style>
-    .svg-success {
-      stroke-width: 2px;
-      stroke: #8EC343;
-      fill: none;
+    .ui-success-circle {
+      stroke-dasharray: 260.75219024795285px, 260.75219024795285px;
+      stroke-dashoffset: 260.75219024795285px;
+      transform: rotate(220deg);
+      transform-origin: center center;
+      stroke-linecap: round;
+      animation: ani-success-circle 1s ease-in both;
     }
-    .svg-success path {
-      stroke-dasharray: 17px, 17px;
-      stroke-dashoffset: 0px;
-      -webkit-animation: checkmark 0.25s ease-in-out 0.7s backwards;
-      animation: checkmark 0.25s ease-in-out 0.7s backwards;
+    .ui-success-path {
+      stroke-dasharray: 60px 64px;
+      stroke-dashoffset: 62px;
+      stroke-linecap: round;
+      animation: ani-success-path 0.4s 1s ease-in both;
     }
-    .svg-success circle {
-      stroke-dasharray: 76px, 76px;
-      stroke-dashoffset: 0px;
-      transform: rotate(-90deg);
-      transform-origin: 50% 50%;
-      -webkit-animation: checkmark-circle 0.6s ease-in-out forwards;
-      animation: checkmark-circle 0.6s ease-in-out forwards;
+    @keyframes ani-success-circle {
+      to {
+        stroke-dashoffset: 782.2565707438586px;
+      }
     }
-
-    @keyframes checkmark {
+    @keyframes ani-success-path {
       0% {
-        stroke-dashoffset: 17px;
+        stroke-dashoffset: 62px;
+      }
+      65% {
+        stroke-dashoffset: -5px;
+      }
+      84% {
+        stroke-dashoffset: 4px;
       }
       100% {
-        stroke-dashoffset: 0;
-      }
-    }
-    @keyframes checkmark-circle {
-      0% {
-        stroke-dashoffset: 76px;
-      }
-      100% {
-        stroke-dashoffset: 0px;
+        stroke-dashoffset: -2px;
       }
     }
   </style>
-  <g class="svg-success">
-    <circle cx="-250.5" cy="249.5" r="12"/>
-    <path d="M-256.46 249.65l3.9 3.74 8.02-7.8"/>
+  <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+      <g id="Group-3" transform="translate(2.000000, 2.000000)">
+        <circle id="Oval-2" stroke="rgba(165, 220, 134, 0.2)" stroke-width="4" cx="41.5" cy="41.5" r="41.5"></circle>
+          <circle  class="ui-success-circle" id="Oval-2" stroke="#A5DC86" stroke-width="4" cx="41.5" cy="41.5" r="41.5"></circle>
+          <polyline class="ui-success-path" id="Path-2" stroke="#A5DC86" stroke-width="8" points="19 38.8036813 31.1020744 54.8046875 63.299221 28"></polyline>
+      </g>
   </g>
 </svg>
