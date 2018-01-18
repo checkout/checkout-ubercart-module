@@ -343,6 +343,25 @@ function uc_checkoutpaymentplan_form_validate(&$elements, &$form_state, $form_id
         }
       }
       break;
+    
+    case 'ckopp_subscription_filter_form':
+      // @todo
+      break;
+
+  }
+}
+
+/**
+ * Implements hook_submit().
+ */
+function uc_checkoutpaymentplan_form_submit(&$elements, &$form_state, $form_id = null) {
+  switch ($form_state['build_info']['form_id']) {
+    case 'ckopp_subscription_filter_form':
+      $values = $form_state['values'];
+      variable_set('ckopp_filter_status', $values['cko_filter_status']);
+      variable_set('ckopp_filter_plan', $values['cko_filter_plan']);
+      break;
+
   }
 }
 
@@ -509,7 +528,6 @@ function ckopp_page_user_subscriptions($user) {
 function ckopp_page_admin_subscriptions() {
   drupal_set_title($title = "Subscriptions overview", $output = CHECK_PLAIN);
 
-
   $filter= drupal_get_form('ckopp_subscription_filter_form');
   $filter = drupal_render($filter);
 
@@ -525,6 +543,8 @@ function ckopp_page_admin_subscriptions() {
 
   $list = new CheckoutComList;
   $list->queryObject = new CustomerPaymentPlan;
+  $list->queryObject->status = variable_get('ckopp_filter_status', NULL);
+  $list->queryObject->planId = variable_get('ckopp_filter_plan', NULL);
   $list->getAll();
 
   if (!empty($list->list)) {
@@ -622,7 +642,7 @@ function ckopp_page_admin_subscriptions() {
     return $filter . $table;
   }
 
-  return '<div class="messages info">' . t('There are no active subscriptions.') . '</div>';
+  return $filter . '<div class="messages info">' . t('There are no active subscriptions.') . '</div>';
 }
 
 /**
@@ -642,6 +662,7 @@ function ckopp_subscription_actions_form($form, &$form_state, array $config = ar
   global $user;
 
   $form['#attributes']['class'][] = $config['id'];
+  $form['#attributes']['class'][] = 'cko_float_left';
 
   if (
     user_access('delete subscriptions') ||
@@ -694,11 +715,12 @@ function ckopp_subscription_actions_form($form, &$form_state, array $config = ar
  *   This could be a string, a build array, json string, ...
  */
 function ckopp_subscription_filter_form($form, &$form_state) {
+  $form['#validate'][] = 'uc_checkoutpaymentplan_form_validate';
+  $form['#submit'][] = 'uc_checkoutpaymentplan_form_submit';
+
   $form['checkoutpaymentplan_filter'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Channel settings'),
-    '#collapsible' => TRUE,
-    '#collapsed' => TRUE,
+    '#collapsible' => FALSE,
   );
 
   $build['cko_ajax_message'] = array(
@@ -707,6 +729,53 @@ function ckopp_subscription_filter_form($form, &$form_state) {
     '#attributes' => array(
       'class' => 'cko-right',
       'id' => 'cko-ajax-message',
+    ),
+  );
+
+  $form['checkoutpaymentplan_filter']['cko_filter_status'] = array(
+    '#type' => 'select',
+    '#default_value' => variable_get('ckopp_filter_status', NULL),
+    '#options' => array(
+      NULL => t('-- status'),
+      0 => t('Failed Initial'),
+      1 => t('Active'),
+      2 => t('Cancelled'),
+      3 => t('In Arrears'),
+      4 => t('Suspended'),
+      5 => t('Completed'),
+    ),
+    '#attributes' => array(
+      'class' => array('cko-search'),
+    ),
+  );
+
+  $list = new CheckoutComList;
+  $list->queryObject = new PaymentPlan;
+  $list->getAll();
+
+  $paymentplans[0] = t('-- subscription');
+
+  foreach ($list->list as $paymentplan) {
+    if (!empty($paymentplan)) {
+      $paymentplans[$paymentplan->id] = $paymentplan->name;
+    }
+  }
+
+  $form['checkoutpaymentplan_filter']['cko_filter_plan'] = array(
+    '#type' => 'select',
+    '#default_value' => variable_get('ckopp_filter_plan', NULL),
+    '#options' => $paymentplans,
+    '#attributes' => array(
+      'class' => array('cko-search'),
+    ),
+  );
+
+  $form['checkoutpaymentplan_filter']['cko_filter_action'] = array(
+    '#type' => 'submit',
+    '#action' => 'Filter',
+    '#value' => t('Filter'),
+    '#attributes' => array(
+      'class' => array('cko-search'),
     ),
   );
 
@@ -722,9 +791,7 @@ function ckopp_subscription_filter_form($form, &$form_state) {
       'effect' => 'fade',
     ),
     '#attributes' => array(
-      'class' => array(
-        'cko-right'
-      ),
+      'class' => array('cko-right'),
     ),
   );
 
@@ -910,20 +977,33 @@ function ckopp_html($element, array $config = array()) {
         </labelled-field>';
       }
 
+      $form['close_this'] = array(
+        '#type' => 'button',
+        '#action' => 'close',
+        '#value' => t('Close'),
+        '#ajax' => array(
+          'callback' => 'ckopp_ajax_call',
+        ),
+        '#attributes' => array(
+          'class' => array('cko-right'),
+          'onclick' => 'ckoClose(\'cko-fieldset\')'
+        ),
+      );
+
+      $closebutton = drupal_render($form);
+
       $build['checkoutpaymentplan_subscription'] = array(
         '#markup' => '<fieldset id="cko-fieldset" class="' . $config['row'] . '">
         <legend>
           ' . $config['title'] . '
         </legend>
         <div>
-          <div class="cko-fieldset-actions">
-            <a href="javascript:void(0)" onclick="ckoClose(\'cko-fieldset\')" id="cko-link">Close this window</a>
-          </div>
           <div>
             ' . $renderedProps . '
           </div>
           <div class="cko-fieldset-actions">
-              ' . $config['actions'] . '
+            ' . $closebutton . '
+            ' . $config['actions'] . '
           </div>
         </div>
       </fieldset>

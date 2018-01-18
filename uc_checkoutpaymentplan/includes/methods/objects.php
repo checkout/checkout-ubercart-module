@@ -1776,8 +1776,14 @@ class CheckoutComList {
 
     $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Querycustomerplan();
 
-    if (property_exists($this->queryObject, 'customerId') && $this->queryObject->customerId !== null) {
+    if (property_exists($this->queryObject, 'customerId') && !empty($this->queryObject->customerId)) {
       $request->setCustomerId($this->queryObject->customerId);
+    }
+    if (property_exists($this->queryObject, 'status') && !empty($this->queryObject->status)) {
+      $request->setStatus($this->queryObject->status);
+    }
+    if (property_exists($this->queryObject, 'planId') && !empty($this->queryObject->planId)) {
+      $request->setPlanId($this->queryObject->planId);
     }
 
     if (!empty($this->offset)) {
@@ -1934,22 +1940,22 @@ class CheckoutComList {
    *   TRUE if it was succesfull, FALSE if it doesn't.
    */
   private function db_getCustomerPaymentPlans() {
-    $findcolumn = $findrow = true;
-
-    if (property_exists($this->queryObject, 'customerId') && $this->queryObject->customerId !== null) {
-      $findcolumn = 'customer_id';
-      $findrow = $this->queryObject->customerId;
-    }
-
-    $sqlRepsonse = db_select(
+    $sqlQuery = db_select(
       'uc_checkoutpaymentplan_customer_payment_plan',
       'c'
-    )
-      ->fields('c')
-      ->condition($findcolumn, $findrow, '=')
-      ->orderBy('start_date', 'ASC')
-      ->execute()
-      ->fetchAll();
+    )->fields('c');
+
+    if (property_exists($this->queryObject, 'customerId') && !empty($this->queryObject->customerId)) {
+      $sqlQuery->condition('customer_id', $this->queryObject->customerId, '=');
+    }
+    if (property_exists($this->queryObject, 'status') && !empty($this->queryObject->status)) {
+      $sqlQuery->condition('status', $this->queryObject->status, '=');
+    }
+    if (property_exists($this->queryObject, 'planId') && !empty($this->queryObject->planId)) {
+      $sqlQuery->condition('plan_id', $this->queryObject->planId, '=');
+    }
+
+    $sqlRepsonse = $sqlQuery->orderBy('start_date', 'ASC')->execute()->fetchAll();
 
     if (!empty($sqlRepsonse)) {
       $this->list = array();
