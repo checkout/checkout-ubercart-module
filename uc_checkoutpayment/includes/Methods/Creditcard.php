@@ -228,7 +228,7 @@ class Creditcard
 
     );
 
-    $redirectUrl = $base_url . REDIRECT_URL;
+    $redirectUrl = $base_url . '/' . REDIRECT_URL;
 
     return "
       <form class=\"payment-form\" method=\"POST\" action=\"" . $redirectUrl . "\">

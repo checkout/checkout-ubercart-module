@@ -44,7 +44,6 @@ class Recurringpaymentservice extends \com\checkout\Apiservices\Baseservices {
     );
 
     ob_start();
-    var_dump($processCharge);
     $result = ob_get_clean();
 
     error_log($result, 0);

@@ -38,7 +38,6 @@ class Visacheckoutservice extends \com\checkout\Apiservices\Baseservices {
     $visaCheckoutMapper = new Visacheckoutmapper($requestModel);
     $visaCheckoutUri = $this->apiUrl->getVisacheckoutcardtokenApiUri();
 
-    // echo var_dump($visaCheckoutUri);
     $requestVisacheckout = array(
       'authorization' => $publicKey,
       'mode' => $this->apiSetting->getMode(),
