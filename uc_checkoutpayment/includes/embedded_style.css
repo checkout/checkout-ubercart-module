@@ -118,8 +118,16 @@ input.cko-disabled {
 
 .ckopp_progressbar div {
   height: 20px;
-  background-color: #3075dd;
+  background-color: #6a96ff;
   width: 0%;
+}
+
+.completed span {
+  color: #A5DC86;
+}
+
+.completed div {
+  background-color: #A5DC86;
 }
 
 .cko_float_left {
@@ -150,14 +158,52 @@ input.cko-disabled {
 }
 
 .cko-warning {
-  height: 1.2em;
-  width: 1.2em;
+  height: 1.5em;
+  width: 1.5em;
+  background-image: url("images/notification-warning.svg");
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  background-size: 100%;
+}
+
+.cko-error {
+  height: 1.5em;
+  width: 1.5em;
   background-image: url("images/notification-error.svg");
   background-repeat: no-repeat;
   background-position: center bottom;
+  background-size: 100%;
 }
+
+
+.cko-success {
+  height: 1.5em;
+  width: 1.5em;
+  background-image: url("images/notification-success.svg");
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  background-size: 100%;
+}
+
 
 .cko-loading {
   float: left;
   height: 2em;
+}
+
+.cko-right {
+  float: right;
+}
+
+.cko-reponse {
+  margin: 5px;
+}
+
+.cko-search {
+  max-width: 150px;
+  float: left;
+  height: 1em;
+  min-height: 16px;
+
+  margin-right: 5px;
 }

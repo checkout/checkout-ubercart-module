@@ -1327,6 +1327,74 @@ class PaymentPlan {
 
     return true;
   }
+
+  /**
+   * Adds this paymentplan to the local database.
+   *
+   * Minimal usage:
+   *   $this->id             = 'rp_000000000000000';
+   *   $this->name           = 'Example title';
+   *   $this->autoCapTime    = 0;
+   *   $this->currency       = 'USD';
+   *   $this->value          = 500;
+   *   $this->recurringCount = 10;
+   *   $this->cycle          = '7d';
+   *   $this->status         = 1;
+   *   $this->db_add();
+   *
+   * @return bool
+   *   TRUE if it successfully added to the database.
+   */
+  public function db_update() {
+    if ($this->id == null) {
+      return NULL;
+    }
+
+    $updatedFields = array();
+
+    if ($this->name != null) {
+      $updatedFields['name'] = $this->name;
+    }
+    if ($this->trackId != null) {
+      $updatedFields['track_id'] = $this->trackId;
+    }
+    if ($this->autoCapTime != null) {
+      $updatedFields['auto_cap_time'] = $this->autoCapTime;
+    }
+    if ($this->value != null) {
+      $updatedFields['value'] = $this->value;
+    }
+    if ($this->status != null) {
+      $updatedFields['status'] = $this->status;
+    }
+
+    try {
+      $db = db_update('uc_checkoutpaymentplan_payment_plan')
+        ->fields($updatedFields)
+        ->condition('id', (string) $this->id, '=')
+        ->execute();
+    }
+    catch (Exception $e) {
+      if (empty($this->name)) {
+        $this->name = 'UNKNOWN';
+      }
+
+      watchdog(
+        'Checkout.com Recurring Payments',
+        'Notice: Subscription, :name, was not added to local database.
+        (:errorMessage)',
+        array(
+          ':name' => $this->name,
+          ':errorMessage' => $e->getMessage(),
+        ),
+        WATCHDOG_NOTICE
+      );
+
+      return false;
+    }
+
+    return true;
+  }
 }
 
 /**
@@ -1678,6 +1746,8 @@ class CheckoutComList {
 
       unset($customer);
     }
+
+    return true;
   }
 
   /**
@@ -1706,8 +1776,14 @@ class CheckoutComList {
 
     $request = new com\checkout\Apiservices\Recurringpayments\Requestmodels\Querycustomerplan();
 
-    if (property_exists($this->queryObject, 'customerId') && $this->queryObject->customerId !== null) {
+    if (property_exists($this->queryObject, 'customerId') && !empty($this->queryObject->customerId)) {
       $request->setCustomerId($this->queryObject->customerId);
+    }
+    if (property_exists($this->queryObject, 'status') && !empty($this->queryObject->status)) {
+      $request->setStatus($this->queryObject->status);
+    }
+    if (property_exists($this->queryObject, 'planId') && !empty($this->queryObject->planId)) {
+      $request->setPlanId($this->queryObject->planId);
     }
 
     if (!empty($this->offset)) {
@@ -1864,22 +1940,22 @@ class CheckoutComList {
    *   TRUE if it was succesfull, FALSE if it doesn't.
    */
   private function db_getCustomerPaymentPlans() {
-    $findcolumn = $findrow = true;
-
-    if (property_exists($this->queryObject, 'customerId') && $this->queryObject->customerId !== null) {
-      $findcolumn = 'customer_id';
-      $findrow = $this->queryObject->customerId;
-    }
-
-    $sqlRepsonse = db_select(
+    $sqlQuery = db_select(
       'uc_checkoutpaymentplan_customer_payment_plan',
       'c'
-    )
-      ->fields('c')
-      ->condition($findcolumn, $findrow, '=')
-      ->orderBy('start_date', 'ASC')
-      ->execute()
-      ->fetchAll();
+    )->fields('c');
+
+    if (property_exists($this->queryObject, 'customerId') && !empty($this->queryObject->customerId)) {
+      $sqlQuery->condition('customer_id', $this->queryObject->customerId, '=');
+    }
+    if (property_exists($this->queryObject, 'status') && !empty($this->queryObject->status)) {
+      $sqlQuery->condition('status', $this->queryObject->status, '=');
+    }
+    if (property_exists($this->queryObject, 'planId') && !empty($this->queryObject->planId)) {
+      $sqlQuery->condition('plan_id', $this->queryObject->planId, '=');
+    }
+
+    $sqlRepsonse = $sqlQuery->orderBy('start_date', 'ASC')->execute()->fetchAll();
 
     if (!empty($sqlRepsonse)) {
       $this->list = array();

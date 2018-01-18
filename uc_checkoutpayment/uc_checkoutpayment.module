@@ -170,7 +170,7 @@ function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id) {
     
         if ($order->payment_method == 'cko') {
           $cko_integration = cko_store_settings()['settings']['cko_integration'];
-          $action = $base_url . REDIRECT_URL;
+          $action = $base_url . '/' . REDIRECT_URL;
     
           switch ($cko_integration) {
             case 'hosted':
@@ -228,7 +228,7 @@ function uc_checkoutpayment_form_alter(&$form, &$form_state, $form_id) {
         $form['#suffix'] = '
           <div id="cko-paymentpopup" class="order-pane  hidden">
             <p class="order-pane-title">Add card details:</p>
-            <form id="payment-form" method="POST" action="' . $base_url . REDIRECT_URL . '">
+            <form id="payment-form" method="POST" action="' . $base_url . '/' . REDIRECT_URL . '">
               <table style="border: none;">
                 <tr>
                   <td colspan="2" style="border: none;">
@@ -857,8 +857,8 @@ function uc_checkoutpayment_form(array $form, array &$form_state, $order) {
   $cko_language = $settings['cko_language'];
 
   $cardFormMode = "cardTokenisation";
-  $redirectUrl  = $base_url . REDIRECT_URL;
-  $cancelUrl    = $base_url . CANCEL_URL;
+  $redirectUrl  = $base_url . '/' . REDIRECT_URL;
+  $cancelUrl    = $base_url . '/' . CANCEL_URL;
 
   // Order details.
   $contextId     = $order->order_id;
@@ -1138,15 +1138,12 @@ function uc_checkoutpayment_success_order() {
  * Redirect back to cart page with error message.
  */
 function uc_checkoutpayment_fail_order() {
-  $charge = new Charge();
+  if (!$_SESSION['cko_contextid']) {
+    drupal_goto();
+  }
 
-  var_dump($charge);
-  // if (!$_SESSION['cko_contextid']) {
-  //   drupal_goto();
-  // }
-
-  // drupal_set_message(t("An error has occurred while processing your transaction. Please verify your information again or try a different card."), 'error');
-  // drupal_goto('cart/checkout/review');
+  drupal_set_message(t("An error has occurred while processing your transaction. Please verify your information again or try a different card."), 'error');
+  drupal_goto('cart/checkout/review');
 }
 
 /**
