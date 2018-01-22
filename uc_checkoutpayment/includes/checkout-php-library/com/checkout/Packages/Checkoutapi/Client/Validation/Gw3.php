@@ -100,14 +100,8 @@ final class CheckoutapiClientValidationGw3 extends CheckoutapiLibObject {
     $isValid = FALSE;
 
     if (isset($postedParam['value'])) {
-
-      $amount = $postedParam['value'];
-
-      $isAmountEmpty = CheckoutapiLibValidator::isEmpty($amount);
-
-      if (!$isAmountEmpty) {
+      if ($postedParam['value'] >= 0) {
         $isValid = TRUE;
-
       }
 
     }
