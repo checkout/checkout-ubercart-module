@@ -24,6 +24,14 @@ module_load_include('php', 'uc_checkoutpaymentplan', 'includes/methods/objects')
 function uc_checkoutpaymentplan_menu() {
   $items = array();
 
+  $items['uc_checkoutpaymentplan/develop'] = array(
+    'title' => 'Developping page',
+    'page callback' => 'page_development',
+    /* Access neccecary for webhooks */
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
   $items['user/%user/subscriptions'] = array(
     'title' => t('Subscriptions'),
     'page callback' => 'ckopp_page_user_subscriptions',
@@ -420,13 +428,21 @@ function uc_checkoutpaymentplan_node_delete($node) {
 function uc_checkoutpaymentplan_cko_processing_alter(&$order, &$config) {
   foreach ($order->products as $key => $value) {
     if ($value->data["type"] == 'cko_payment_plan') {
-      $customer_payment_plan = new CustomerPaymentPlan;
+      $cust_pay_plan = new CustomerPaymentPlan;
 
-      if (
-        !$customer_payment_plan->exists($order->primary_email, $value->model)
-      ) {
+      $customer = new Customer;
+      $customer->email = $order->primary_email;
+      error_log('This runs', 0);
+
+      if (!$customer->get()) {
+        
+        $customer->name = $config['postedParam']['customerName'];
+        $customer->create($config['postedParam']['cardToken']);
+      }
+
+      if (!$cust_pay_plan->exists($order->primary_email, $value->model)) {
         $config['postedParam']['paymentPlans'][] = array(
-          "planId" => $customer_payment_plan->planId,
+          "planId" => $cust_pay_plan->planId,
         );
         $config['postedParam']['transactionIndicator'] = 2;
       }
@@ -444,6 +460,17 @@ function uc_checkoutpaymentplan_cko_processing_alter(&$order, &$config) {
       }
     }
 
+  }
+}
+
+/**
+ * Implements hook_cko_widget_alter().
+ */
+function uc_checkoutpaymentplan_cko_widget_alter(&$order, &$payment_method) {
+  foreach ($order->products as $key => $value) {
+    if ($value->data["type"] == 'cko_payment_plan') {
+      $payment_method['settings']['paymentMode'] = 'cards';
+    }
   }
 }
 
@@ -1057,4 +1084,39 @@ function ckopp_html($element, array $config = array()) {
   }
 
   return render($build);
+}
+
+/**
+ * Developer function to print variables in a clean way.
+ *
+ * @param mixed $var
+ *   Any variable of anytype.
+ */
+function pre_var_dump($var , $buffer = false) {
+  if ($buffer) {
+    ob_start();
+    var_dump($var);
+    $string = ob_get_clean();
+    error_log($string, 0);
+    return $string;
+  }
+
+  echo '<pre>';
+  var_dump($var);
+  echo '</pre>';
+}
+
+/**
+ * Developer function which gives access to a developper page.
+ *
+ * @return mixed
+ *   The output used for rendering the page.
+ */
+function page_development() {
+  $customer = new Customer;
+  $customer->name = 'Firstname Lastnamgezgegeze';
+  $customer->email = 'marcus.meyer81@example.com';
+  $customer->create('card_tok_7665F2D9-1DD3-4C9B-8A89-CA6E44BCD7BC');
+
+  return 'NULL';
 }
