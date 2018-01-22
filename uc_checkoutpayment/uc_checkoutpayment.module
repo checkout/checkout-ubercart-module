@@ -937,6 +937,9 @@ function checkout_payment_widget($order) {
   $payment_method = cko_store_settings();
   $instance = uc_checkoutpayment_get_instance();
 
+  module_invoke_all('cko_widget', $order, $payment_method);
+  drupal_alter('cko_widget', $order, $payment_method);
+
   return $instance->getWidgetElement($order, $payment_method);
 }
 
@@ -1181,7 +1184,6 @@ function uc_checkoutpayment_process_order() {
       uc_checkoutpayment_add_to_database($object_charge);
 
       module_invoke_all('cko_webhook', $object_charge);
-      drupal_alter('cko_webhook', $object_charge);
 
       $order_total   = $data['script']['amount'] / 100;
       $order_balance = uc_payment_balance($order);
