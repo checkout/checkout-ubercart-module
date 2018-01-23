@@ -937,6 +937,9 @@ function checkout_payment_widget($order) {
   $payment_method = cko_store_settings();
   $instance = uc_checkoutpayment_get_instance();
 
+  module_invoke_all('cko_widget', $order, $payment_method);
+  drupal_alter('cko_widget', $order, $payment_method);
+
   return $instance->getWidgetElement($order, $payment_method);
 }
 
@@ -974,6 +977,159 @@ function get_payment_frames(array $config = array()) {
  * Checks the card details and will redirect accordingly.
  *
  * Simple usage:
+ *   $details = array(
+ *     'method' => 'cardId' | 'cardToken' | 'customerId' | 'customerEmail',
+ *     ['cardId' => 'card_00000000-0000-0000-0000-000000000000'],
+ *     ['cardToken' => 'card_tok_00000000-0000-0000-0000-000000000000'],
+ *     ['customerId' => 'cust_00000000-0000-0000-0000-000000000000'],
+ *     ['customerEmail' => 'integration@checkout.com'],
+ *     ['moto' => true],
+ *     ['zeroDollarAuth' => true],
+ *   )
+ *   cko_processing($order, $details);
+ *
+ * @return array
+ *   redirect to succes, fail, or 3D Secure page.
+ */
+function cko_processing($order, array $details = array()) {
+  if (empty($order) || empty($details) || !array_key_exists('method', $details)) {
+    return FALSE;
+  }
+
+  //region Set default parameters
+  if (array_key_exists('zeroDollarAuth', $details) && $details['zeroDollarAuth']) {
+    $config = array(
+      'authorization' => variable_get('cko_private_key'),
+      'mode'          => variable_get('cko_mode'),
+      'postedParam'   => array(
+        'autoCapture'  => CheckoutapiClientConstant::AUTOCAPUTURE_AUTH,
+        'trackId'      => 'Zero Dollar Authorisation',
+        'value'        => 0,
+        'currency'     => 'USD',
+        'email'        => $order->primary_email,
+        'customerName' => $order->billing_first_name . ' ' . $order->billing_last_name,
+      ),
+    );
+  }
+  else {
+    $payment_method = cko_store_settings();
+    $instance = uc_checkoutpayment_get_instance();
+    $data = $instance->getExtraInit($order, $payment_method);
+
+    $autoCapture = $payment_method['settings']['payment_action'] == 'authorize' ? CheckoutapiClientConstant::AUTOCAPUTURE_AUTH : CheckoutapiClientConstant::AUTOCAPUTURE_CAPTURE;
+
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+      $ip = $_SERVER['HTTP_CLIENT_IP'];
+    }
+    elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+      $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
+    }
+    else {
+      $ip = ip_address();
+    }
+
+    $config = array(
+      'authorization' => variable_get('cko_private_key'),
+      'mode'          => variable_get('cko_mode'),
+      'postedParam' => array(
+        'trackId'              => $order->order_id,
+        'value'                => $data['script']['amount'],
+        'currency'             => $data['script']['currency'],
+        'autoCapture'          => $autoCapture,
+        'chargeMode'           => $payment_method['settings']['is3D'],
+        'customerIp'           => $ip,
+        'autoCapTime'          => $payment_method['settings']['autocaptime'],
+        'email'                => $order->primary_email,
+        'customerName'         => $order->billing_first_name . ' ' . $order->billing_last_name,
+        'billingDetails'       => $data['script']['billingDetails'],
+        'shippingDetails'      => $data['script']['shippingDetails'],
+        'transactionIndicator' => 1,
+        'metadata'             => array(
+          'server'           => $_SERVER['HTTP_USER_AGENT'],
+          'plugin_version'   => CHECKOUT_API_PLUGIN_VERSION,
+          'lib_version'      => CheckoutapiClientConstant::VERSION,
+          'integration_type' => $payment_method['settings']['cko_integration'],
+          'time'             => date('Y-m-d H:i:s'),
+          'instanceId'       => $order->order_id,
+        ),
+      )
+    );
+
+    if (!empty($data['script']['products'])) {
+      $config['postedParam']['products'] = $data['script']['products'];
+    }
+  }
+  //endregion
+
+  //region Select transaction method.
+  if (array_key_exists('moto', $details) && $details['moto']) {
+    $config['postedParam']['transactionIndicator'] = 3;
+  }
+  //endregion
+
+  //region Select processing method.
+  if (array_key_exists('cardId', $details)) {
+    $config['postedParam']['cardId'] = $details['cardId'];
+  }
+  elseif (array_key_exists('cardToken', $details)) {
+    $config['postedParam']['cardToken'] = $details['cardToken'];
+  }
+  elseif (array_key_exists('customerId', $details)) {
+    $config['postedParam']['customerId'] = $details['customerId'];
+  }
+  elseif (array_key_exists('customerEmail', $details)) {
+    $config['postedParam']['customerEmail'] = $details['customerEmail'];
+  }
+  else {
+    return FALSE;
+  }
+  //endregion
+
+  // Invoke hook_cko_processing_alter().
+  if (!array_key_exists('zeroDollarAuth', $details) || !$details['zeroDollarAuth']) {
+    module_invoke_all('cko_processing', $order, $config);
+    drupal_alter('cko_processing', $order, $config);
+  }
+
+  //region Create a charge request.
+  $api = CheckoutapiApi::getapi(array('mode' => variable_get('cko_mode')));
+  $result = $api->createCharge($config);
+  //endregion
+
+  //region Handle Api response.
+  if ($api->getExceptionstate()->hasError() || !$result->isValid() || !response_validation($result)) {
+    watchdog(
+      'uc_checkoutpayments',
+      'An error has occurred while processing a transaction. The api returned: %errorMessage',
+      array(
+        '%errorMessage' => $api->getExceptionstate()->getErrorMessage(),
+      ),
+      WATCHDOG_ERROR
+    );
+
+    if (array_key_exists('moto', $details) && $details['moto']) {
+      drupal_set_message(t("The card was declined, please try again."), 'error');
+      return FALSE;
+    }
+    return FALSE;
+  }
+
+  if (!empty($result->getRedirectUrl())) {
+    uc_order_update_status($order->order_id, 'processing');
+    drupal_goto($result->getRedirectUrl());
+  }
+
+  return $result;
+  //endregion
+}
+
+/**
+ * Processes card payment after validation by CKO.
+ *
+ * This page is called after entering the card details in our system.
+ * Checks the card details and will redirect accordingly.
+ *
+ * Simple usage:
  *   $config = array(
  *     'order_id' => 1,
  *     'card_token' => 'card_tok_86A6C264-8B87-45FA-AD91-4455A75B0361',
@@ -985,120 +1141,44 @@ function get_payment_frames(array $config = array()) {
  *   redirect to succes, fail, or 3D Secure page.
  */
 function uc_checkoutpayment_process_charge(array $config = array()) {
+  $moto = false;
+  
   if ($_SESSION['cko_contextid'] === NULL && $config === NULL) {
     drupal_goto();
   }
-  elseif ($config !== array()) {
-    $order_id = $config['order_id'];
-    $card_token = $config['card_token'];
-    $transactionIndicator = $config['transaction_indicator'];
-  }
-  else {
-    $order_id = $_SESSION['cko_contextid'];
-    $card_token = $_REQUEST['cko-card-token'];
-    $transactionIndicator = 1;
-  }
+  elseif (!empty($config) && array_key_exists('order_id', $config)) {
+    $order = uc_order_load($config['order_id']);
 
-  $order = uc_order_load($order_id);
-
-  if ($order->order_status == 'processing') {
-    return uc_checkoutpayment_success_order();
-  }
-
-  $payment_method = cko_store_settings();
-
-  $instance = uc_checkoutpayment_get_instance();
-  $data     = $instance->getExtraInit($order, $payment_method);
-
-  $api = CheckoutapiApi::getapi(array('mode' => $payment_method['settings']['mode']));
-
-  $autoCapture      = $payment_method['settings']['payment_action'] == 'authorize' ? CheckoutapiClientConstant::AUTOCAPUTURE_AUTH : CheckoutapiClientConstant::AUTOCAPUTURE_CAPTURE;
-  $autoCapTime      = $payment_method['settings']['autocaptime'];
-  $chargeMode       = $payment_method['settings']['is3D'];
-  $integration_type = $payment_method['settings']['cko_integration'];
-
-  $order_total      = $data['script']['amount'];
-  $currency         = $data['script']['currency'];
-  $billing_address  = $data['script']['billingDetails'];
-  $shipping_address = $data['script']['shippingDetails'];
-  $customerName     = $data['script']['name'];
-  $email            = $data['script']['email'];
-
-  if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-    $ip = $_SERVER['HTTP_CLIENT_IP'];
-  }
-  elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-    $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
-  }
-  else {
-    $ip = ip_address();
-  }
-
-  $config = array();
-  $config['postedParam'] = array(
-    'trackId'              => $order->order_id,
-    'value'                => $order_total,
-    'currency'             => $currency,
-    'autoCapture'          => $autoCapture,
-    'chargeMode'           => $chargeMode,
-    'customerIp'           => $ip,
-    'autoCapTime'          => $autoCapTime,
-    'email'                => $email,
-    'customerName'         => $customerName,
-    'billingDetails'       => $billing_address,
-    'shippingDetails'      => $shipping_address,
-    'transactionIndicator' => $transactionIndicator,
-    'metadata'             => array(
-      'server'           => $_SERVER['HTTP_USER_AGENT'],
-      'plugin_version'   => CHECKOUT_API_PLUGIN_VERSION,
-      'lib_version'      => CheckoutapiClientConstant::VERSION,
-      'integration_type' => $integration_type,
-      'time'             => date('Y-m-d H:i:s'),
-      'instanceId'       => $order->order_id,
-    ),
-  );
-
-  if (substr($card_token, 0, 9) == "card_tok_") {
-    $config['postedParam']['cardToken'] = $card_token;
-  }
-
-  $config['authorization'] = $payment_method['settings']['private_key'];
-  $config['mode']          = $payment_method['settings']['mode'];
-
-  if (!empty($data['script']['products'])) {
-    $config['postedParam']['products'] = $data['script']['products'];
-  }
-
-  module_invoke_all('cko_processing', $order, $config);
-  drupal_alter('cko_processing', $order, $config);
-
-  // Create a charge request.
-  $result = $api->createCharge($config);
-
-  // Handle Api response.
-  if ($api->getExceptionstate()->hasError() || !$result->isValid() || !response_validation($result)) {
-    watchdog(
-      'uc_checkoutpayments',
-      'An error has occurred while processing a transaction. The api returned: %errorMessage',
-      array(
-        '%errorMessage' => $api->getExceptionstate()->getErrorMessage(),
-      ),
-      WATCHDOG_ERROR
-    );
-
-    if ($transactionIndicator == 3) {
-      drupal_set_message(t("The card was declined, please try again."), 'error');
-      return NULL;
+    if (array_key_exists('card_token', $config)) {
+      $details['method'] = 'cardToken';
+      $details['cardToken'] = $config['card_token'];
     }
+
+    if (array_key_exists('transaction_indicator', $config) && $config['transaction_indicator'] == 3) {
+      $details['moto'] = true;
+      $moto = true;
+    }
+  }
+  else {
+    $order = uc_order_load($_SESSION['cko_contextid']);
+
+    if (isset($_REQUEST['cko-card-token'])) {
+      $details['method'] = 'cardToken';
+      $details['cardToken'] = $_REQUEST['cko-card-token'];
+    }
+  }
+
+  $result = cko_processing($order, $details);
+
+  if ($result === FALSE && $moto) {
+    return FALSE;
+  }
+  elseif ($result === FALSE) {
     return uc_checkoutpayment_fail_order();
   }
-
-  if (!empty($result->getRedirectUrl())) {
-    uc_order_update_status($order->order_id, 'processing');
-    drupal_goto($result->getRedirectUrl());
+  else {
+    return uc_checkoutpayment_success_order();
   }
-
-  return uc_checkoutpayment_success_order();
 }
 
 /**
@@ -1181,7 +1261,6 @@ function uc_checkoutpayment_process_order() {
       uc_checkoutpayment_add_to_database($object_charge);
 
       module_invoke_all('cko_webhook', $object_charge);
-      drupal_alter('cko_webhook', $object_charge);
 
       $order_total   = $data['script']['amount'] / 100;
       $order_balance = uc_payment_balance($order);

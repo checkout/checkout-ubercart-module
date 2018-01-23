@@ -24,6 +24,14 @@ module_load_include('php', 'uc_checkoutpaymentplan', 'includes/methods/objects')
 function uc_checkoutpaymentplan_menu() {
   $items = array();
 
+  $items['uc_checkoutpaymentplan/develop'] = array(
+    'title' => 'Developping page',
+    'page callback' => 'page_development',
+    /* Access neccecary for webhooks */
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
   $items['user/%user/subscriptions'] = array(
     'title' => t('Subscriptions'),
     'page callback' => 'ckopp_page_user_subscriptions',
@@ -159,6 +167,21 @@ function uc_checkoutpaymentplan_cron_queue_info() {
  */
 function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
   switch ($form_id) {
+    case 'uc_payment_method_settings_form':
+      $form['checkoutpayment_recurring'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Recurring Payments'),
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+      );
+
+      $form['checkoutpayment_recurring']['ckopp_allow_mixed_products'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Allow other products in the cart with subscriptions?'),
+        '#default_value' => variable_get('ckopp_allow_mixed_products', false),
+      );
+      break;
+
     case 'cko_payment_plan_node_form':
       $form['#validate'][] = 'uc_checkoutpaymentplan_form_validate';
 
@@ -267,43 +290,66 @@ function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
     case 'uc_cart_view_form':
       $items = uc_cart_get_contents();
       $hasSubscription = false;
+      $numberOfSubscriptions = 0;
 
-      foreach ($items as $item) {
-        if ($item->type == 'cko_payment_plan' && $hasSubscription) {
-          uc_cart_remove_item($item->nid, null, $item->data);
-          drupal_set_message(
-            t(
-              'We removed :subscription, since only one subscription can be
-              bought at the same time',
-              array(
-                ':subscription' => $item->title,
-              )
-            ),
-            'warning'
-          );
-          drupal_goto('cart');
+      foreach ($items as $product) {
+        if ($product->type == 'cko_payment_plan') {
+          $numberOfSubscriptions += $product->qty;
         }
-        elseif ($item->type == 'cko_payment_plan') {
-          $hasSubscription = true;
-          if ($item->qty > 1) {
+      }
+
+      if ($numberOfSubscriptions > 1) {
+        foreach ($items as $item) {
+          if ($item->type == 'cko_payment_plan') {
+            if ($item->qty > 1) {
+              drupal_set_message(
+                t(
+                  'We removed :qty instances of :subscription, since only one
+                  subscription can be bought at the same time',
+                  array(
+                    ':qty' => $item->qty - 1,
+                    ':subscription' => $item->title,
+                  )
+                ),
+                'warning'
+              );
+              $item->qty = 1;
+              uc_cart_update_item($item);
+              drupal_goto('cart');
+            }
+
+            uc_cart_remove_item($item->nid, null, $item->data);
             drupal_set_message(
               t(
-                'We removed :qty instances of :subscription, since only one
-                subscription can be bought at the same time',
+                'We removed :subscription, since only one subscription can be
+                bought at the same time',
                 array(
-                  ':qty' => $item->qty - 1,
                   ':subscription' => $item->title,
                 )
               ),
               'warning'
             );
-            $item->qty = 1;
-            uc_cart_update_item($item);
             drupal_goto('cart');
           }
         }
       }
-
+      if ($numberOfSubscriptions == 1 && count($items) > 1 && !variable_get('ckopp_allow_mixed_products')) {
+        foreach ($items as $item) {
+          if ($item->type != 'cko_payment_plan') {
+            uc_cart_remove_item($item->nid, null, $item->data);
+            drupal_set_message(
+              t(
+                'We removed :product. It is not allowed to buy subscriptions together with other products.',
+                array(
+                  ':product' => $item->title,
+                )
+              ),
+              'warning'
+            );
+            drupal_goto('cart');
+          }
+        }
+      }
       break;
   }
 }
@@ -420,13 +466,22 @@ function uc_checkoutpaymentplan_node_delete($node) {
 function uc_checkoutpaymentplan_cko_processing_alter(&$order, &$config) {
   foreach ($order->products as $key => $value) {
     if ($value->data["type"] == 'cko_payment_plan') {
-      $customer_payment_plan = new CustomerPaymentPlan;
+      $cust_pay_plan = new CustomerPaymentPlan;
 
-      if (
-        !$customer_payment_plan->exists($order->primary_email, $value->model)
-      ) {
+      $customer = new Customer;
+      $customer->email = $order->primary_email;
+      if (!$customer->get()) {
+        $zeroAuthDetails['method'] = 'cardToken';
+        $zeroAuthDetails['cardToken'] = $config['postedParam']['cardToken'];
+        $zeroAuthDetails['zeroDollarAuth'] = true;
+        $result = cko_processing($order, $zeroAuthDetails);
+
+        unset($config['postedParam']['cardToken']);
+      }
+
+      if (!$cust_pay_plan->exists($order->primary_email, $value->model)) {
         $config['postedParam']['paymentPlans'][] = array(
-          "planId" => $customer_payment_plan->planId,
+          "planId" => $cust_pay_plan->planId,
         );
         $config['postedParam']['transactionIndicator'] = 2;
       }
@@ -444,6 +499,17 @@ function uc_checkoutpaymentplan_cko_processing_alter(&$order, &$config) {
       }
     }
 
+  }
+}
+
+/**
+ * Implements hook_cko_widget_alter().
+ */
+function uc_checkoutpaymentplan_cko_widget_alter(&$order, &$payment_method) {
+  foreach ($order->products as $key => $value) {
+    if ($value->data["type"] == 'cko_payment_plan') {
+      $payment_method['settings']['paymentMode'] = 'cards';
+    }
   }
 }
 
@@ -1057,4 +1123,39 @@ function ckopp_html($element, array $config = array()) {
   }
 
   return render($build);
+}
+
+/**
+ * Developer function to print variables in a clean way.
+ *
+ * @param mixed $var
+ *   Any variable of anytype.
+ */
+function pre_var_dump($var , $buffer = false) {
+  if ($buffer) {
+    ob_start();
+    var_dump($var);
+    $string = ob_get_clean();
+    error_log($string, 0);
+    return $string;
+  }
+
+  echo '<pre>';
+  var_dump($var);
+  echo '</pre>';
+}
+
+/**
+ * Developer function which gives access to a developper page.
+ *
+ * @return mixed
+ *   The output used for rendering the page.
+ */
+function page_development() {
+  $customer = new Customer;
+  $customer->name = 'Firstname Lastnamgezgegeze';
+  $customer->email = 'marcus.meyer81@example.com';
+  $customer->create('card_tok_7665F2D9-1DD3-4C9B-8A89-CA6E44BCD7BC');
+
+  return 'NULL';
 }

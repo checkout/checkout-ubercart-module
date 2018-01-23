@@ -217,7 +217,7 @@ class CustomerPaymentPlan {
     $payment_plan = new PaymentPlan;
     $payment_plan->trackId = $trackId;
 
-    if ($customer->get() && $payment_plan->get()) {
+    if ($payment_plan->get() && $customer->get()) {
       $this->customerId = $customer->id;
       $this->planId = $payment_plan->id;
       return $this->get();
@@ -1465,26 +1465,47 @@ class Customer {
       module_load_include('php', 'uc_checkoutpayment', $path);
     }
 
-    $apiClient = new com\checkout\Apiclient(variable_get('cko_private_key'));
-    $service = $apiClient->Customerservice();
-    $response = $service->getCustomer($queryValue);
+    try {
+      $apiClient = new com\checkout\Apiclient(variable_get('cko_private_key'));
+      $service = $apiClient->Customerservice();
+      $response = $service->getCustomer($queryValue);
 
-    if ($response != null) {
-      $this->id = $response->getId();
-      $this->name = $response->getName();
-      $this->created = $response->getCreated();
-      $this->email = $response->getEmail();
-      $this->phoneNumber = $response->getPhoneNumber();
-      $this->description = $response->getDescription();
-      $this->defaultCard = $response->getDefaultCard();
-      $this->liveMode = $response->getLiveMode();
-      $this->cards = $response->getCards();
-      $this->metadata = $response->getMetadata();
+      if ($response != null) {
+        $this->id = $response->getId();
+        $this->name = $response->getName();
+        $this->created = $response->getCreated();
+        $this->email = $response->getEmail();
+        $this->phoneNumber = $response->getPhoneNumber();
+        $this->description = $response->getDescription();
+        $this->defaultCard = $response->getDefaultCard();
+        $this->liveMode = $response->getLiveMode();
+        $this->cards = $response->getCards();
+        $this->metadata = $response->getMetadata();
 
-      $this->db_add();
+        $this->db_add();
 
-      return true;
+        return true;
+      }
     }
+    catch (Exception $e) {
+      if (empty($this->email)) {
+        $this->email = 'UNKNOWN';
+      }
+
+      watchdog(
+        'Checkout.com Recurring Payments',
+        'Notice: Customer, :email, was not found on the server.
+        (:errorMessage)',
+        array(
+          ':email' => $this->email,
+          ':errorMessage' => $e->getMessage(),
+        ),
+        WATCHDOG_NOTICE
+      );
+
+      return false;
+    }
+
 
     return false;
   }

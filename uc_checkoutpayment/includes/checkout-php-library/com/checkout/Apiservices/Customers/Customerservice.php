@@ -125,7 +125,6 @@ class Customerservice extends \com\checkout\Apiservices\Baseservices {
     $requestPayload = array(
       'authorization' => $this->apiSetting->getSecretKey(),
       'mode' => $this->apiSetting->getMode(),
-
     );
     $getCustomerUri = $this->apiUrl->getCustomersApiUri() . '/' . $customerId;
     $processCharge = \com\checkout\Helpers\Apihttpclient::getRequest(
