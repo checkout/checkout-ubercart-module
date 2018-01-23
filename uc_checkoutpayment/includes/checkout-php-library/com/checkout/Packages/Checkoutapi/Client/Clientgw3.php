@@ -259,6 +259,7 @@ class CheckoutapiClientClientgw3 extends CheckoutapiClientClient {
   public function createCharge(array $param) {
     $hasError = FALSE;
     $param['postedParam']['type'] = CheckoutapiClientConstant::CHARGE_TYPE;
+    $param['method'] = CheckoutapiClientAdapterConstant::API_POST;
     $postedParam = $param['postedParam'];
     $this->flushState();
     $isAmountValid = CheckoutapiClientValidationGw3::isValueValid($postedParam);
@@ -286,7 +287,6 @@ class CheckoutapiClientClientgw3 extends CheckoutapiClientClient {
         );
       }
       $this->setUriCharge('', 'token');
-
     }
     elseif ($isCardValid) {
 
@@ -1854,9 +1854,7 @@ class CheckoutapiClientClientgw3 extends CheckoutapiClientClient {
         $adapter->close();
       }
     }
-
     return $respond;
-
   }
 
   /**
