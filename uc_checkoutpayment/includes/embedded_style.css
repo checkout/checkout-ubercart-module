@@ -202,7 +202,6 @@ input.cko-disabled {
 .cko-search {
   max-width: 150px;
   float: left;
-  height: 1em;
   min-height: 16px;
 
   margin-right: 5px;

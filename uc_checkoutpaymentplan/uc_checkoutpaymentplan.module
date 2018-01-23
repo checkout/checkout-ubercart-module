@@ -124,8 +124,9 @@ function uc_checkoutpaymentplan_help($path, $arg) {
  * Implements hook_page_alter().
  */
 function uc_checkoutpaymentplan_page_alter(&$page) {
-  switch (current_path()) {
-    case 'admin/store/orders/subscriptions':
+  switch (cko_clean_path(current_path())) {
+    case '/user/#/subscriptions':
+    case '/admin/store/orders/subscriptions':
       global $baseUrl;
       $path = $baseUrl . '/' . drupal_get_path('module', 'uc_checkoutpaymentplan');
       drupal_add_js(
@@ -579,7 +580,7 @@ function ckopp_page_user_subscriptions($user) {
       );
     }
 
-    return theme('table', array('header' => $header, 'rows' => $rows));
+    return '<div id="cko-subscription-details" class="hidden"></div>' . theme('table', array('header' => $header, 'rows' => $rows));
   }
 
   return '<div class="messages info">' . t('There are no active subscriptions.') . '</div>';
@@ -1158,4 +1159,32 @@ function page_development() {
   $customer->create('card_tok_7665F2D9-1DD3-4C9B-8A89-CA6E44BCD7BC');
 
   return 'NULL';
+}
+
+/**
+ * Helper function to remove variables from paths.
+ *
+ * This function removes numbers and replaces them with #.
+ * Eg: The path user/123/subscriptions will become /user/#/subscription.
+ *
+ * Note: A slash is added to the beginning.
+ *
+ * @param string $path
+ *   A string returned by the function current_path().
+ *
+ * @param string
+ *   A string with the variables removed.
+ */
+function cko_clean_path($path) {
+  $cleanPath = '';
+
+  foreach (explode('/', $path) as $pathPart) {
+    if (1 === preg_match('~[0-9]~', $pathPart)) {
+      $pathPart = '#';
+    }
+    
+    $cleanPath .= '/' . $pathPart;
+  }
+
+  return $cleanPath;
 }
