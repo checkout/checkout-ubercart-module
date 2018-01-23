@@ -432,12 +432,13 @@ function uc_checkoutpaymentplan_cko_processing_alter(&$order, &$config) {
 
       $customer = new Customer;
       $customer->email = $order->primary_email;
-      error_log('This runs', 0);
-
       if (!$customer->get()) {
-        
-        $customer->name = $config['postedParam']['customerName'];
-        $customer->create($config['postedParam']['cardToken']);
+        $zeroAuthDetails['method'] = 'cardToken';
+        $zeroAuthDetails['cardToken'] = $config['postedParam']['cardToken'];
+        $zeroAuthDetails['zeroDollarAuth'] = true;
+        $result = cko_processing($order, $zeroAuthDetails);
+
+        unset($config['postedParam']['cardToken']);
       }
 
       if (!$cust_pay_plan->exists($order->primary_email, $value->model)) {

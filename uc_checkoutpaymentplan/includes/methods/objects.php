@@ -1436,33 +1436,6 @@ class Customer {
   }
 
   /**
-   * Create a customer on the Checkout.com server.
-   *
-   * How to use this:
-   *   $customer = new Customer;
-   *   $customer->name = 'Firstname Lastname';
-   *   $customer->email = 'integration@checkout.com';
-   *   $customer->create('card_tok_B83DAF19-036C-49CB-9F42-6DA04A2C127D');
-   *
-   * @param string $card_token
-   *   The card token which will be linked to the card of the subscription.
-   *
-   * @return bool
-   *   Returns true if succeeded or false (with drupal message) when failed.
-   */
-  public function create($card_token) {
-    try {
-      $this->api_create($card_token);
-    }
-    catch (Exception $e) {
-      drupal_set_message(t(':message', array(':message' => $e->getMessage())), 'error');
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
    * Gets this customer from the Checkout.com API.
    *
    * Minimal usage:
@@ -1535,69 +1508,6 @@ class Customer {
 
 
     return false;
-  }
-
-  /**
-   * Adds this customer to the Checkout.com API.
-   *
-   * Minimal usage:
-   *   $this->name = 'Firstname Lastname';
-   *   $this->email = 'integration@checkout.com';
-   *   $this->api_create('card_tok_B83DAF19-036C-49CB-9F42-6DA04A2C127D');
-   *
-   * @param string $card_token
-   *   The card token which will be linked to the card of the subscription.
-   *
-   * @return bool
-   *   TRUE if it was succesfull, FALSE if it doesn't.
-   */
-  private function api_create($card_token) {
-    if (empty($card_token) || empty($this->email)) {
-      return false;
-    }
-
-    $class[] = 'includes/checkout-php-library/autoload';
-    $class[] = 'includes/checkout-php-library/com/checkout/Apiclient';
-
-    foreach ($class as $path) {
-      module_load_include('php', 'uc_checkoutpayment', $path);
-    }
-
-    $config = array(
-      'authorization' => variable_get('cko_private_key'),
-      'postedParam'   => array(
-        'autoCapture' => CheckoutapiClientConstant::AUTOCAPUTURE_AUTH,
-        'email'       => $this->email,
-        'cardToken'   => $card_token,
-        'value'       => 0,
-        'currency'    => 'USD',
-      )
-    );
-
-    if (!empty($this->name)) {
-      $config['postedParam']['customerName'] = $this->name;
-    }
-
-    try {
-      $api = CheckoutapiApi::getApi(array('mode' => variable_get('cko_mode')));
-      $response = $api->createCharge($config);
-    }
-    catch (Exception $e) {
-      watchdog(
-        'Checkout.com Recurring Payments',
-        'Notice: Customer with email :email, could not be created.
-        (:errorMessage)',
-        array(
-          ':email' => $this->email,
-          ':errorMessage' => $e->getMessage(),
-        ),
-        WATCHDOG_NOTICE
-      );
-
-      return false;
-    }
-
-    return $this->get();
   }
 
   /**
