@@ -369,8 +369,8 @@ final class CheckoutapiClientValidationGw3 extends CheckoutapiLibObject {
       return $isValid;
 
     }
-    return TRUE;
 
+    return FALSE;
   }
 
   /**
@@ -402,7 +402,7 @@ final class CheckoutapiClientValidationGw3 extends CheckoutapiLibObject {
       return $isValid;
 
     }
-    return TRUE;
+    return FALSE;
 
   }
 
