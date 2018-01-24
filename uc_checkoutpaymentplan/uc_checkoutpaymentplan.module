@@ -416,7 +416,7 @@ function uc_checkoutpaymentplan_form_submit(&$elements, &$form_state, $form_id =
  * Implements hook_node_insert().
  */
 function uc_checkoutpaymentplan_node_insert($node) {
-  if ($node->type = "cko_payment_plan") {
+  if ($node->type == "cko_payment_plan") {
     $payment_plan = new PaymentPlan;
 
     $payment_plan->name = $node->title;
@@ -436,7 +436,7 @@ function uc_checkoutpaymentplan_node_insert($node) {
  * Implements hook_node_update().
  */
 function uc_checkoutpaymentplan_node_update($node) {
-  if ($node->type = "cko_payment_plan") {
+  if ($node->type == "cko_payment_plan") {
     $payment_plan = new PaymentPlan;
 
     $payment_plan->id = $node->ckopp_pp_plan_id;
@@ -1153,10 +1153,8 @@ function pre_var_dump($var , $buffer = false) {
  *   The output used for rendering the page.
  */
 function page_development() {
-  $customer = new Customer;
-  $customer->name = 'Firstname Lastnamgezgegeze';
-  $customer->email = 'marcus.meyer81@example.com';
-  $customer->create('card_tok_7665F2D9-1DD3-4C9B-8A89-CA6E44BCD7BC');
+  //variable_del('uc_currency_code');
+  pre_var_dump(variable_get('uc_currency_code'));
 
   return 'NULL';
 }
