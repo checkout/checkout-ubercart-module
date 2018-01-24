@@ -1,0 +1,62 @@
+<svg  viewBox="0 0 87 87" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <style>
+    @keyframes ani-warning-circle {
+      to {
+        stroke-dashoffset: 782.2565707438586px;
+      }
+    }
+    .ui-number {
+      stroke-dasharray: 54px 55px;
+      stroke-dashoffset: 55px;
+      stroke-linecap: round;
+      font-size: 36px;
+      font-family: georgia;
+      fill: #cdd7e7;
+      animation: ani-warning-line 2.1s linear both;
+    }
+    .ui-warning-circle {
+      stroke-dasharray: 260.75219024795285px, 260.75219024795285px;
+      stroke-dashoffset: 260.75219024795285px;
+      animation: ani-warning-circle 1.2s linear;
+    }
+    @keyframes ani-warning-line {
+      to {
+        fill: #6a96ff;
+      }
+    }
+    @keyframes ani-warning-circle {
+      0% {
+        stroke-dasharray: 0, 260.75219024795285px;
+        stroke-dashoffset: 0;
+      }
+      35% {
+        stroke-dasharray: 120px, 120px;
+        stroke-dashoffset: -120px;
+      }
+      70% {
+        stroke-dasharray: 0, 260.75219024795285px;
+        stroke-dashoffset: -260.75219025px;
+      }
+      100% {
+        stroke-dasharray: 260.75219024795285px, 0;
+        stroke-dashoffset: -260.75219025px;
+      }
+    }
+  </style>
+
+  <defs>
+    <clipPath id="full-circle" transform="translate(2.000000, 2.000000)">
+      <circle id="Oval-2" stroke-width="0" cx="41.5" cy="41.5" r="41.5"></circle>
+    </clipPath>
+  </defs>
+
+  <g id="Page-1" stroke="none" fill="none" clip-path="url(#full-circle)">
+    <g id="Group-2" transform="translate(2.000000, 2.000000)">
+      <circle id="Oval-2" stroke="#cdd7e7" stroke-width="83" cx="41.5" cy="41.5" r="41.5"></circle>
+      <circle  class="ui-warning-circle" stroke="#6a96ff" stroke-width="83" cx="41.5" cy="41.5" r="41.5"></circle>
+    </g>
+    <g id="Group-2" transform="translate(2.000000, 2.000000)">
+      <text id="myTimer" class="ui-number"  text-anchor="middle" alignment-baseline="central" x="41.5" y="41.5"> 1 </text>
+    </g>
+  </g>
+</svg>

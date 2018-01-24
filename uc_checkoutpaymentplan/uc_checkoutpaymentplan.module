@@ -171,7 +171,7 @@ function uc_checkoutpaymentplan_form_alter(&$form, &$form_state, $form_id) {
     case 'uc_payment_method_settings_form':
       $form['checkoutpayment_recurring'] = array(
         '#type' => 'fieldset',
-        '#title' => t('Recurring Payments'),
+        '#title' => t('Recurring payments settings'),
         '#collapsible' => TRUE,
         '#collapsed' => TRUE,
       );
