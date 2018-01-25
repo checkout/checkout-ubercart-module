@@ -6,3 +6,4 @@ dependencies[] = uc_payment
 core = 7.x
 
 stylesheets[all][] = includes/embedded_style.css
+stylesheets[all][] = includes/help_style.css

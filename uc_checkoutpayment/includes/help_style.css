@@ -1,0 +1,104 @@
+.checkout-help-page {
+  margin: auto;
+  max-width: 1200px;
+}
+
+.checkout-help-page .pane {
+  width: 100%; 
+  height: 100%;
+  margin-bottom: 20px;
+  box-shadow: 1px 3px 10px 0px rgba(104, 117, 143, 0.4);
+  font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+
+.checkout-help-page .pane .header {
+  width: 100%; 
+  height: 70px;
+  text-align: center;
+  background: rgba(8,24,53,1);
+  vertical-align: middle;
+  line-height:70px;
+}
+
+.checkout-help-page .pane .column {
+  width: 23%;
+  height: 220px;
+  margin: 1%;
+  background: #fff;
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  border: solid #e7eaf1 .5px;
+  float: left;
+  border-radius: 3px;
+  position: relative;
+  min-width: 200px;
+}
+
+.checkout-help-page .pane .column p {
+  padding: 15px;
+}
+
+.checkout-help-page .pane .column img {
+  width: 80px;
+  height: 80px;
+  padding: 15px;
+  background: #F5F7FC;
+  border: solid #e7eaf1 1px;
+  border-radius: 50%;
+  margin-top: -40px;
+}
+
+.checkout-help-page .pane .column .footerbutton{
+  display: block;
+  width: 100%;
+  height: 60px;
+  line-height: 60px;
+  background: #F5F7FC;
+  text-decoration: none;
+  position: absolute;
+  top:160px;
+
+  -webkit-transition: background-color 500ms ease-in-out;
+  -ms-transition: background-color 500ms ease-in-out;
+  transition: background-color 500ms ease-in-out;
+}
+
+.checkout-help-page .pane .column .footerbutton:hover {
+  background: #e7eaf1;
+}
+
+.checkout-help-page .pane .header img{
+  vertical-align: middle;
+}
+
+.checkout-help-page .pane h2 {
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+  color: #fff;
+}
+
+.checkout-help-page .pane h3 {
+  font-weight: 700;
+  line-height: 26px;
+  font-size: 21px;
+  text-align: center;
+}
+
+.checkout-help-page .pane .subtitle {
+  text-align: center;
+  color: rgba(66, 76, 99, 0.83);
+  font-weight: 400;
+  line-height: 26px;
+  font-size: 16px;
+  margin: 0 50px;
+}
+
+.checkout-help-page .pane div {
+  text-align: center;
+}
+
+.checkout-help-page .pane img {
+  padding: 10px 0;
+}
