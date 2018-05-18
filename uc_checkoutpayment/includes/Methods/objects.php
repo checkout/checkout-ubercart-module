@@ -78,7 +78,7 @@ class Charge {
       module_load_include('php', 'uc_checkoutpayment', $path);
     }
 
-    $apiClient = new com\checkout\Apiclient(variable_get('cko_private_key'));
+    $apiClient = new com\checkout\Apiclient(variable_get('cko_private_key'),variable_get('cko_mode'));
     $service = $apiClient->Reportingservice();
 
     $request = new com\checkout\Apiservices\Reporting\Requestmodels\Transactionfilter();
