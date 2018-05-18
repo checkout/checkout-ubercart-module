@@ -13,7 +13,7 @@
  */
 const CHECKOUT_API_RESPONSE_CODE_APPROVED      = 10000;
 const CHECKOUT_API_RESPONSE_CODE_APPROVED_RISK = 10100;
-const CHECKOUT_API_PLUGIN_VERSION              = '7.x-2.9';
+const CHECKOUT_API_PLUGIN_VERSION              = '7.x-2.10';
 const HOSTED_URL_SANDOX                        = 'https://secure.checkout.com/sandbox/payment/';
 const HOSTED_URL_LIVE                          = 'https://secure.checkout.com/payment/';
 const FRAMES_JS_URL                            = 'https://cdn.checkout.com/js/frames.js';
@@ -994,6 +994,10 @@ function get_payment_frames(array $config = array()) {
 function cko_processing($order, array $details = array()) {
   if (empty($order) || empty($details) || !array_key_exists('method', $details)) {
     return FALSE;
+  }
+  
+  if($order->order_status != 'in_checkout'){
+    return false;
   }
 
   //region Set default parameters
